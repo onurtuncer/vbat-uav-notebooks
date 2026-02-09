@@ -8,9 +8,9 @@ Cruise power is estimated using a **lift-to-drag (L/D) formulation**.
 
 Assuming steady level flight:
 
-\[
+$$
 D = \frac{W}{L/D}
-\]
+$$
 
 ---
 
@@ -18,15 +18,15 @@ D = \frac{W}{L/D}
 
 Aerodynamic power:
 
-\[
+$$
 P_{aero} = D \cdot V
-\]
+$$
 
 Electrical power:
 
-\[
+$$
 P_{elec} = \frac{P_{aero}}{\eta_{cruise}}
-\]
+$$
 
 ---
 
