@@ -9,6 +9,16 @@ The focus is **not** on a production UAV, but on:
 
 The code is intentionally simple, transparent, and extensible.
 
+## Theory & Models
+
+The low-order physics models used in this study are documented in
+[`docs/`](docs/).
+
+See:
+- Hover power derivation
+- Cruise power estimation
+- Battery sizing assumptions
+
 ---
 
 ## 1. Problem Definition
@@ -87,9 +97,9 @@ Mass closure is solved iteratively.
 ### Hover
 Hover power is estimated using **momentum (actuator disk) theory**:
 
-\[
+$$
 P_{ideal} = \frac{T^{3/2}}{\sqrt{2 \rho A}}
-\]
+$$
 
 with an overall hover efficiency applied to account for:
 - duct losses,
@@ -103,9 +113,9 @@ A minimum **thrust-to-weight ratio** is enforced for control margin.
 ### Cruise
 Cruise power is estimated using a simple **L/D model**:
 
-\[
+$$
 P = \frac{W}{(L/D)} \cdot V
-\]
+$$
 
 This is appropriate for:
 - early conceptual sizing,
