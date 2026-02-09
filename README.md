@@ -146,14 +146,17 @@ Minimal scientific stack:
 ```txt
 numpy
 matplotlib
+```
 
 Optional but recommended:
 ```txt
 jupyterlab
+```
 
 Install everything with:
 ```txt
 pip install numpy matplotlib jupyterlab
+```
 
 ## 8. How to Run
 
@@ -162,6 +165,7 @@ Open a terminal in vbat_uav_notebooks/
 Launch Jupyter:
 ```txt
 jupyter lab
+```
 
 Open notebook_vbat_demo.ipynb
 
