@@ -1,0 +1,4 @@
+propeller_efficiency: 0.8
+motor_efficiency: 0.9
+esc_efficiency: 0.85
+figure_of_merit: 0.7
