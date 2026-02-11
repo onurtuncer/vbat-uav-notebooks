@@ -1,0 +1,4 @@
+t_hover: 120.0
+t_cruise: 480.0
+V_cruise: 20.0
+reserve_factor: 1.20
