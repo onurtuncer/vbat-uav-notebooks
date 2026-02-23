@@ -8,16 +8,15 @@ class Environment:
     rho: float = 1.225        # air density [kg/m^3]
     g: float = 9.80665        # gravity [m/s^2]
 
-
 # -----------------------------
 # Mission definition
 # -----------------------------
 @dataclass
 class Mission:
-    t_hover: float = 120.0    # hover time [s]
-    t_cruise: float = 480.0   # cruise time [s]
-    V_cruise: float = 20.0    # cruise speed [m/s]
-    reserve_factor: float = 1.20
+    t_hover: float    # hover time [s]
+    t_cruise: float   # cruise time [s]
+    V_cruise: float   # cruise speed [m/s]
+    reserve_factor: float 
 
 
 # -----------------------------
@@ -26,9 +25,9 @@ class Mission:
 @dataclass
 class Propulsor:
     fan_diameter: float = 0.12    # duct diameter [m]
-    thrust_to_weight: float = 1.4
-    eta_hover: float = 0.55
-    eta_cruise: float = 0.60
+    thrust_to_weight: float 
+    eta_hover: float 
+    eta_cruise: float 
 
 
 # -----------------------------
@@ -36,7 +35,7 @@ class Propulsor:
 # -----------------------------
 @dataclass
 class Aerodynamics:
-    LD: float = 10.0              # lift-to-drag ratio
+    LD: float             # lift-to-drag ratio
 
 
 # -----------------------------
@@ -44,11 +43,11 @@ class Aerodynamics:
 # -----------------------------
 @dataclass
 class MassBreakdown:
-    payload: float = 0.50
-    avionics: float = 0.20
-    structure: float = 0.60
-    motor_esc: float = 0.35
-    misc: float = 0.15
+    payload: float 
+    avionics: float 
+    structure: float 
+    motor_esc: float 
+    misc: float 
 
 
 # -----------------------------
@@ -56,5 +55,5 @@ class MassBreakdown:
 # -----------------------------
 @dataclass
 class Battery:
-    specific_energy: float = 200.0  # Wh/kg (pack-level usable)
-    usable_fraction: float = 0.85
+    specific_energy: float   # Wh/kg 
+    usable_fraction: float 
