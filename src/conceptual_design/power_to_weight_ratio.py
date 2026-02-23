@@ -21,18 +21,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import sqrt, pi
 from typing import Optional, Dict
+from models import Environment
 
 
-@dataclass
-class VTOLParams:
-    rho0: float = 1.225              # kg/m^3, sea-level density
-    CD_blade: float = 0.01           # blade drag coefficient
-    sigma: float = 0.077             # rotor solidity
-    S_ratio: float = 1.35            # Stot / Swing (typ 1.3-1.4)
-    FoM: float = 0.75                # figure of merit (typ ~0.6-0.85 for small rotors)
-    # Rotor speed model (2-64): rpm = 2762.786 * D^{-0.932}
-    rpm_k: float = 2762.786
-    rpm_exp: float = -0.932
 
 
 def rpm_from_diameter(D_rotor_m: float, p: VTOLParams) -> float:

@@ -9,7 +9,6 @@ class Environment:
     rho: float = 1.225        # air density [kg/m^3]
     g: float = 9.80665        # gravity [m/s^2]
 
-
 #-------------------------------
 # Propulsive System Parameters
 #-------------------------------
@@ -26,36 +25,42 @@ class PropulsiveSystemParameters:
     exp_rpm: float
 
     @classmethod
-    def from_yaml(cls, path: str) -> "Mission":
+    def from_yaml(cls, path: str) -> "PropulsiveSystemParameters":
         with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
         return cls(
-            eta_prop  = float(data["t_hover"]),
-            eta_motor = float(data["t_cruise"]),
-            eta_esc   = float(data["V_cruise"]),
-            reserve_factor = float(data["reserve_factor"])
+            eta_prop  = float(data["propeller_efficiency"]),
+            eta_motor = float(data["motor_efficiency"]),
+            eta_esc   = float(data["esc_efficiency"]),
+            fom = float(data["figure_of_merit"]),
+            Cd_blade = float(data["blade_drag_coefficient"]),
+            sigma_rotor = float(data["rotor_solidity"]),
+            s_ratio = float(data["S_ratio"]),
+            k_rpm = float(data["rpm_coefficient"]),
+            exp_rpm = float(data["rmp_exponent"])
         )
 
-
-
-
-propeller_efficiency: 0.8
-motor_efficiency: 0.9
-esc_efficiency: 0.85
-figure_of_merit: 0.7
-blade_drag_coefficient: 0.01
-rotor_solidity: 0.077
-S_ratio: 1.3
-rpm_coefficient: 2762.786
-rpm_exponent: -0.932
 
 #------------------------------
 # Weight fraction
 #------------------------------
 @dataclass
 class WeightFraction:
-    fs: float   #structural weight fraction
+    fs: float   # structural weight fraction
+    fp: float   # propulsive weight fraction
+    fa: float   # avionics weight fraction
+    fm: float   # miscellaneous weight fraction
 
+    @classmethod
+    def from_yaml(cls, path: str) -> "WeightFraction":
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        return cls(
+            fs = float(["structual_weight_fraction"]),
+            fp = float(["propulsive_weight_fraction"]),
+            fa = float("avionics_weight_fraction"),
+            fm = float("miscellaneous_weight_fraction")
+        )
 
 
 # -----------------------------

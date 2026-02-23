@@ -1,4 +1,4 @@
-f_s: 0.3
-f_p: 0.2
-f_a: 0.1
-f_m: 0.1
+structual_weight_fraction: 0.3
+propulsive_weight_fraction: 0.2
+avionics_weight_fraction: 0.1
+miscellaneous_weight_fraction: 0.1
