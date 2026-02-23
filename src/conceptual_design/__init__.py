@@ -1,2 +1,2 @@
 from .models import *
-from .sizing import *
+from .sizing_old import *

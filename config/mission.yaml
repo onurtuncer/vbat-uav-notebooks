@@ -1,4 +1,5 @@
 t_hover: 120.0
 t_cruise: 480.0
 V_cruise: 20.0
+rate_of_climb: 2.5
 reserve_factor: 1.20
