@@ -1,2 +1,18 @@
-specific_energy: 
-usable_fraction: 
+# Battery parameters for the V-BAT tail-sitter sizing study.
+#
+# specific_energy : pack-level specific energy [Wh/kg]
+#   140 Wh/kg is a conservative LiPo pack-level estimate.
+#   Cell-level is typically ~200 Wh/kg; the pack overhead (casing,
+#   BMS, wiring) reduces this to ~140 Wh/kg at the system level.
+#   High-voltage LiHV packs can reach 155–165 Wh/kg.
+#
+# usable_fraction : usable depth-of-discharge [-]
+#   0.85 = 85% DoD. Keeping 15% reserve protects cycle life
+#   and avoids cell damage at the low end.
+#
+# eta_bat : battery discharge efficiency [-]
+#   0.97 accounts for internal resistance losses during discharge.
+#   This is applied inside the mass_closure module, not here.
+
+specific_energy: 140.0
+usable_fraction: 0.85

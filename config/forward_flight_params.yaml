@@ -1,0 +1,54 @@
+# Forward flight performance parameters for the V-BAT tail-sitter sizing study.
+# Used by the Size Matching Diagram module (forward_flight_power.py).
+#
+# ── Take-off / ground roll ────────────────────────────────────────────────────
+# Not used for VTOL takeoff, but retained for the T/W constraint curve.
+#
+# mu          : runway rolling resistance coefficient [-]
+#               0.04 is typical for smooth tarmac.
+#
+# CL_To       : lift coefficient at take-off rotation [-]
+#               ~0.8 for a clean wing at rotation attitude (~5°).
+#
+# CD_To       : drag coefficient at take-off (gear down, flaps neutral) [-]
+#               ~0.05 including undercarriage drag.
+#
+# s_g         : take-off ground run [m]
+#               50 m is a nominal figure; irrelevant for VTOL designs.
+#
+# V_To_factor : take-off speed as a multiple of stall speed [-]
+#               1.2 = 20% above stall (standard airworthiness margin).
+#
+# ── Climb ────────────────────────────────────────────────────────────────────
+#
+# RoC_climb   : forward-flight climb rate [m/s]
+#               2.5 m/s (~500 ft/min) is a modest climb for a small UAV.
+#
+# ── Service ceiling ──────────────────────────────────────────────────────────
+#
+# h_ceiling   : service ceiling altitude [m]
+#               3000 m (≈10 000 ft) is a reasonable limit for open-category ops.
+#
+# RoC_ceiling : rate of climb at service ceiling [m/s]
+#               0.5 m/s is the conventional definition of service ceiling
+#               (100 ft/min residual climb rate).
+#
+# ── Size Matching Diagram sweep ───────────────────────────────────────────────
+#
+# WS_min / WS_max : wing loading sweep range [N/m²]
+#                   30–500 N/m² covers all small UAV design spaces.
+#
+# WS_n        : number of wing loading sample points [-]
+#               1000 gives smooth curves with negligible compute cost.
+
+mu: 0.04
+CL_To: 0.8
+CD_To: 0.05
+s_g: 50.0
+V_To_factor: 1.2
+RoC_climb: 2.5
+h_ceiling: 3000.0
+RoC_ceiling: 0.5
+WS_min: 30.0
+WS_max: 500.0
+WS_n: 1000

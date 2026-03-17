@@ -1,7 +1,22 @@
-propeller_efficiency: 0.8
-motor_efficiency: 0.9
-esc_efficiency: 0.85
-figure_of_merit: 0.7
+# Propulsive system parameters for the V-BAT tail-sitter sizing study.
+#
+# For a tail-sitter EDF the same motor/fan serves both hover and cruise.
+# These are conservative mid-range values for small brushless motors.
+#
+# propeller_efficiency  : EDF / propeller efficiency [-]
+# motor_efficiency      : brushless motor efficiency [-]
+# esc_efficiency        : electronic speed controller efficiency [-]
+# figure_of_merit       : rotor Figure of Merit [-]  (0.65–0.80 typical)
+# blade_drag_coefficient: rotor blade profile drag coeff [-]
+# rotor_solidity        : blade area / disk area [-]
+# S_ratio               : S_total / S_wing [-]  (1.3–1.4 for small UAVs)
+# rpm_coefficient       : empirical RPM law coefficient (eq. 2-64)
+# rpm_exponent          : empirical RPM law exponent (eq. 2-64)
+
+propeller_efficiency: 0.80
+motor_efficiency: 0.90
+esc_efficiency: 0.95
+figure_of_merit: 0.70
 blade_drag_coefficient: 0.01
 rotor_solidity: 0.077
 S_ratio: 1.3

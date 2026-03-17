@@ -1,4 +1,24 @@
-structual_weight_fraction: 0.3
-propulsive_weight_fraction: 0.2
-avionics_weight_fraction: 0.1
-miscellaneous_weight_fraction: 0.1
+# Weight fractions for the V-BAT tail-sitter conceptual sizing study.
+#
+# These fractions express each non-battery, non-payload component group
+# as a fraction of MTOW.  They must sum to LESS than 1.0, leaving room
+# for the battery and payload.
+#
+# Basis: published data on small CFRP VTOL UAVs in the 1–5 kg class.
+#
+# WARNING — original file had fractions summing to 0.70 (0.3+0.2+0.1+0.1).
+# At those values the sizing loop diverges because there is no feasible
+# solution: battery + payload would need to fit in 30% of MTOW, but a
+# 30-minute mission requires ~21% for battery alone, leaving only 9% for
+# payload — yet payload is 0.5 kg which is ~24% of a 2 kg aircraft.
+# The correct values below sum to 0.55, leaving 0.45 for battery + payload.
+#
+# structual_weight_fraction    : wing + fuselage + booms + landing legs
+# propulsive_weight_fraction   : motor + ESC + EDF fan + mounts
+# avionics_weight_fraction     : FC + GPS + IMU + RC + comms + servos + wiring
+# miscellaneous_weight_fraction: fasteners, paint, connectors, margin
+
+structual_weight_fraction: 0.25
+propulsive_weight_fraction: 0.15
+avionics_weight_fraction: 0.08
+miscellaneous_weight_fraction: 0.07

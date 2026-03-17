@@ -1,0 +1,41 @@
+# Wing structural parameters for the V-BAT tail-sitter sizing study.
+# Used by the Raymer (default) or Nicolai empirical wing weight formula
+# in wing_sizing.py.
+#
+# sweep_rad  : quarter-chord sweep angle [rad]
+#              0.0 = unswept wing.  A tail-sitter EDF has no aerodynamic
+#              reason for sweep at these speeds; sweep only adds structural
+#              complexity and weight.
+#
+# taper      : taper ratio  c_tip / c_root  [-]
+#              1.0 = constant chord (rectangular planform).
+#              Simplest to manufacture; appropriate for a demonstrator.
+#              A value of ~0.4–0.6 would give better spanwise load distribution
+#              but is harder to build.
+#
+# tc_ratio   : wing thickness-to-chord ratio  t/c  [-]
+#              0.12 corresponds to a NACA 0012 section.
+#              Thicker sections (0.15+) give more internal volume for spars
+#              but increase profile drag.  Thinner sections (<0.10) reduce
+#              drag but require stiffer spar material.
+#
+# n_ult      : ultimate load factor  [-]
+#              3.75 = limit load factor 2.5 x safety factor 1.5.
+#              2.5 g limit is standard for GA / research UAV class.
+#              Increase to 4.5–6.0 for high-manoeuvre platforms.
+#
+# k_material : material knockdown factor vs Raymer aluminium baseline  [-]
+#              0.70 for CFRP (carbon fibre reinforced polymer).
+#              1.00 for aluminium (Raymer baseline).
+#              0.85 for glass fibre / hybrid CFRP-glass.
+#
+# method     : weight formula selector  "raymer" | "nicolai"
+#              "raymer"  — Raymer GA empirical formula (eq. 2-11), preferred.
+#              "nicolai" — Nicolai Light Utility formula (eq. 2-6), alternative.
+
+sweep_rad: 0.0
+taper: 1.0
+tc_ratio: 0.12
+n_ult: 3.75
+k_material: 0.70
+method: raymer

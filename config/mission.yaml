@@ -1,5 +1,17 @@
+# Mission profile for the 30-minute endurance electric V-BAT tail-sitter.
+#
+# Total endurance = t_hover + t_cruise = 120 + 1680 = 1800 s = 30 min
+#
+# t_hover  : total vertical-flight time budget [s]
+#            60 s takeoff hover + 60 s landing hover, with margin
+# t_cruise : forward cruise time [s]
+#            28 min at 20 m/s = 33.6 km range
+# V_cruise : cruise airspeed [m/s]
+# rate_of_climb : VTOL vertical rate of climb [m/s]
+# reserve_factor: energy reserve multiplier (1.20 = +20%)
+
 t_hover: 120.0
-t_cruise: 480.0
+t_cruise: 1680.0
 V_cruise: 20.0
 rate_of_climb: 2.5
 reserve_factor: 1.20

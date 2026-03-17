@@ -1,0 +1,37 @@
+# Aerodynamic parameters for the V-BAT tail-sitter sizing study.
+#
+# These are first-order estimates appropriate for early conceptual design.
+# Update them as geometry is refined in the preliminary design phase.
+#
+# LD        : cruise lift-to-drag ratio [-]
+#             8.0 is a conservative estimate for a clean small fixed-wing UAV.
+#             Well-optimised designs can achieve 10–12.
+#
+# CD0       : zero-lift drag coefficient [-]
+#             0.025 is typical for a smooth CFRP fuselage + thin wing.
+#             Includes fuselage, wing interference, and EDF nacelle.
+#
+# AR        : wing aspect ratio [-]
+#             6.0 balances induced drag reduction against structural mass.
+#             Higher AR improves cruise efficiency but increases wing bending loads.
+#
+# e         : Oswald span efficiency factor [-]
+#             0.80 is representative for a straight, unswept, untapered wing.
+#
+# CL_max    : maximum lift coefficient [-]
+#             1.4 for a clean NACA 00xx section without high-lift devices.
+#
+# V_stall   : desired stall speed [m/s]
+#             12.0 m/s gives a comfortable approach speed and drives the
+#             wing area via (W/S)_stall = 0.5*rho*V_stall^2*CL_max.
+#
+# V_max     : maximum airspeed [m/s]
+#             35.0 m/s is the regulatory ceiling for the open category.
+
+LD: 8.0
+CD0: 0.025
+AR: 6.0
+e: 0.80
+CL_max: 1.4
+V_stall: 12.0
+V_max: 35.0
