@@ -1,0 +1,4 @@
+# config/rotor.yaml
+
+D_rotor_m:      0.28     # rotor / EDF diameter [m]
+disk_loading:   150.0    # rotor disk loading [N/m2]

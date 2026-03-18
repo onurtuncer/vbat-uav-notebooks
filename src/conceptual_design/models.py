@@ -211,7 +211,21 @@ class Battery:
             specific_energy = float(se),
             usable_fraction = float(uf),
         )
+    
 
+@dataclass
+class RotorParams:
+    D_rotor_m:    float   # rotor / EDF diameter [m]
+    disk_loading: float   # disk loading [N/m2]
+
+    @classmethod
+    def from_yaml(cls, path: str) -> "RotorParams":
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        return cls(
+            D_rotor_m    = float(data["D_rotor_m"]),
+            disk_loading = float(data["disk_loading"]),
+        )
 
 # ---------------------------------------------
 #  Wing sizing  (output container)

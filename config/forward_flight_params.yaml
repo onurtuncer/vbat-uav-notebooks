@@ -44,9 +44,10 @@
 mu: 0.04
 CL_To: 0.8
 CD_To: 0.05
-s_g: 50.0
+s_g: 50.0     #TODO this is irrelevant remove it later on
 V_To_factor: 1.2
 RoC_climb: 2.5
+RoC_ceiling:  0.5         # rate of climb at ceiling [m/s]
 h_ceiling: 3000.0
 RoC_ceiling: 0.5
 WS_min: 30.0

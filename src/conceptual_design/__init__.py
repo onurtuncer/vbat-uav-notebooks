@@ -1,7 +1,4 @@
 # conceptual_design/__init__.py
-#
-# Public API — import everything from sub-modules so notebooks can do:
-#     from conceptual_design import Mission, vtol_power_requirements, ...
 
 from .models import (
     Environment,
@@ -12,6 +9,7 @@ from .models import (
     Propulsor,
     MassBreakdown,
     Battery,
+    RotorParams,
     WingSizing,
 )
 
