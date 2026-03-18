@@ -1,0 +1,36 @@
+# Airfoil selection configuration for the V-BAT tail-sitter.
+#
+# designation : NACA 4-digit airfoil to analyse.
+#   Format: "NACA MPXX" or just the 4 digits e.g. "2412".
+#
+#   For a tail-sitter EDF the same wing operates in both regimes:
+#     - Hovering: the wing is vertical, largely unstalled, contributing
+#       mostly drag (covered by S_ratio in the VTOL power model).
+#     - Cruising: the wing operates conventionally at low alpha.
+#
+#   Recommended candidates for a small research UAV (Re ~ 3e5..8e5):
+#
+#     NACA 0012  -- symmetric, t/c=0.12.  Zero pitching moment, simple to
+#                   build and analyse.  Good for symmetric manoeuvre loads.
+#                   Cl_max ~ 1.05. Baseline for tail-sitter comparisons.
+#
+#     NACA 2412  -- 2% camber at 40% chord, t/c=0.12.  Slight lift benefit
+#                   over symmetric, small nose-down pitching moment.
+#                   Cl_max ~ 1.40.  Most common general-aviation section.
+#
+#     NACA 4412  -- 4% camber at 40% chord, t/c=0.12.  Higher Cl_max ~1.65,
+#                   better cruise L/D than 2412, larger pitching moment.
+#                   Good if endurance is the priority.
+#
+#     NACA 2415  -- 2% camber, t/c=0.15.  Deeper spar, easier to build a
+#                   stiff wing with standard carbon tube spars.
+#                   Cl_max ~ 1.44, slightly more profile drag than 2412.
+#
+# CD0_fuselage : fuselage + interference + misc drag contribution to CD0 [-]
+#   Typically 0.008..0.015 for a clean small UAV body.
+#
+# n_coords     : number of coordinate points per surface for the .dat file.
+
+designation: NACA 2412
+CD0_fuselage: 0.010
+n_coords: 200
