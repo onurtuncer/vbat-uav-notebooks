@@ -1,7 +1,7 @@
-numpy>=1.26
-scipy>=1.11
-matplotlib>=3.8
-pandas>=2.1
+numpy>=1.24.4
+scipy>=1.10
+matplotlib>=3.7.5
+pandas>=2.0.3
 pyyaml>=6.0
 jupyter>=1.0
 cadquery>=2.3
