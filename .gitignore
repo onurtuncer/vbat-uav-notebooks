@@ -8,8 +8,6 @@ __pycache__/
 out.txt
 repo_dump.txt 
 
-out/
-
 # C extensions
 *.so
 

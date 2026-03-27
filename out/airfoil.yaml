@@ -1,0 +1,14 @@
+# AUTO-GENERATED -- do not edit by hand.
+# Source : src/conceptual_design/airfoil_selection.py
+# Input  : config/airfoil_selection.yaml
+# Regen  : re-run the airfoil selection notebook cell.
+
+designation: NACA 2412
+tc_ratio: 0.12
+Cl_max_2D: 1.354
+CL_max_3D: 1.2186
+Cd0_section: 0.0126
+alpha_L0_deg: -1.375
+LD_cruise: 13.22
+e_oswald: 0.8691
+k_induced: 0.061041
