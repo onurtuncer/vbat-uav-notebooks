@@ -1,0 +1,51 @@
+section_type: flat_plate
+tc_ratio: 0.02
+hinge_xc: 0.25
+Cl_alpha_per_rad: 5.340707511102648
+Re_vane: 45721.021358015656
+n_vanes: 4
+R_tip_m: 0.14
+R_hub_m: 0.05600000000000001
+R_mid_m: 0.098
+h_vane_m: 0.0714
+c_vane_m: 0.028560000000000002
+AR_vane: 2.5
+S_vane_m2: 0.0020391840000000003
+V_jet_ms: 23.379325218513117
+q_jet_Pa: 334.7881191997146
+delta_max_deg: 20.0
+delta_stall_deg: 15.0
+delta_design_deg: 10.0
+F_vane_design_N: 0.6363596204030458
+M_pitch_design_Nm: 0.1403033185294357
+M_yaw_design_Nm: 0.1403033185294357
+M_roll_design_Nm: 0.24945297119799398
+ddot_pitch_deg_s2: 437.04182305359467
+ddot_yaw_deg_s2: 437.04182305359467
+ddot_roll_deg_s2: 629.2907291428569
+M_hinge_max_Nmm: 18.174430758710987
+servo_torque_req_gcm: 555.9828511890703
+L_CG_m: 0.11023901739756282
+L_roll_m: 0.098
+mixing_matrix:
+- - 1.0
+  - 0.0
+  - 1.0
+- - 1.0
+  - 0.0
+  - -1.0
+- - 0.0
+  - 1.0
+  - -1.0
+- - 0.0
+  - 1.0
+  - 1.0
+mixing_rows:
+- T
+- B
+- L
+- R
+mixing_cols:
+- pitch
+- yaw
+- roll
