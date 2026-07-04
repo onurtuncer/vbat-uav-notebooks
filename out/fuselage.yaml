@@ -1,0 +1,76 @@
+# AUTO-GENERATED -- do not edit by hand.
+# Source : src/conceptual_design/fuselage_design.py
+# Input  : config/fuselage.yaml + mass closure + control vanes
+# Regen  : re-run notebooks/fuselage_design.ipynb
+
+axis_convention: body FRD (x fwd, y right, z down); stations from nose, +aft; x_body
+  = -station
+D_fus_m: 0.1288
+L_fus_m: 0.644
+L_nose_m: 0.14168
+L_mid_m: 0.30912
+L_tail_m: 0.1932
+r_hub_m: 0.056
+f_nose: 0.22
+f_tail: 0.3
+fineness: 5.0
+active_constraint: hub
+S_wet_m2: 0.24663
+CD0_fus: 0.01006
+m_shell_kg: 0.4104
+t_shell_m: 0.0008
+x_CG_m: 0.23402
+x_wing_LE_m: 0.20061
+x_wing_AC_m: 0.24237
+x_vane_m: 0.67328
+L_vane_arm_m: 0.43926
+static_margin: 0.05
+duct_chord_m: 0.126
+D_duct_inner_m: 0.286
+D_duct_outer_m: 0.302
+layout:
+- name: payload
+  mass_kg: 0.5
+  x_start_m: 0.03542
+  length_m: 0.08197
+  x_cg_m: 0.07641
+- name: avionics
+  mass_kg: 0.1682
+  x_start_m: 0.11739
+  length_m: 0.0401
+  x_cg_m: 0.13744
+- name: battery
+  mass_kg: 0.4459
+  x_start_m: 0.15749
+  length_m: 0.03899
+  x_cg_m: 0.17699
+- name: esc
+  mass_kg: 0.0788
+  x_start_m: 0.302
+  length_m: 0.04
+  x_cg_m: 0.322
+- name: motor_fan
+  mass_kg: 0.1892
+  x_start_m: 0.5957
+  length_m: 0.0
+  x_cg_m: 0.5957
+- name: duct
+  mass_kg: 0.0473
+  x_start_m: 0.6146
+  length_m: 0.0
+  x_cg_m: 0.6146
+- name: shell_struct
+  mass_kg: 0.4239
+  x_start_m: 0.2898
+  length_m: 0.0
+  x_cg_m: 0.2898
+- name: misc
+  mass_kg: 0.1471
+  x_start_m: 0.2576
+  length_m: 0.0
+  x_cg_m: 0.2576
+- name: wing
+  mass_kg: 0.1016
+  x_start_m: 0.23402
+  length_m: 0.0
+  x_cg_m: 0.23402

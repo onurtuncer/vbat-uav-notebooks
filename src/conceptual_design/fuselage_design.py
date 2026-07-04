@@ -1,0 +1,512 @@
+"""
+fuselage_design.py  --  Parametric Fuselage Sizing for the V-BAT Tail-Sitter
+=============================================================================
+
+Sizes the fuselage of the electric tail-sitter from the converged mass
+closure (mass_closure.py) and the EDF geometry.
+
+AXIS CONVENTION  (consistent with the Aetherion 6-DoF library)
+--------------------------------------------------------------
+    Body frame:  x forward (out the nose), y right, z down   (FRD)
+    World frame: NED (x North, y East, z Down)
+
+    Internally this module uses the STATION coordinate x_s, measured
+    from the nose tip, POSITIVE AFT (standard fuselage-station
+    practice).  Conversion to the body frame is simply:
+
+        x_body = -x_s        (origin at the nose tip)
+
+    The EDF exhaust and control vanes therefore point in -x_body.
+
+THEORY
+------
+
+1. PACKAGING (drives length, not diameter)
+    Each internal component occupies a cylindrical bay:
+
+        L_bay = V_comp / (packing_factor * A_internal)
+
+    where V_comp = m_comp / rho_comp and A_internal is the internal
+    cross-section of the mid-body.  The stack of bays must fit between
+    the nose equipment station and the start of the tail cone.
+
+2. DIAMETER (driven by the EDF hub, checked against packaging)
+    A tail-sitter EDF fuselage must taper down to the fan hub -- the
+    tail cone IS the fan centerbody.  Therefore:
+
+        D_fus >= d_hub_margin * (2 * R_hub)
+
+    The smallest diameter that satisfies BOTH the hub constraint and
+    the packaging constraint (at the target fineness ratio) is chosen.
+    At this vehicle scale the hub constraint is almost always active,
+    i.e. the fuselage has volume to spare.
+
+3. SHAPE  (body of revolution, three segments)
+        nose  : semi-ellipsoid,             x_s in [0, L_nose]
+        mid   : cylinder,                   x_s in [L_nose, L_nose+L_mid]
+        tail  : smoothstep boattail to hub, x_s in [L-L_tail, L]
+
+    The boattail radius uses the C1-continuous smoothstep
+        r(s) = R - (R - r_hub) * s^2 (3 - 2 s)
+    which is tangent to the cylinder at s=0 and level at s=1 -- this
+    is also directly used as the CAD revolve profile.
+
+4. ZERO-LIFT DRAG  (Raymer component buildup, single component)
+        Re_L  = rho V L / mu
+        Cf    = 0.455 / log10(Re_L)^2.58            (turbulent plate)
+        FF    = 1 + 60/f^3 + f/400                  (Raymer eq. 12.31)
+        CD0_f = Cf * FF * Q * S_wet / S_ref
+
+5. SHELL MASS  (area density model)
+        m_shell = k_struct * rho_shell * t_shell * S_wet
+
+    Compared against the structural weight fraction budget
+    (m_structure - m_wing) from the mass closure.
+
+6. LONGITUDINAL LAYOUT AND CG
+    Components are stacked nose-to-tail:
+        payload -> avionics -> battery -> ESC ... motor/fan at tail.
+    The propulsion fraction is split motor+fan / ESC / duct.
+    The wing is then PLACED so that the wing aerodynamic center sits
+    static_margin * MAC behind the total CG (wing mass at the CG makes
+    this a mild fixed-point problem -- 3 iterations suffice).
+
+References
+----------
+  Raymer, "Aircraft Design: A Conceptual Approach", ch. 12 (drag buildup)
+  Hoerner, "Fluid-Dynamic Drag", ch. 6 (bodies of revolution)
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple
+
+import yaml
+
+
+MU_AIR = 1.789e-5   # dynamic viscosity of air, ISA sea level [Pa s]
+
+# Split of the propulsion mass fraction between its hardware items.
+# Motor + fan rotor sit at the fan plane, the ESC sits mid-body where
+# cooling air is available, the duct ring is at the tail.
+PROP_SPLIT = {"motor_fan": 0.60, "esc": 0.25, "duct": 0.15}
+
+
+# ---------------------------------------------
+#  Input parameters (config/fuselage.yaml)
+# ---------------------------------------------
+@dataclass
+class FuselageParams:
+    # packaging
+    rho_battery_pack: float   # [kg/m^3]
+    rho_payload:      float   # [kg/m^3]
+    rho_avionics:     float   # [kg/m^3]
+    packing_factor:   float   # [-]
+    # shape
+    fineness_ratio:   float   # L/D target [-]
+    f_nose:           float   # nose fraction of L [-]
+    f_tail:           float   # tail-cone fraction of L [-]
+    d_hub_margin:     float   # D_fus >= margin * d_hub [-]
+    # shell
+    t_shell_m:        float   # [m]
+    rho_shell:        float   # [kg/m^3]
+    k_struct:         float   # [-]
+    # aero
+    Q_interference:   float   # [-]
+    # stability
+    static_margin:    float   # (x_AC - x_CG)/MAC [-]
+    # duct geometry
+    duct_chord_ratio: float   # duct chord / D_rotor [-]
+    t_duct_m:         float   # [m]
+    tip_clearance_m:  float   # [m]
+
+    @property
+    def f_mid(self) -> float:
+        return 1.0 - self.f_nose - self.f_tail
+
+    @classmethod
+    def from_yaml(cls, path) -> "FuselageParams":
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        return cls(
+            rho_battery_pack = float(data["rho_battery_pack"]),
+            rho_payload      = float(data["rho_payload"]),
+            rho_avionics     = float(data["rho_avionics"]),
+            packing_factor   = float(data["packing_factor"]),
+            fineness_ratio   = float(data["fineness_ratio"]),
+            f_nose           = float(data["f_nose"]),
+            f_tail           = float(data["f_tail"]),
+            d_hub_margin     = float(data["d_hub_margin"]),
+            t_shell_m        = float(data["t_shell_m"]),
+            rho_shell        = float(data["rho_shell"]),
+            k_struct         = float(data["k_struct"]),
+            Q_interference   = float(data["Q_interference"]),
+            static_margin    = float(data["static_margin"]),
+            duct_chord_ratio = float(data["duct_chord_ratio"]),
+            t_duct_m         = float(data["t_duct_m"]),
+            tip_clearance_m  = float(data["tip_clearance_m"]),
+        )
+
+
+# ---------------------------------------------
+#  Layout entry (one mass item on the axis)
+# ---------------------------------------------
+@dataclass
+class LayoutItem:
+    name:     str
+    mass_kg:  float
+    x_start:  float    # station of bay start [m from nose, +aft]
+    length:   float    # bay length [m]  (0 for point masses)
+
+    @property
+    def x_cg(self) -> float:
+        return self.x_start + 0.5 * self.length
+
+
+# ---------------------------------------------
+#  Sizing output container
+# ---------------------------------------------
+@dataclass
+class FuselageSizing:
+    # primary geometry
+    D_fus:        float   # max outer diameter          [m]
+    L_fus:        float   # total length                [m]
+    L_nose:       float   # nose length                 [m]
+    L_mid:        float   # cylinder length             [m]
+    L_tail:       float   # tail-cone length            [m]
+    r_hub:        float   # tail exit (fan hub) radius  [m]
+    fineness:     float   # L/D actual                  [-]
+    # which constraint set the diameter
+    active_constraint: str   # "hub" | "packaging"
+    # volumes
+    V_total_m3:   float   # enclosed volume             [m^3]
+    V_bays_m3:    float   # required bay volume         [m^3]
+    L_stack_m:    float   # required bay stack length   [m]
+    L_avail_m:    float   # available stack length      [m]
+    # aero
+    S_wet_m2:     float   # wetted area                 [m^2]
+    Re_L:         float   # length Reynolds number      [-]
+    Cf:           float   # skin friction coefficient   [-]
+    FF:           float   # form factor                 [-]
+    CD0_fus:      float   # fuselage CD0 on S_wing      [-]
+    # structure
+    m_shell_kg:   float   # shell + frames mass         [kg]
+    m_struct_budget_kg: float  # (m_structure - m_wing) budget [kg]
+    # layout / balance
+    items:        List[LayoutItem]
+    x_CG:         float   # CG station from nose        [m, +aft]
+    x_wing_LE:    float   # wing LE station             [m, +aft]
+    x_wing_AC:    float   # wing AC station             [m, +aft]
+    x_vane:       float   # vane mid-chord station      [m, +aft]
+    L_vane_arm:   float   # |x_vane - x_CG| control arm [m]
+    # duct geometry (for CAD)
+    duct_chord:   float   # duct axial length           [m]
+    D_duct_inner: float   # duct inner diameter         [m]
+    D_duct_outer: float   # duct outer diameter         [m]
+
+
+# ---------------------------------------------
+#  Body-of-revolution profile
+# ---------------------------------------------
+
+def fuselage_radius(x_s: float, D: float, L: float,
+                    f_nose: float, f_tail: float, r_hub: float) -> float:
+    """
+    Local outer radius at station x_s (from nose, +aft) of the
+    3-segment body of revolution.  Used by the notebook plots AND the
+    CAD revolve profile, so geometry is defined in exactly one place.
+    """
+    R      = D / 2.0
+    L_nose = f_nose * L
+    L_tail = f_tail * L
+    x_tail = L - L_tail
+
+    if x_s <= 0.0:
+        return 0.0
+    if x_s < L_nose:
+        # semi-ellipse:  r = R sqrt(1 - ((L_nose - x)/L_nose)^2)
+        u = (L_nose - x_s) / L_nose
+        return R * math.sqrt(max(0.0, 1.0 - u * u))
+    if x_s <= x_tail:
+        return R
+    if x_s <= L:
+        # smoothstep boattail: tangent at cylinder, level at hub
+        s = (x_s - x_tail) / L_tail
+        return R - (R - r_hub) * s * s * (3.0 - 2.0 * s)
+    return r_hub
+
+
+def _integrate_profile(D: float, L: float, f_nose: float, f_tail: float,
+                       r_hub: float, n: int = 400) -> Tuple[float, float]:
+    """
+    Trapezoidal integration of the profile.
+    Returns (V_total [m^3], S_wet [m^2]).
+        V     = int  pi r^2      dx
+        S_wet = int  2 pi r ds,   ds = sqrt(1 + (dr/dx)^2) dx
+    """
+    dx = L / n
+    V = 0.0
+    S = 0.0
+    r_prev = fuselage_radius(0.0, D, L, f_nose, f_tail, r_hub)
+    for i in range(1, n + 1):
+        r = fuselage_radius(i * dx, D, L, f_nose, f_tail, r_hub)
+        V += 0.5 * math.pi * (r_prev**2 + r**2) * dx
+        ds = math.sqrt(dx * dx + (r - r_prev) ** 2)
+        S += math.pi * (r_prev + r) * ds
+        r_prev = r
+    return V, S
+
+
+# ---------------------------------------------
+#  Component volumes
+# ---------------------------------------------
+
+def component_volumes(m_battery_kg: float, m_payload_kg: float,
+                      m_avionics_kg: float, p: FuselageParams) -> Dict[str, float]:
+    """Raw component volumes [m^3] from mass / density."""
+    return {
+        "payload":  m_payload_kg  / p.rho_payload,
+        "avionics": m_avionics_kg / p.rho_avionics,
+        "battery":  m_battery_kg  / p.rho_battery_pack,
+    }
+
+
+def _stack_length(volumes: Dict[str, float], D: float, p: FuselageParams) -> float:
+    """Total bay stack length needed at internal diameter of D."""
+    r_int = D / 2.0 - p.t_shell_m
+    A_int = math.pi * r_int * r_int
+    return sum(v / (p.packing_factor * A_int) for v in volumes.values())
+
+
+# ---------------------------------------------
+#  Diameter solver
+# ---------------------------------------------
+
+def solve_diameter(volumes: Dict[str, float], r_hub: float,
+                   p: FuselageParams) -> Tuple[float, str]:
+    """
+    Smallest D that satisfies BOTH constraints at L = fineness * D:
+
+      hub      : D >= d_hub_margin * 2 r_hub
+      packaging: stack length <= L_mid + 0.5 L_nose
+
+    Returns (D, active_constraint).
+    """
+    D_hub = p.d_hub_margin * 2.0 * r_hub
+
+    def packaging_ok(D: float) -> bool:
+        L = p.fineness_ratio * D
+        L_avail = p.f_mid * L + 0.5 * p.f_nose * L
+        return _stack_length(volumes, D, p) <= L_avail
+
+    # bisection for the packaging-limited diameter
+    lo, hi = 0.02, 1.0
+    for _ in range(80):
+        mid = 0.5 * (lo + hi)
+        if packaging_ok(mid):
+            hi = mid
+        else:
+            lo = mid
+    D_pack = hi
+
+    if D_hub >= D_pack:
+        return D_hub, "hub"
+    return D_pack, "packaging"
+
+
+# ---------------------------------------------
+#  Drag buildup
+# ---------------------------------------------
+
+def fuselage_cd0(L: float, S_wet: float, S_ref: float, V: float,
+                 rho: float, Q: float) -> Tuple[float, float, float, float]:
+    """
+    Raymer single-component drag buildup.
+    Returns (CD0_fus, Re_L, Cf, FF).
+    """
+    Re_L = rho * V * L / MU_AIR
+    Cf   = 0.455 / (math.log10(Re_L) ** 2.58)
+    # fineness ratio for FF uses an effective diameter from S_wet/L
+    d_eff = S_wet / (math.pi * L)
+    f     = L / d_eff
+    FF    = 1.0 + 60.0 / f**3 + f / 400.0
+    CD0   = Cf * FF * Q * S_wet / S_ref
+    return CD0, Re_L, Cf, FF
+
+
+# ---------------------------------------------
+#  Main sizing routine
+# ---------------------------------------------
+
+def size_fuselage(
+    # from mass closure
+    m_battery_kg:   float,
+    m_payload_kg:   float,
+    m_avionics_kg:  float,
+    m_propulsion_kg: float,
+    m_structure_kg: float,
+    m_wing_kg:      float,
+    m_misc_kg:      float,
+    # geometry inputs
+    R_hub_m:        float,   # EDF hub radius (from control vane design) [m]
+    D_rotor_m:      float,   # EDF rotor diameter [m]
+    c_vane_m:       float,   # vane chord [m]
+    chord_mean_m:   float,   # wing MAC [m]
+    # flight condition
+    V_cruise:       float,
+    rho:            float,
+    S_wing:         float,
+    # parameters
+    p:              FuselageParams = None,
+) -> FuselageSizing:
+    """
+    Complete fuselage sizing.  See module docstring for the model.
+    """
+    if p is None:
+        raise ValueError("FuselageParams required (config/fuselage.yaml)")
+
+    # -- 1. volumes and diameter ---------------------------------------
+    vols = component_volumes(m_battery_kg, m_payload_kg, m_avionics_kg, p)
+    D, active = solve_diameter(vols, R_hub_m, p)
+    L = p.fineness_ratio * D
+
+    L_nose = p.f_nose * L
+    L_mid  = p.f_mid  * L
+    L_tail = p.f_tail * L
+
+    # -- 2. volume / wetted area ---------------------------------------
+    V_tot, S_wet = _integrate_profile(D, L, p.f_nose, p.f_tail, R_hub_m)
+    L_stack = _stack_length(vols, D, p)
+    L_avail = L_mid + 0.5 * L_nose
+
+    # -- 3. drag ---------------------------------------------------------
+    CD0_fus, Re_L, Cf, FF = fuselage_cd0(
+        L, S_wet, S_wing, V_cruise, rho, p.Q_interference)
+
+    # -- 4. shell mass -----------------------------------------------------
+    m_shell = p.k_struct * p.rho_shell * p.t_shell_m * S_wet
+    m_struct_budget = m_structure_kg - m_wing_kg
+
+    # -- 5. layout -------------------------------------------------------
+    r_int = D / 2.0 - p.t_shell_m
+    A_int = math.pi * r_int * r_int
+
+    def bay_len(v: float) -> float:
+        return v / (p.packing_factor * A_int)
+
+    x = 0.5 * L_nose * 0.5   # first usable station: quarter of the nose
+    items: List[LayoutItem] = []
+    for name in ("payload", "avionics", "battery"):   # nose-to-tail order
+        li = LayoutItem(name, {"payload": m_payload_kg,
+                               "avionics": m_avionics_kg,
+                               "battery": m_battery_kg}[name],
+                        x_start=x, length=bay_len(vols[name]))
+        items.append(li)
+        x = li.x_start + li.length
+
+    m_motor = PROP_SPLIT["motor_fan"] * m_propulsion_kg
+    m_esc   = PROP_SPLIT["esc"]       * m_propulsion_kg
+    m_duct  = PROP_SPLIT["duct"]      * m_propulsion_kg
+
+    duct_chord = p.duct_chord_ratio * D_rotor_m
+    x_fan      = L - 0.25 * L_tail            # fan plane in the boattail
+    x_duct_c   = x_fan + 0.15 * duct_chord    # duct centered around fan
+
+    items.append(LayoutItem("esc",        m_esc,   x_start=0.5 * L - 0.02, length=0.04))
+    items.append(LayoutItem("motor_fan",  m_motor, x_start=x_fan,   length=0.0))
+    items.append(LayoutItem("duct",       m_duct,  x_start=x_duct_c, length=0.0))
+    items.append(LayoutItem("shell_struct", m_struct_budget,
+                            x_start=0.45 * L, length=0.0))
+    items.append(LayoutItem("misc",       m_misc_kg, x_start=0.40 * L, length=0.0))
+
+    # -- 6. CG and wing placement (fixed point on wing position) --------
+    m_nonwing = sum(it.mass_kg for it in items)
+    mom_nonwing = sum(it.mass_kg * it.x_cg for it in items)
+
+    x_cg = mom_nonwing / m_nonwing            # initial guess: no wing
+    for _ in range(5):
+        x_wing_cg = x_cg                      # wing mass acts at ~its own AC
+        x_cg = (mom_nonwing + m_wing_kg * x_wing_cg) / (m_nonwing + m_wing_kg)
+
+    x_ac      = x_cg + p.static_margin * chord_mean_m
+    x_wing_le = x_ac - 0.25 * chord_mean_m
+
+    items.append(LayoutItem("wing", m_wing_kg, x_start=x_cg, length=0.0))
+
+    # -- 7. vane arm cross-check -----------------------------------------
+    # vanes sit just aft of the duct exit
+    x_vane = L + 0.5 * c_vane_m + 0.015
+    L_arm  = abs(x_vane - x_cg)
+
+    D_duct_inner = D_rotor_m + 2.0 * p.tip_clearance_m
+    D_duct_outer = D_duct_inner + 2.0 * p.t_duct_m
+
+    return FuselageSizing(
+        D_fus=D, L_fus=L, L_nose=L_nose, L_mid=L_mid, L_tail=L_tail,
+        r_hub=R_hub_m, fineness=L / D, active_constraint=active,
+        V_total_m3=V_tot, V_bays_m3=sum(vols.values()),
+        L_stack_m=L_stack, L_avail_m=L_avail,
+        S_wet_m2=S_wet, Re_L=Re_L, Cf=Cf, FF=FF, CD0_fus=CD0_fus,
+        m_shell_kg=m_shell, m_struct_budget_kg=m_struct_budget,
+        items=items, x_CG=x_cg, x_wing_LE=x_wing_le, x_wing_AC=x_ac,
+        x_vane=x_vane, L_vane_arm=L_arm,
+        duct_chord=duct_chord,
+        D_duct_inner=D_duct_inner, D_duct_outer=D_duct_outer,
+    )
+
+
+# ---------------------------------------------
+#  Handoff writer
+# ---------------------------------------------
+
+def write_fuselage_yaml(fus: FuselageSizing, p: FuselageParams, path) -> None:
+    """
+    Write out/fuselage.yaml -- the handoff consumed by the CAD notebook.
+    Stations are from the nose tip, +aft;  x_body = -station  (FRD).
+    """
+    data = {
+        "axis_convention": "body FRD (x fwd, y right, z down); stations from nose, +aft; x_body = -station",
+        # shape
+        "D_fus_m":        round(fus.D_fus, 5),
+        "L_fus_m":        round(fus.L_fus, 5),
+        "L_nose_m":       round(fus.L_nose, 5),
+        "L_mid_m":        round(fus.L_mid, 5),
+        "L_tail_m":       round(fus.L_tail, 5),
+        "r_hub_m":        round(fus.r_hub, 5),
+        "f_nose":         round(p.f_nose, 4),
+        "f_tail":         round(p.f_tail, 4),
+        "fineness":       round(fus.fineness, 3),
+        "active_constraint": fus.active_constraint,
+        # aero
+        "S_wet_m2":       round(fus.S_wet_m2, 5),
+        "CD0_fus":        round(fus.CD0_fus, 5),
+        # structure
+        "m_shell_kg":     round(fus.m_shell_kg, 4),
+        "t_shell_m":      p.t_shell_m,
+        # balance
+        "x_CG_m":         round(fus.x_CG, 5),
+        "x_wing_LE_m":    round(fus.x_wing_LE, 5),
+        "x_wing_AC_m":    round(fus.x_wing_AC, 5),
+        "x_vane_m":       round(fus.x_vane, 5),
+        "L_vane_arm_m":   round(fus.L_vane_arm, 5),
+        "static_margin":  p.static_margin,
+        # duct
+        "duct_chord_m":   round(fus.duct_chord, 5),
+        "D_duct_inner_m": round(fus.D_duct_inner, 5),
+        "D_duct_outer_m": round(fus.D_duct_outer, 5),
+        # layout table
+        "layout": [
+            {"name": it.name, "mass_kg": round(it.mass_kg, 4),
+             "x_start_m": round(it.x_start, 5), "length_m": round(it.length, 5),
+             "x_cg_m": round(it.x_cg, 5)}
+            for it in fus.items
+        ],
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("# AUTO-GENERATED -- do not edit by hand.\n")
+        f.write("# Source : src/conceptual_design/fuselage_design.py\n")
+        f.write("# Input  : config/fuselage.yaml + mass closure + control vanes\n")
+        f.write("# Regen  : re-run notebooks/fuselage_design.ipynb\n\n")
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)

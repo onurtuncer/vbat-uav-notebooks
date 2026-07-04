@@ -182,3 +182,5 @@ cython_debug/
 
 *.pyc
 .DS_Store
+# local virtual environment
+.venv/

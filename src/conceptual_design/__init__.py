@@ -49,3 +49,12 @@ from .mass_closure import (
     mtow_from_components,
     run_sizing_loop,
 )
+
+from .fuselage_design import (
+    FuselageParams,
+    FuselageSizing,
+    LayoutItem,
+    fuselage_radius,
+    size_fuselage,
+    write_fuselage_yaml,
+)

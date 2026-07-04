@@ -1,0 +1,87 @@
+# Fuselage packaging, shape, and structure parameters for the
+# V-BAT tail-sitter conceptual design.  Used by fuselage_design.py.
+#
+# ------------------------------------------------------------------
+# AXIS CONVENTION (consistent with the Aetherion 6-DoF library):
+#   Body frame:  x forward (out the nose), y right, z down  (FRD)
+#   Fuselage stations are measured from the NOSE TIP, positive AFT.
+#   Body-frame x of a station:  x_body = -station.
+#   The EDF exhaust and the control vanes point in -x (aft).
+# ------------------------------------------------------------------
+#
+# --- Packaging densities -------------------------------------------
+# rho_battery_pack : effective pack-level density [kg/m^3]
+#                    LiPo cells are ~2000 kg/m^3; wiring, case and
+#                    connectors bring the installed pack to ~1500.
+#
+# rho_payload      : payload density [kg/m^3]
+#                    representative EO sensor + mount (~800).
+#
+# rho_avionics     : avionics density [kg/m^3]
+#                    FC + GPS + RX + wiring looms are mostly air (~550).
+#
+# packing_factor   : usable fraction of a bay's cylindrical volume [-]
+#                    accounts for corner losses against the curved
+#                    shell, foam, connectors, and access clearances.
+#
+# --- Shape ----------------------------------------------------------
+# fineness_ratio   : target L_fus / D_fus [-]
+#                    Hoerner minimum-drag bodies of revolution lie at
+#                    f = 3-6 for fixed volume; 5 keeps the tail-sitter
+#                    stubby enough to stand on its duct.
+#
+# f_nose           : nose length fraction of L_fus [-] (semi-ellipsoid)
+# f_tail           : tail-cone length fraction of L_fus [-]
+#                    boattail that tapers to the EDF hub diameter and
+#                    doubles as the fan centerbody.
+#                    (f_mid = 1 - f_nose - f_tail is the cylinder.)
+#
+# d_hub_margin     : D_fus >= d_hub_margin * (2 * R_hub) [-]
+#                    the tail must taper DOWN to the fan hub, so the
+#                    max diameter is floored slightly above the hub.
+#
+# --- Shell structure -------------------------------------------------
+# t_shell_m        : equivalent monocoque shell thickness [m]
+#                    0.8 mm CFRP (2 plies + local reinforcement).
+#
+# rho_shell        : shell laminate density [kg/m^3] (CFRP ~1600)
+#
+# k_struct         : mass knock-up for frames, bulkheads, wing carry-
+#                    through, and bonding [-]
+#
+# --- Aerodynamics ----------------------------------------------------
+# Q_interference   : fuselage interference factor [-] (Raymer: 1.0-1.1
+#                    for a mid-wing pod-like body)
+#
+# --- Stability -------------------------------------------------------
+# static_margin    : (x_AC - x_CG) / MAC in cruise [-]
+#                    CG ahead of the wing aerodynamic center.  Small
+#                    positive value; hover control comes from the jet
+#                    vanes, cruise needs only mild static stability.
+#
+# --- Duct (geometry only; mass is in the propulsion fraction) --------
+# duct_chord_ratio : duct chord (axial length) / D_rotor [-]
+# t_duct_m         : duct annulus wall thickness [m]
+# tip_clearance_m  : fan tip to duct inner wall clearance [m]
+
+rho_battery_pack: 1500.0
+rho_payload: 800.0
+rho_avionics: 550.0
+packing_factor: 0.60
+
+fineness_ratio: 5.0
+f_nose: 0.22
+f_tail: 0.30
+d_hub_margin: 1.15
+
+t_shell_m: 0.0008
+rho_shell: 1600.0
+k_struct: 1.30
+
+Q_interference: 1.05
+
+static_margin: 0.05
+
+duct_chord_ratio: 0.45
+t_duct_m: 0.008
+tip_clearance_m: 0.003
