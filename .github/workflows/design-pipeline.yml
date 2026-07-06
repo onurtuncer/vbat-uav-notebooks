@@ -99,8 +99,10 @@ jobs:
       - name: Mesh (blockMesh + snappyHexMesh, serial)
         working-directory: cfd/vehicle
         run: |
-          set -euo pipefail
+          set -eo pipefail
+          # OpenFOAM's bashrc probes unset variables -- source before set -u
           source /openfoam/bash.rc
+          set -u
           ./Allrun.mesh ../.. 1
           # Hard gate: default checkMesh must report a usable mesh
           checkMesh > log/checkMesh.gate.log
@@ -111,8 +113,9 @@ jobs:
       - name: Case setup + short simpleFoam run
         working-directory: cfd/vehicle
         run: |
-          set -euo pipefail
+          set -eo pipefail
           source /openfoam/bash.rc
+          set -u
           ./Allrun.case -a 0 -V 20 -n 1
           # 60 iterations: enough to prove BCs, schemes, and the
           # forceCoeffs function object all work; not converged.
@@ -142,6 +145,7 @@ jobs:
             cfd/vehicle/log/
             cfd/vehicle/postProcessing/
           retention-days: 14
+          if-no-files-found: ignore
 
   docs:
     name: Publish design report (GitHub Pages)
