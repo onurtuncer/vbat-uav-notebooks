@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V-BAT — 3D Geometry Viewer</title>
+  <style>
+    html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; }
+    #canvas { width: 100%; height: 100%; display: block; }
+    #hud {
+      position: fixed; top: 0; left: 0; right: 0; padding: 0.6rem 1rem;
+      display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap;
+      background: rgba(20, 24, 30, 0.75); color: #e8e8e8;
+      backdrop-filter: blur(4px); font-size: 0.9rem;
+    }
+    #hud a { color: #7ab8ff; }
+    #hud .title { font-weight: 600; }
+    #status { position: fixed; bottom: 0.6rem; left: 1rem; color: #999; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <span class="title">V-BAT fused geometry</span>
+    <span>drag = orbit · scroll = zoom · right-drag = pan</span>
+    <a href="index.html">← back to report</a>
+    <a href="cad/step/vbat_fused.step" download>vbat_fused.step</a>
+    <a href="cad/step/vbat_assembly.step" download>vbat_assembly.step</a>
+    <a href="cad/stl/vbat_fused.stl" download>vbat_fused.stl</a>
+  </div>
+  <canvas id="canvas"></canvas>
+  <div id="status">loading STL…</div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+    const canvas = document.getElementById('canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1e24);
+
+    const camera = new THREE.PerspectiveCamera(45, 2, 1, 100000);
+    const controls = new OrbitControls(camera, renderer.domElement);
+
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x444455, 1.1));
+    const key = new THREE.DirectionalLight(0xffffff, 1.4);
+    key.position.set(1, 2, 1.5);
+    scene.add(key);
+
+    new STLLoader().load('cad/stl/vbat_fused.stl', geometry => {
+      geometry.computeVertexNormals();
+      const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
+        color: 0xb7c4d4, metalness: 0.15, roughness: 0.55,
+      }));
+      // Model is exported in mm, body FRD; recentre on its bounding box
+      geometry.computeBoundingBox();
+      const bb = geometry.boundingBox;
+      const centre = bb.getCenter(new THREE.Vector3());
+      mesh.position.sub(centre);
+      scene.add(mesh);
+
+      const size = bb.getSize(new THREE.Vector3()).length();
+      camera.position.set(size * 0.7, size * 0.45, size * 0.7);
+      camera.near = size / 100; camera.far = size * 10;
+      camera.updateProjectionMatrix();
+      controls.update();
+
+      document.getElementById('status').textContent =
+        `${geometry.attributes.position.count / 3} triangles · units: mm`;
+    }, undefined, err => {
+      document.getElementById('status').textContent = 'failed to load STL: ' + err;
+    });
+
+    function resize() {
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      if (canvas.width !== w || canvas.height !== h) {
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      }
+    }
+    renderer.setAnimationLoop(() => { resize(); controls.update(); renderer.render(scene, camera); });
+  </script>
+</body>
+</html>

@@ -199,3 +199,6 @@ cfd/vehicle/constant/turbulenceProperties
 cfd/prop/base/
 cfd/prop/sweep/
 cfd/vanes/sweep/
+
+# setuptools-scm generated version file
+src/conceptual_design/_version.py

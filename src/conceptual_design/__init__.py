@@ -1,5 +1,10 @@
 # conceptual_design/__init__.py
 
+try:
+    from ._version import __version__
+except ImportError:  # editable install without build step / bare checkout
+    __version__ = "0.0.0+unknown"
+
 from .models import (
     Environment,
     Mission,

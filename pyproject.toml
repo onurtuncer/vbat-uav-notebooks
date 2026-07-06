@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=68", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "vbat-conceptual-design"
-version = "0.1.0"
+dynamic = ["version"]
 description = "First-principles conceptual sizing study for a small electric tail-sitter VTOL UAV"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -21,10 +21,15 @@ dependencies = [
 [project.optional-dependencies]
 cad = ["cadquery>=2.3"]
 notebooks = ["jupyter>=1.0"]
-dev = ["pytest>=7.4", "ruff>=0.4"]
+dev = ["pytest>=7.4", "ruff>=0.4", "trimesh>=4.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools_scm]
+# Version comes from git tags (v0.1.0, v0.2.0, ...); commits after a tag
+# get a .devN suffix automatically. Bump by tagging, never by editing.
+version_file = "src/conceptual_design/_version.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
