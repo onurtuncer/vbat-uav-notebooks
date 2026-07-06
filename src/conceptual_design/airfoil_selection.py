@@ -105,7 +105,7 @@ import re
 import yaml
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 
 # ─────────────────────────────────────────────
@@ -389,41 +389,6 @@ def check_constraints(
 
 
 # ─────────────────────────────────────────────
-#  Coordinate file writer  (Selig .dat format)
-# ─────────────────────────────────────────────
-
-def write_dat_file(
-    designation: str,
-    M: float, P: float, t: float,
-    path: str,
-    n: int = 200,
-    chord: float = 1.0,
-) -> None:
-    """
-    Write airfoil coordinates in Selig format (upper surface TE->LE->TE lower).
-    Coordinates are scaled to the given chord length.
-
-    Parameters
-    ----------
-    designation : human-readable name for the file header
-    M, P, t     : NACA 4-digit parameters
-    path        : output file path (e.g. "data/airfoils/naca2412.dat")
-    n           : number of points per surface
-    chord       : chord length for scaling [m] (default 1.0 = unit chord)
-    """
-    xu, yu, xl, yl = naca4_coordinates(M, P, t, n=n)
-
-    with open(path, 'w') as f:
-        f.write(f"{designation.upper()}\n")
-        # Upper surface from LE to TE
-        for x, y in zip(xu, yu):
-            f.write(f"  {x*chord:.6f}  {y*chord:.6f}\n")
-        # Lower surface from TE to LE (skip duplicate LE point)
-        for x, y in zip(reversed(xl), reversed(yl)):
-            f.write(f"  {x*chord:.6f}  {y*chord:.6f}\n")
-
-
-# ─────────────────────────────────────────────
 #  Main result dataclass
 # ─────────────────────────────────────────────
 
@@ -461,12 +426,12 @@ class AirfoilResult:
         print("=" * 56)
         print(f"  AIRFOIL ANALYSIS:  {self.designation}")
         print("=" * 56)
-        print(f"  Geometry:")
+        print("  Geometry:")
         print(f"    t/c            : {self.t:.4f}  ({self.t*100:.1f}%)")
         print(f"    Camber (M)     : {self.M:.4f}  ({self.M*100:.1f}% chord)")
         print(f"    Max camber loc : {self.P:.2f}  ({self.P*100:.0f}% chord)")
         print()
-        print(f"  Section (2D) aerodynamics:")
+        print("  Section (2D) aerodynamics:")
         print(f"    Cl_alpha       : {self.Cl_alpha_rad:.4f} /rad  "
               f"({math.degrees(self.Cl_alpha_rad):.4f} /deg)")
         print(f"    alpha_L0       : {self.alpha_L0_deg:.3f} deg")
@@ -484,11 +449,11 @@ class AirfoilResult:
         print(f"    L/D (cruise)   : {self.LD_cruise:.2f}")
         print()
         if self.warnings:
-            print(f"  CONSTRAINT WARNINGS:")
+            print("  CONSTRAINT WARNINGS:")
             for w in self.warnings:
                 print(f"    ! {w}")
         else:
-            print(f"  All design constraints: OK")
+            print("  All design constraints: OK")
         print("=" * 56)
 
 

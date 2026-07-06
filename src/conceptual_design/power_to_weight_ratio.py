@@ -18,10 +18,10 @@ IMPORTANT NOTES (read me):
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
 from math import sqrt, pi
-from typing import Optional, Dict
-from models import Environment
+from typing import Dict
+
+from .vtol_power import VTOLParams
 
 
 

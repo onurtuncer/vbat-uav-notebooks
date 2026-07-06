@@ -1,0 +1,80 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deployment at a time; don't cancel a deploy mid-flight
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Render notebooks to HTML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install nbconvert
+        run: pip install nbconvert
+
+      # Notebooks are committed with their outputs, so no execution
+      # (and no CadQuery/OpenFOAM) is needed to render the report.
+      - name: Convert notebooks
+        run: |
+          mkdir -p site
+          jupyter nbconvert --to html --output-dir site notebooks/*.ipynb
+
+      - name: Build index page
+        run: |
+          cat > site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>V-BAT Tail-Sitter — Conceptual Design Report</title>
+            <style>
+              body { font-family: system-ui, sans-serif; max-width: 46rem;
+                     margin: 3rem auto; padding: 0 1rem; line-height: 1.6; }
+              li { margin: 0.4rem 0; }
+            </style>
+          </head>
+          <body>
+            <h1>Electric V-BAT-Like Tail-Sitter — Design Report</h1>
+            <p>Rendered design notebooks, in run order:</p>
+            <ol>
+              <li><a href="vbat_conceptual_design.html">Conceptual design — mission sizing &amp; mass closure</a></li>
+              <li><a href="wing_design.html">Wing design — airfoil selection &amp; planform</a></li>
+              <li><a href="fuselage_design.html">Fuselage design — layout &amp; drag trade</a></li>
+              <li><a href="control_vane_design.html">Control vane design</a></li>
+              <li><a href="vehicle_solid_model.html">Full-vehicle solid model (CadQuery)</a></li>
+            </ol>
+            <p><a href="https://github.com/onurtuncer/vbat-uav-notebooks">Source repository</a></p>
+          </body>
+          </html>
+          EOF
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

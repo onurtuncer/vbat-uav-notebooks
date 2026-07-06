@@ -41,15 +41,14 @@ from shapely.geometry import Polygon, box as shp_box
 from shapely.ops import unary_union
 
 from OCP.BRepAlgoAPI import (BRepAlgoAPI_Section, BRepAlgoAPI_Cut)
-from OCP.gp import gp_Pln, gp_Pnt, gp_Dir, gp_Vec, gp_Trsf, gp_Ax2
+from OCP.gp import gp_Pln, gp_Pnt, gp_Dir, gp_Vec, gp_Ax2
 from OCP.TopExp import TopExp_Explorer
 from OCP.TopAbs import TopAbs_EDGE
 from OCP.TopoDS import TopoDS
 from OCP.BRepAdaptor import BRepAdaptor_Curve
 from OCP.GCPnts import GCPnts_QuasiUniformDeflection
 from OCP.BRepBuilderAPI import (BRepBuilderAPI_MakePolygon,
-                                BRepBuilderAPI_MakeFace,
-                                BRepBuilderAPI_Transform)
+                                BRepBuilderAPI_MakeFace)
 from OCP.BRepPrimAPI import BRepPrimAPI_MakePrism, BRepPrimAPI_MakeCylinder
 from OCP.BRepCheck import BRepCheck_Analyzer
 

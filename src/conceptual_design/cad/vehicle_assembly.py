@@ -21,8 +21,6 @@ public arguments are METRES, matching the out/*.yaml handoff files.
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass
 from typing import Dict, Tuple
 
 import cadquery as cq

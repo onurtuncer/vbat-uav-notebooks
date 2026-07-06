@@ -15,7 +15,7 @@ Bugs fixed vs. original:
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import yaml
 
 
@@ -204,14 +204,14 @@ class Battery:
         uf = data.get("usable_fraction")
         if se is None or uf is None:
             raise ValueError(
-                f"battery.yaml is missing values.  "
-                f"Set 'specific_energy' (Wh/kg) and 'usable_fraction' (0-1)."
+                "battery.yaml is missing values.  "
+                "Set 'specific_energy' (Wh/kg) and 'usable_fraction' (0-1)."
             )
         return cls(
             specific_energy = float(se),
             usable_fraction = float(uf),
         )
-    
+
 
 @dataclass
 class RotorParams:

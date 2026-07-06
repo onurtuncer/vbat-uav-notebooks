@@ -78,9 +78,8 @@ References
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Dict
 
 import numpy as np
 
@@ -159,7 +158,6 @@ def tw_takeoff(
     Dynamic pressure evaluated at 0.7*V_To (average ground speed).
     V_To = V_To_factor * V_stall.
     """
-    V_stall = ff.V_To_factor * env.g   # placeholder -- actual stall speed depends on W/S
     # stall speed per wing loading: V_s = sqrt(2*WS/(rho*CL_max))
     V_s   = np.sqrt(2.0 * WS / (env.rho * aero.CL_max))
     V_To  = ff.V_To_factor * V_s

@@ -87,9 +87,8 @@ References
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from dataclasses import dataclass
+from typing import List
 
 from .models import (
     Aerodynamics, Battery, Environment, Mission,
@@ -433,10 +432,6 @@ def run_sizing_loop(
 
     batt_fraction  = m_batt  / m_total
     fixed_fraction = f_fixed
-
-    # Wing assumption check: Raymer wing mass vs structural fraction
-    wing_fraction_actual = wing.mass_wing_kg / m_total
-    wing_fraction_assumed = wf.fs   # structure fraction is a proxy
 
     return SizingResult(
         m_total_kg      = m_total,
