@@ -1,0 +1,322 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# Control-vane characterization: single flat-plate vane in the duct jet.
+#
+#   ./Allrun.vanes [-n nProcs] [-V "vjet1 vjet2 ..."] [-d "d1 d2 ..."]
+#   defaults:  V = "23.38"                 (V_jet_ms, out/control_vanes.yaml)
+#              d = "-20 -15 -10 -5 0 5 10 15 20"   (deflection, deg)
+#
+# Vane (out/control_vanes.yaml): flat plate, span h = 0.0714 m,
+# chord c = 0.02856 m, hinge at 0.25c, t/c = 0.02 -> plate ~0.6 mm; a
+# 1.5 mm physical plate thickness is used for meshability (blunt-plate
+# CN penalty at this Re ~ few %, Re_vane ~ 4.6e4).
+#
+# Local frame: flow from +x moving -x (jet), span along y, deflection
+# rotates the plate about the hinge line (y-axis at x_hinge).  Positive
+# delta deflects the LE toward -z, producing positive Fz (+CN).  forces CofR = hinge -> hinge moment = My.
+# ---------------------------------------------------------------------------
+set -euo pipefail
+cd "$(dirname "$0")"
+
+NPROCS=8
+VLIST="23.38"
+DLIST="-20 -15 -10 -5 0 5 10 15 20"
+while getopts "n:V:d:" opt; do
+    case $opt in
+        n) NPROCS=$OPTARG ;;
+        V) VLIST=$OPTARG ;;
+        d) DLIST=$OPTARG ;;
+        *) exit 1 ;;
+    esac
+done
+
+command -v blockMesh >/dev/null || { echo "ERROR: source OpenFOAM first."; exit 1; }
+mkdir -p log
+
+# vane constants (repo values)
+CHORD=0.02856
+SPAN=0.0714
+THICK=0.0015
+XH=$(python3 -c "print($CHORD*(0.5-0.25))")   # hinge at 0.25c; plate centred
+
+gen_vane_stl() {  # $1 = delta_deg, $2 = out.stl
+python3 - "$1" "$2" << PYEOF
+import math, sys
+d = math.radians(float(sys.argv[1])); out = sys.argv[2]
+c, b, t, xh = $CHORD, $SPAN, $THICK, $XH
+# plate corners in undeflected frame, centred at origin, LE at +c/2
+pts = {}
+i = 0
+for x in (c/2, -c/2):
+    for y in (b/2, -b/2):
+        for z in (t/2, -t/2):
+            # rotate about hinge line (x=xh, y axis): x' = xh + (x-xh)ca + z sa
+            xr = xh + (x-xh)*math.cos(d) + z*math.sin(d)
+            zr = -(x-xh)*math.sin(d) + z*math.cos(d)
+            pts[(x, y, z)] = (xr, y, zr)
+corner = lambda sx, sy, sz: pts[(sx*c/2, sy*b/2, sz*t/2)]
+quads = [  # outward-facing, CCW seen from outside
+    [(+1,+1,+1),(+1,-1,+1),(+1,-1,-1),(+1,+1,-1)],   # LE
+    [(-1,+1,+1),(-1,+1,-1),(-1,-1,-1),(-1,-1,+1)],   # TE
+    [(+1,+1,+1),(+1,+1,-1),(-1,+1,-1),(-1,+1,+1)],   # +y tip
+    [(+1,-1,+1),(-1,-1,+1),(-1,-1,-1),(+1,-1,-1)],   # -y tip
+    [(+1,+1,+1),(-1,+1,+1),(-1,-1,+1),(+1,-1,+1)],   # +z face
+    [(+1,+1,-1),(+1,-1,-1),(-1,-1,-1),(-1,+1,-1)],   # -z face
+]
+with open(out, "w") as f:
+    f.write("solid vane\n")
+    for q in quads:
+        p = [corner(*s) for s in q]
+        for tri in ((p[0], p[1], p[2]), (p[0], p[2], p[3])):
+            u = [tri[1][k]-tri[0][k] for k in range(3)]
+            v = [tri[2][k]-tri[0][k] for k in range(3)]
+            n = (u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0])
+            m = math.sqrt(sum(x*x for x in n)) or 1
+            f.write(f" facet normal {n[0]/m:.6e} {n[1]/m:.6e} {n[2]/m:.6e}\n"
+                    "  outer loop\n")
+            for pt in tri:
+                f.write(f"   vertex {pt[0]:.6e} {pt[1]:.6e} {pt[2]:.6e}\n")
+            f.write("  endloop\n endfacet\n")
+    f.write("endsolid vane\n")
+PYEOF
+}
+
+write_case() {  # $1 = dir, $2 = Vjet, $3 = delta
+    local DIR=$1 V=$2 DELTA=$3
+    mkdir -p "$DIR/system" "$DIR/constant/triSurface" "$DIR/0"
+    gen_vane_stl "$DELTA" "$DIR/constant/triSurface/vane.stl"
+
+    cat > "$DIR/system/blockMeshDict" << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object blockMeshDict; }
+scale 1;
+// chord c = 0.0286: ~7c upstream, 14c wake, 7c lateral. Base cell 10 mm.
+vertices
+(
+    (-0.40 -0.20 -0.20) (0.20 -0.20 -0.20) (0.20 0.20 -0.20) (-0.40 0.20 -0.20)
+    (-0.40 -0.20  0.20) (0.20 -0.20  0.20) (0.20 0.20  0.20) (-0.40 0.20  0.20)
+);
+blocks ( hex (0 1 2 3 4 5 6 7) (60 40 40) simpleGrading (1 1 1) );
+edges ();
+boundary
+(
+    inlet    { type patch; faces ((1 2 6 5)); }
+    outlet   { type patch; faces ((0 4 7 3)); }
+    farfield { type patch; faces ((0 1 5 4) (3 7 6 2) (0 3 2 1) (4 5 6 7)); }
+);
+EOF
+
+    cat > "$DIR/system/snappyHexMeshDict" << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object snappyHexMeshDict; }
+castellatedMesh true;  snap true;  addLayers true;
+geometry
+{
+    vane.stl { type triSurfaceMesh; name vane; }
+    nearBox  { type box; min (-0.10 -0.05 -0.05); max (0.04 0.05 0.05); }
+    wakeBox  { type box; min (-0.30 -0.05 -0.06); max (0.03 0.05 0.06); }
+}
+castellatedMeshControls
+{
+    maxLocalCells 1000000; maxGlobalCells 12000000; minRefinementCells 5;
+    maxLoadUnbalance 0.10; nCellsBetweenLevels 3;
+    features ( { file "vane.eMesh"; level 6; } );
+    // base 10 mm: level 5 = 0.31 mm, level 6 = 0.16 mm (plate t = 1.5 mm)
+    refinementSurfaces { vane { level (5 6); patchInfo { type wall; } } }
+    resolveFeatureAngle 30;
+    refinementRegions
+    {
+        nearBox { mode inside; levels ((1E15 3)); }
+        wakeBox { mode inside; levels ((1E15 2)); }
+    }
+    locationInMesh (0.15 0.1 0.1);
+    allowFreeStandingZoneFaces true;
+}
+snapControls
+{
+    nSmoothPatch 3; tolerance 2.0; nSolveIter 50; nRelaxIter 5;
+    nFeatureSnapIter 15; implicitFeatureSnap false; explicitFeatureSnap true;
+    multiRegionFeatureSnap false;
+}
+addLayersControls
+{
+    relativeSizes true;
+    layers { vane { nSurfaceLayers 5; } }
+    expansionRatio 1.2; finalLayerThickness 0.5; minThickness 0.05; nGrow 0;
+    featureAngle 150; slipFeatureAngle 30; nRelaxIter 5;
+    nSmoothSurfaceNormals 1; nSmoothNormals 3; nSmoothThickness 10;
+    maxFaceThicknessRatio 0.5; maxThicknessToMedialRatio 0.3;
+    minMedianAxisAngle 90; nBufferCellsNoExtrude 0; nLayerIter 50;
+    nRelaxedIter 20;
+}
+meshQualityControls
+{
+    #includeEtc "caseDicts/meshQualityDict"
+    relaxed { maxNonOrtho 75; }
+    nSmoothScale 4; errorReduction 0.75;
+}
+mergeTolerance 1e-6;
+EOF
+
+    cat > "$DIR/system/surfaceFeatureExtractDict" << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object surfaceFeatureExtractDict; }
+vane.stl { extractionMethod extractFromSurface; includedAngle 150; }
+EOF
+
+    cat > "$DIR/system/decomposeParDict" << EOF
+FoamFile { version 2.0; format ascii; class dictionary; object decomposeParDict; }
+numberOfSubdomains $NPROCS;
+method scotch;
+EOF
+
+    local K OMEGA
+    read K OMEGA << EOF2
+$(python3 -c "
+k=1.5*(0.05*$V)**2   # 5% intensity: vane sits in the fan wash
+print(f'{k:.6g} {k**0.5/(0.09**0.25*0.005):.6g}')")
+EOF2
+
+    cat > "$DIR/0/U" << EOF
+FoamFile { version 2.0; format ascii; class volVectorField; object U; }
+dimensions [0 1 -1 0 0 0 0];
+internalField uniform (-$V 0 0);
+boundaryField
+{
+    inlet    { type fixedValue; value uniform (-$V 0 0); }
+    outlet   { type inletOutlet; inletValue uniform (-$V 0 0); value uniform (-$V 0 0); }
+    farfield { type slip; }   // jet-tube approximation
+    vane     { type noSlip; }
+}
+EOF
+    cat > "$DIR/0/p" << 'EOF'
+FoamFile { version 2.0; format ascii; class volScalarField; object p; }
+dimensions [0 2 -2 0 0 0 0];
+internalField uniform 0;
+boundaryField
+{
+    inlet    { type zeroGradient; }
+    outlet   { type fixedValue; value uniform 0; }
+    farfield { type slip; }
+    vane     { type zeroGradient; }
+}
+EOF
+    cat > "$DIR/0/k" << EOF
+FoamFile { version 2.0; format ascii; class volScalarField; object k; }
+dimensions [0 2 -2 0 0 0 0];
+internalField uniform $K;
+boundaryField
+{
+    inlet    { type fixedValue; value uniform $K; }
+    outlet   { type inletOutlet; inletValue uniform $K; value uniform $K; }
+    farfield { type slip; }
+    vane     { type kqRWallFunction; value uniform $K; }
+}
+EOF
+    cat > "$DIR/0/omega" << EOF
+FoamFile { version 2.0; format ascii; class volScalarField; object omega; }
+dimensions [0 0 -1 0 0 0 0];
+internalField uniform $OMEGA;
+boundaryField
+{
+    inlet    { type fixedValue; value uniform $OMEGA; }
+    outlet   { type inletOutlet; inletValue uniform $OMEGA; value uniform $OMEGA; }
+    farfield { type slip; }
+    vane     { type omegaWallFunction; value uniform $OMEGA; }
+}
+EOF
+    cat > "$DIR/0/nut" << 'EOF'
+FoamFile { version 2.0; format ascii; class volScalarField; object nut; }
+dimensions [0 2 -1 0 0 0 0];
+internalField uniform 0;
+boundaryField
+{
+    inlet    { type calculated; value uniform 0; }
+    outlet   { type calculated; value uniform 0; }
+    farfield { type slip; }
+    vane     { type nutUSpaldingWallFunction; value uniform 0; }
+}
+EOF
+
+    cat > "$DIR/system/controlDict" << EOF
+FoamFile { version 2.0; format ascii; class dictionary; object controlDict; }
+application simpleFoam; startFrom latestTime; startTime 0;
+stopAt endTime; endTime 1500; deltaT 1;
+writeControl timeStep; writeInterval 500; purgeWrite 2;
+writeFormat binary; runTimeModifiable true;
+functions
+{
+    forces
+    {
+        type            forces;
+        libs            (forces);
+        writeControl    timeStep;
+        writeInterval   1;
+        patches         (vane);
+        rho             rhoInf;
+        rhoInf          1.225;
+        CofR            ($XH 0 0);   // hinge line -> My = hinge moment
+    }
+}
+EOF
+    cp "$(dirname "$0")"/../vehicle/system/fvSchemes "$DIR/system/fvSchemes" 2>/dev/null || \
+    cat > "$DIR/system/fvSchemes" << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object fvSchemes; }
+ddtSchemes { default steadyState; }
+gradSchemes { default cellLimited Gauss linear 1; }
+divSchemes
+{
+    default none;
+    div(phi,U)     bounded Gauss linearUpwind grad(U);
+    div(phi,k)     bounded Gauss upwind;
+    div(phi,omega) bounded Gauss upwind;
+    div((nuEff*dev2(T(grad(U))))) Gauss linear;
+}
+laplacianSchemes { default Gauss linear limited corrected 0.5; }
+interpolationSchemes { default linear; }
+snGradSchemes { default limited corrected 0.5; }
+wallDist { method meshWave; }
+EOF
+    cat > "$DIR/system/fvSolution" << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object fvSolution; }
+solvers
+{
+    p { solver GAMG; smoother GaussSeidel; tolerance 1e-7; relTol 0.01; }
+    Phi { $p; }
+    "(U|k|omega)" { solver smoothSolver; smoother symGaussSeidel;
+                    tolerance 1e-8; relTol 0.1; }
+}
+SIMPLE
+{
+    consistent yes;
+    nNonOrthogonalCorrectors 1;
+    residualControl { p 1e-5; U 1e-6; "(k|omega)" 1e-6; }
+}
+potentialFlow { nNonOrthogonalCorrectors 10; }
+relaxationFactors { equations { U 0.7; "(k|omega)" 0.5; } }
+EOF
+
+    cat > "$DIR/run_meta.yaml" << EOF
+delta_deg: $DELTA
+V_jet_mps: $V
+rho: 1.225
+S_vane_m2: 0.00203918
+c_vane_m: $CHORD
+EOF
+}
+
+for V in $VLIST; do
+for D in $DLIST; do
+    TAG=$(printf "Vj%05.1f_d%+06.1f" "$V" "$D")
+    DIR="sweep/$TAG"
+    echo "== $TAG =="
+    write_case "$DIR" "$V" "$D"
+    ( cd "$DIR"
+      surfaceFeatureExtract > sfe.log
+      blockMesh > blockMesh.log
+      decomposePar > decomposePar.log
+      mpirun -np "$NPROCS" snappyHexMesh -overwrite -parallel > snappy.log
+      mpirun -np "$NPROCS" simpleFoam -parallel > simpleFoam.log
+      reconstructParMesh -constant > /dev/null 2>&1 || true
+      rm -rf processor* )
+done
+done
+
+echo ">> Done. Export:  python3 ../postprocess/foam2dml_prop.py --vane-dir sweep"

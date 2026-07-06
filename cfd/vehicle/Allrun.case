@@ -1,0 +1,293 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# Case setup for V-BAT tail-sitter external aero (run AFTER Allrun.mesh).
+#
+#   ./Allrun.case [-a AOA_deg] [-V speed_m/s] [-n nProcs] [-s]
+#
+#   -a   angle of attack in degrees        (default 0)
+#   -V   freestream speed                  (default 20, = V_cruise in
+#                                           config/mission.yaml)
+#   -n   processor count                   (default 8)
+#   -s   also run potentialFoam + simpleFoam after setup
+#
+# Solver: incompressible steady RANS, simpleFoam + k-omega SST.
+#
+# Reference data (derived from vbat-uav-notebooks outputs):
+#   V_cruise = 20 m/s                      config/mission.yaml
+#   MAC      = 0.16704 m   = 4*(x_AC - x_LE), rectangular wing,
+#                            out/fuselage.yaml (0.24237 - 0.20061)
+#   span     = 1.0022 m                    measured from vbat_fused.stl
+#   S_ref    = 0.16740 m^2 = span * MAC   (AR = 6.0)
+#   CG       = (-0.23402 0 0) m           x_CG_m, station -> body x = -station
+#   Re_MAC   = 2.2e5 at 20 m/s
+#
+# Axis convention (body FRD): x fwd, y right, z DOWN.
+#   AoA=0 freestream:  U = (-V, 0, 0)
+#   AoA=a:             U = (-V cos a, 0, -V sin a)   (wind from ahead+below)
+#   dragDir = U/|U|,   liftDir = (sin a, 0, -cos a)  ("up" = -z)
+# ---------------------------------------------------------------------------
+set -euo pipefail
+cd "$(dirname "$0")"
+
+AOA=0; VMAG=20; NPROCS=8; SOLVE=0
+while getopts "a:V:n:s" opt; do
+    case $opt in
+        a) AOA=$OPTARG ;;
+        V) VMAG=$OPTARG ;;
+        n) NPROCS=$OPTARG ;;
+        s) SOLVE=1 ;;
+        *) exit 1 ;;
+    esac
+done
+
+[[ -d constant/polyMesh ]] || { echo "ERROR: no mesh. Run ./Allrun.mesh first."; exit 1; }
+
+# --- Freestream vector & force directions (FRD, z down) --------------------
+read UX UY UZ DX DZ LX LZ K OMEGA << EOF
+$(python3 -c "
+import math
+a = math.radians($AOA); V = $VMAG
+ux, uz = -V*math.cos(a), -V*math.sin(a)
+I, MAC = 0.01, 0.16704                 # 1% turbulence intensity
+k = 1.5*(I*V)**2
+om = k**0.5/(0.09**0.25*0.1*MAC)       # l_t = 10% MAC
+print(f'{ux:.6f} 0 {uz:.6f} {ux/V:.6f} {uz/V:.6f} '
+      f'{math.sin(a):.6f} {-math.cos(a):.6f} {k:.6g} {om:.6g}')
+")
+EOF
+echo ">> AoA=${AOA} deg, |U|=${VMAG} m/s -> U=($UX $UY $UZ), k=$K, omega=$OMEGA"
+
+mkdir -p 0 log
+
+# --- constant/ --------------------------------------------------------------
+cat > constant/transportProperties << EOF
+FoamFile { version 2.0; format ascii; class dictionary; object transportProperties; }
+transportModel  Newtonian;
+nu              1.5e-05;    // air, ~sea level
+EOF
+
+cat > constant/turbulenceProperties << EOF
+FoamFile { version 2.0; format ascii; class dictionary; object turbulenceProperties; }
+simulationType  RAS;
+RAS
+{
+    RASModel        kOmegaSST;
+    turbulence      on;
+    printCoeffs     on;
+}
+EOF
+
+# --- 0/ fields --------------------------------------------------------------
+# Patches from meshing stage: inlet (+x), outlet (-x), farfield, vbat (wall)
+
+cat > 0/U << EOF
+FoamFile { version 2.0; format ascii; class volVectorField; object U; }
+dimensions      [0 1 -1 0 0 0 0];
+internalField   uniform ($UX $UY $UZ);
+boundaryField
+{
+    inlet     { type freestreamVelocity; freestreamValue uniform ($UX $UY $UZ); }
+    outlet    { type freestreamVelocity; freestreamValue uniform ($UX $UY $UZ); }
+    farfield  { type freestreamVelocity; freestreamValue uniform ($UX $UY $UZ); }
+    vbat      { type noSlip; }
+}
+EOF
+
+cat > 0/p << EOF
+FoamFile { version 2.0; format ascii; class volScalarField; object p; }
+dimensions      [0 2 -2 0 0 0 0];
+internalField   uniform 0;
+boundaryField
+{
+    inlet     { type freestreamPressure; freestreamValue uniform 0; }
+    outlet    { type freestreamPressure; freestreamValue uniform 0; }
+    farfield  { type freestreamPressure; freestreamValue uniform 0; }
+    vbat      { type zeroGradient; }
+}
+EOF
+
+cat > 0/k << EOF
+FoamFile { version 2.0; format ascii; class volScalarField; object k; }
+dimensions      [0 2 -2 0 0 0 0];
+internalField   uniform $K;
+boundaryField
+{
+    inlet     { type turbulentIntensityKineticEnergyInlet; intensity 0.01; value uniform $K; }
+    outlet    { type inletOutlet; inletValue uniform $K; value uniform $K; }
+    farfield  { type inletOutlet; inletValue uniform $K; value uniform $K; }
+    vbat      { type kqRWallFunction; value uniform $K; }
+}
+EOF
+
+cat > 0/omega << EOF
+FoamFile { version 2.0; format ascii; class volScalarField; object omega; }
+dimensions      [0 0 -1 0 0 0 0];
+internalField   uniform $OMEGA;
+boundaryField
+{
+    inlet     { type fixedValue; value uniform $OMEGA; }
+    outlet    { type inletOutlet; inletValue uniform $OMEGA; value uniform $OMEGA; }
+    farfield  { type inletOutlet; inletValue uniform $OMEGA; value uniform $OMEGA; }
+    vbat      { type omegaWallFunction; value uniform $OMEGA; }
+}
+EOF
+
+cat > 0/nut << EOF
+FoamFile { version 2.0; format ascii; class volScalarField; object nut; }
+dimensions      [0 2 -1 0 0 0 0];
+internalField   uniform 0;
+boundaryField
+{
+    inlet     { type calculated; value uniform 0; }
+    outlet    { type calculated; value uniform 0; }
+    farfield  { type calculated; value uniform 0; }
+    // nutUSpaldingWallFunction: valid across y+ ranges (layers may vary
+    // over duct/vane region)
+    vbat      { type nutUSpaldingWallFunction; value uniform 0; }
+}
+EOF
+
+# --- system/ ----------------------------------------------------------------
+cat > system/controlDict << EOF
+FoamFile { version 2.0; format ascii; class dictionary; object controlDict; }
+application     simpleFoam;
+startFrom       latestTime;
+startTime       0;
+stopAt          endTime;
+endTime         2000;
+deltaT          1;
+writeControl    timeStep;
+writeInterval   250;
+purgeWrite      3;
+writeFormat     binary;
+writePrecision  8;
+timeFormat      general;
+runTimeModifiable true;
+
+functions
+{
+    forceCoeffs
+    {
+        type            forceCoeffs;
+        libs            (forces);
+        writeControl    timeStep;
+        writeInterval   1;
+        patches         (vbat);
+        rho             rhoInf;
+        rhoInf          1.225;
+        // Body FRD (z down): lift is "up" = -z at AoA=0; directions
+        // rotated with AoA by Allrun.case
+        liftDir         ($LX 0 $LZ);
+        dragDir         ($DX 0 $DZ);
+        pitchAxis       (0 1 0);
+        CofR            (-0.23402 0 0);   // x_CG from out/fuselage.yaml
+        magUInf         $VMAG;
+        lRef            0.16704;          // MAC
+        Aref            0.16740;          // S_wing = span x MAC
+    }
+
+    yPlus
+    {
+        type            yPlus;
+        libs            (fieldFunctionObjects);
+        writeControl    writeTime;
+    }
+
+    solverInfo
+    {
+        type            solverInfo;
+        libs            (utilityFunctionObjects);
+        fields          (U p k omega);
+        writeResidualFields no;
+    }
+}
+EOF
+
+cat > system/fvSchemes << EOF
+FoamFile { version 2.0; format ascii; class dictionary; object fvSchemes; }
+ddtSchemes      { default steadyState; }
+gradSchemes
+{
+    default         cellLimited Gauss linear 1;
+    grad(U)         cellLimited Gauss linear 1;
+}
+divSchemes
+{
+    default                       none;
+    div(phi,U)                    bounded Gauss linearUpwind grad(U);
+    div(phi,k)                    bounded Gauss upwind;
+    div(phi,omega)                bounded Gauss upwind;
+    div((nuEff*dev2(T(grad(U))))) Gauss linear;
+}
+laplacianSchemes { default Gauss linear limited corrected 0.5; }
+interpolationSchemes { default linear; }
+snGradSchemes   { default limited corrected 0.5; }
+wallDist        { method meshWave; }
+EOF
+
+cat > system/fvSolution << EOF
+FoamFile { version 2.0; format ascii; class dictionary; object fvSolution; }
+solvers
+{
+    p
+    {
+        solver          GAMG;
+        smoother        GaussSeidel;
+        tolerance       1e-7;
+        relTol          0.01;
+    }
+    Phi { \$p; }
+    "(U|k|omega)"
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-8;
+        relTol          0.1;
+    }
+}
+
+SIMPLE
+{
+    consistent      yes;          // SIMPLEC
+    nNonOrthogonalCorrectors 1;   // snappy meshes are non-orthogonal
+    residualControl
+    {
+        p               1e-5;
+        U               1e-6;
+        "(k|omega)"     1e-6;
+    }
+}
+
+potentialFlow { nNonOrthogonalCorrectors 10; }
+
+relaxationFactors
+{
+    equations
+    {
+        U               0.7;
+        "(k|omega)"     0.5;
+    }
+}
+EOF
+
+# decomposeParDict already exists from meshing stage; update core count
+foamDictionary system/decomposeParDict \
+    -entry numberOfSubdomains -set "$NPROCS" > /dev/null
+
+echo ">> Case set up: 0/, constant/, system/ written."
+
+# --- Optional solve ---------------------------------------------------------
+if [[ $SOLVE -eq 1 ]]; then
+    rm -rf processor*
+    decomposePar > log/decomposePar.case.log
+    mpirun -np "$NPROCS" potentialFoam -parallel -writephi \
+        > log/potentialFoam.log
+    mpirun -np "$NPROCS" simpleFoam -parallel > log/simpleFoam.log &
+    PID=$!
+    echo ">> simpleFoam running (PID $PID). Monitor with:"
+    echo "     tail -f log/simpleFoam.log"
+    echo "     foamMonitor -l postProcessing/solverInfo/0/solverInfo.dat"
+    wait $PID
+    reconstructPar -latestTime > log/reconstructPar.log
+    echo ">> Done. Coefficients: postProcessing/forceCoeffs/0/coefficient.dat"
+fi

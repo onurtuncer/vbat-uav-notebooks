@@ -1,0 +1,75 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| Background hex mesh for V-BAT tail-sitter external aero                     |
+| Geometry (metres, body FRD): nose x=0, tail x=-0.7126, span y=+/-0.501,     |
+| duct z=+/-0.151.  Freestream enters from +x (inlet), wake extends to -x.    |
+| Base cell = 0.25 m -> level 7 refinement = 1.95 mm at the surface.          |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+scale   1;
+
+// Domain: ~5 L upstream of the nose, ~10 L behind the tail, ~4 b lateral
+xMin   -8.0;
+xMax    4.0;
+yMin   -4.0;
+yMax    4.0;
+zMin   -4.0;
+zMax    4.0;
+
+// 0.25 m base cells (keep cubic: (max-min)/n = 0.25 in every direction)
+nx  48;     // (4 - -8)/0.25
+ny  32;     // (4 - -4)/0.25
+nz  32;
+
+vertices
+(
+    ($xMin $yMin $zMin)   // 0
+    ($xMax $yMin $zMin)   // 1
+    ($xMax $yMax $zMin)   // 2
+    ($xMin $yMax $zMin)   // 3
+    ($xMin $yMin $zMax)   // 4
+    ($xMax $yMin $zMax)   // 5
+    ($xMax $yMax $zMax)   // 6
+    ($xMin $yMax $zMax)   // 7
+);
+
+blocks
+(
+    hex (0 1 2 3 4 5 6 7) ($nx $ny $nz) simpleGrading (1 1 1)
+);
+
+edges ();
+
+boundary
+(
+    inlet           // +x face: freestream hits the nose (body FRD, x fwd)
+    {
+        type patch;
+        faces ((1 2 6 5));
+    }
+    outlet          // -x face: wake exit behind the tail / vanes
+    {
+        type patch;
+        faces ((0 4 7 3));
+    }
+    farfield
+    {
+        type patch;
+        faces
+        (
+            (0 1 5 4)   // yMin
+            (3 7 6 2)   // yMax
+            (0 3 2 1)   // zMin
+            (4 5 6 7)   // zMax
+        );
+    }
+);
+
+// ************************************************************************* //

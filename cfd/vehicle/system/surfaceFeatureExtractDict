@@ -1,0 +1,23 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| OpenFOAM.com (ESI) version. For Foundation releases rename to               |
+| surfaceFeaturesDict and run `surfaceFeatures` instead.                      |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      surfaceFeatureExtractDict;
+}
+
+vbat.stl
+{
+    extractionMethod    extractFromSurface;
+    includedAngle       150;
+    subsetFeatures
+    {
+        nonManifoldEdges no;
+        openEdges        yes;
+    }
+    writeObj            yes;
+}

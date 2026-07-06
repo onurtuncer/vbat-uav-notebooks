@@ -1,0 +1,155 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| snappyHexMesh for vbat_fused.stl (scaled to metres by Allrun.mesh)          |
+| Base cell 0.25 m:                                                           |
+|   level 4 = 15.6 mm (wake box)                                              |
+|   level 5 =  7.8 mm (near-body box)                                         |
+|   level 6 =  3.9 mm (surface, min)                                          |
+|   level 7 =  2.0 mm (surface, max / feature edges / duct+vane region)       |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      snappyHexMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+castellatedMesh true;
+snap            true;
+addLayers       true;
+
+geometry
+{
+    vbat.stl
+    {
+        type triSurfaceMesh;
+        name vbat;
+    }
+
+    // Near-body refinement: whole airframe + margin
+    nearBox
+    {
+        type box;
+        min (-1.0  -0.65 -0.30);
+        max ( 0.15  0.65  0.30);
+    }
+
+    // Wake refinement: extends ~4 L downstream (-x) of the vanes
+    wakeBox
+    {
+        type box;
+        min (-3.5  -0.75 -0.40);
+        max ( 0.10  0.75  0.40);
+    }
+
+    // Duct / vane region (aft body, x_vane ~ -0.673 m, duct OD 0.302 m)
+    ductBox
+    {
+        type box;
+        min (-0.85 -0.20 -0.20);
+        max (-0.45  0.20  0.20);
+    }
+}
+
+castellatedMeshControls
+{
+    maxLocalCells       2000000;
+    maxGlobalCells      30000000;
+    minRefinementCells  10;
+    maxLoadUnbalance    0.10;
+    nCellsBetweenLevels 3;
+
+    features
+    (
+        {
+            file "vbat.eMesh";
+            level 7;
+        }
+    );
+
+    refinementSurfaces
+    {
+        vbat
+        {
+            level (6 7);
+            patchInfo { type wall; }
+        }
+    }
+
+    resolveFeatureAngle 30;
+
+    refinementRegions
+    {
+        nearBox  { mode inside; levels ((1E15 5)); }
+        wakeBox  { mode inside; levels ((1E15 4)); }
+        ductBox  { mode inside; levels ((1E15 6)); }
+    }
+
+    // Must lie in the fluid, outside the airframe, inside the domain
+    locationInMesh (2.0 0.5 0.5);
+
+    allowFreeStandingZoneFaces true;
+}
+
+snapControls
+{
+    nSmoothPatch    3;
+    tolerance       2.0;
+    nSolveIter      50;
+    nRelaxIter      5;
+    nFeatureSnapIter 15;
+    implicitFeatureSnap    false;
+    explicitFeatureSnap    true;
+    multiRegionFeatureSnap false;
+}
+
+addLayersControls
+{
+    relativeSizes true;
+
+    layers
+    {
+        vbat
+        {
+            nSurfaceLayers 8;
+        }
+    }
+
+    expansionRatio      1.2;
+    finalLayerThickness 0.5;   // relative to local surface cell size
+    minThickness        0.05;
+    nGrow               0;
+
+    featureAngle        150;
+    slipFeatureAngle    30;
+    nRelaxIter          5;
+    nSmoothSurfaceNormals 1;
+    nSmoothNormals      3;
+    nSmoothThickness    10;
+    maxFaceThicknessRatio 0.5;
+    maxThicknessToMedialRatio 0.3;
+    minMedianAxisAngle  90;
+    nBufferCellsNoExtrude 0;
+    nLayerIter          50;
+    nRelaxedIter        20;
+}
+
+meshQualityControls
+{
+    #includeEtc "caseDicts/meshQualityDict"
+
+    relaxed
+    {
+        maxNonOrtho 75;
+    }
+
+    nSmoothScale 4;
+    errorReduction 0.75;
+}
+
+writeFlags ( scalarLevels layerSets layerFields );
+
+mergeTolerance 1e-6;
+
+// ************************************************************************* //

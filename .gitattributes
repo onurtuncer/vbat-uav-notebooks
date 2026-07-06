@@ -1,0 +1,3 @@
+# OpenFOAM Allrun scripts and case dictionaries run on Linux -- keep LF
+cfd/** text eol=lf
+Allrun.* text eol=lf
