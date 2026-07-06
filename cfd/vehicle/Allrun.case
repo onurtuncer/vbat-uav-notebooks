@@ -41,6 +41,9 @@ while getopts "a:V:n:s" opt; do
 done
 
 [[ -d constant/polyMesh ]] || { echo "ERROR: no mesh. Run ./Allrun.mesh first."; exit 1; }
+# python3 computes the freestream vector below; without this guard a missing
+# python3 slips through the $(...) substitution and writes a corrupt 0/U
+command -v python3 >/dev/null || { echo "ERROR: python3 required."; exit 1; }
 
 # --- Freestream vector & force directions (FRD, z down) --------------------
 read UX UY UZ DX DZ LX LZ K OMEGA << EOF
