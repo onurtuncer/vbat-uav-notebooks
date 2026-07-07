@@ -274,19 +274,23 @@ def build_vehicle(
 def export_vehicle(asm: cq.Assembly, fused: cq.Workplane, out_dir) -> Dict[str, str]:
     """
     Write STEP (assembly with part names/colours), STEP (fused single
-    solid), and STL (mesh) under out_dir/{step,stl}.  Returns the paths.
+    solid), STL (mesh), and one STEP + STL PER PART under
+    out_dir/{step,stl}/parts/.  Returns the paths.
     """
     from pathlib import Path
     out_dir = Path(out_dir)
     step_dir = out_dir / "step"
     stl_dir  = out_dir / "stl"
-    step_dir.mkdir(parents=True, exist_ok=True)
-    stl_dir.mkdir(parents=True, exist_ok=True)
+    step_parts_dir = step_dir / "parts"
+    stl_parts_dir  = stl_dir / "parts"
+    for d in (step_dir, stl_dir, step_parts_dir, stl_parts_dir):
+        d.mkdir(parents=True, exist_ok=True)
 
     paths = {
         "step_assembly": str(step_dir / "vbat_assembly.step"),
         "step_fused":    str(step_dir / "vbat_fused.step"),
         "stl":           str(stl_dir / "vbat_fused.stl"),
+        "parts":         {},
     }
     if hasattr(asm, "export"):
         asm.export(paths["step_assembly"])      # cadquery >= 2.7
@@ -294,4 +298,15 @@ def export_vehicle(asm: cq.Assembly, fused: cq.Workplane, out_dir) -> Dict[str, 
         asm.save(paths["step_assembly"])
     cq.exporters.export(fused, paths["step_fused"])
     cq.exporters.export(fused, paths["stl"], tolerance=0.15, angularTolerance=0.15)
+
+    # -- individual parts (already positioned in the body frame) ---------
+    for child in asm.children:
+        obj = child.obj
+        wp = obj if isinstance(obj, cq.Workplane) else cq.Workplane(obj=obj)
+        p_step = str(step_parts_dir / f"{child.name}.step")
+        p_stl  = str(stl_parts_dir / f"{child.name}.stl")
+        cq.exporters.export(wp, p_step)
+        cq.exporters.export(wp, p_stl, tolerance=0.15, angularTolerance=0.15)
+        paths["parts"][child.name] = {"step": p_step, "stl": p_stl}
+
     return paths

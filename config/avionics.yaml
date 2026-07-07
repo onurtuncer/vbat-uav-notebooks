@@ -1,0 +1,15 @@
+# Continuous non-propulsive electrical load ("hotel load") for the
+# V-BAT tail-sitter sizing study. Drawn for the ENTIRE mission and
+# added to every phase power in the energy budget.
+#
+# P_hotel_W : continuous hotel load [W]
+#   Representative budget for the research payload configuration:
+#     flight controller (Pixhawk class)   ~3 W
+#     companion computer                  ~5 W
+#     telemetry + RC receiver             ~2 W
+#     GNSS + airspeed + sensors           ~1 W
+#     camera                              ~2 W
+#     servo idle + BEC overhead           ~2 W
+#   Refine from a bench power audit once hardware is selected.
+
+P_hotel_W: 15.0

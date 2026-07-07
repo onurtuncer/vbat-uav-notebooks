@@ -12,7 +12,13 @@
 #
 # eta_bat : battery discharge efficiency [-]
 #   0.97 accounts for internal resistance losses during discharge.
-#   This is applied inside the mass_closure module, not here.
+#
+# c_rate_max : maximum continuous discharge C-rate [1/h]
+#   25C continuous is a routine rating for hobby LiPo packs.
+#   The sizing loop reports the peak mission C-rate for comparison
+#   against this limit.
 
 specific_energy: 140.0
 usable_fraction: 0.85
+eta_bat: 0.97
+c_rate_max: 25.0

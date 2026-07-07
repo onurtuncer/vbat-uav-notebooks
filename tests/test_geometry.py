@@ -55,12 +55,22 @@ class TestFusedStl:
             f"Did the CAD export unit change?"
         )
 
-    def test_span_matches_cfd_reference(self, mesh):
-        # Allrun.case uses S_ref = span * MAC with span measured from
-        # this STL (1.0022 m). Pin the span so the CFD reference area
-        # stays consistent with the geometry.
+    def test_span_matches_design_outputs(self, mesh):
+        # Rectangular wing: span = AR * MAC, with MAC derived from the
+        # AC/LE spacing in out/fuselage.yaml and AR from the config.
+        # Catches a stale STL that no longer matches the design point.
+        import yaml
+        fus = yaml.safe_load(
+            (REPO_ROOT / "out" / "fuselage.yaml").read_text(encoding="utf-8"))
+        aero = yaml.safe_load(
+            (REPO_ROOT / "config" / "aerodynamics.yaml").read_text(encoding="utf-8"))
+        mac = 4.0 * (fus["x_wing_AC_m"] - fus["x_wing_LE_m"])
+        span_expected_m = aero["AR"] * mac
         span_m = max(mesh.extents) / 1000.0
-        assert span_m == pytest.approx(1.0022, rel=1e-2)
+        assert span_m == pytest.approx(span_expected_m, rel=1e-2), (
+            "STL span disagrees with the current design point -- "
+            "re-run vehicle_solid_model.ipynb"
+        )
 
 
 class TestStepExports:

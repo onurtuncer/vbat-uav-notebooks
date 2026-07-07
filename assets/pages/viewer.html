@@ -9,26 +9,41 @@
     #canvas { width: 100%; height: 100%; display: block; }
     #hud {
       position: fixed; top: 0; left: 0; right: 0; padding: 0.6rem 1rem;
-      display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap;
-      background: rgba(20, 24, 30, 0.75); color: #e8e8e8;
-      backdrop-filter: blur(4px); font-size: 0.9rem;
+      display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;
+      background: rgba(20, 24, 30, 0.78); color: #e8e8e8;
+      backdrop-filter: blur(4px); font-size: 0.9rem; z-index: 2;
     }
     #hud a { color: #7ab8ff; }
     #hud .title { font-weight: 600; }
-    #status { position: fixed; bottom: 0.6rem; left: 1rem; color: #999; font-size: 0.8rem; }
+    #hud label { display: flex; align-items: center; gap: 0.4rem; }
+    #explode { width: 160px; }
+    #parts {
+      position: fixed; top: 3.4rem; right: 0.8rem; max-height: 70vh;
+      overflow-y: auto; background: rgba(20, 24, 30, 0.78); color: #ddd;
+      border-radius: 8px; padding: 0.5rem 0.8rem; font-size: 0.78rem;
+      z-index: 2; backdrop-filter: blur(4px);
+    }
+    #parts .sw { display: inline-block; width: 0.7em; height: 0.7em;
+                 border-radius: 2px; margin-right: 0.45em; }
+    #parts div { padding: 1px 0; cursor: pointer; user-select: none; }
+    #parts div.off { opacity: 0.35; text-decoration: line-through; }
+    #status { position: fixed; bottom: 0.6rem; left: 1rem; color: #999;
+              font-size: 0.8rem; z-index: 2; }
   </style>
 </head>
 <body>
   <div id="hud">
-    <span class="title">V-BAT fused geometry</span>
-    <span>drag = orbit · scroll = zoom · right-drag = pan</span>
-    <a href="index.html">← back to report</a>
-    <a href="cad/step/vbat_fused.step" download>vbat_fused.step</a>
-    <a href="cad/step/vbat_assembly.step" download>vbat_assembly.step</a>
-    <a href="cad/stl/vbat_fused.stl" download>vbat_fused.stl</a>
+    <span class="title">V-BAT geometry</span>
+    <label>explode <input id="explode" type="range" min="0" max="1" step="0.01" value="0"></label>
+    <a href="index.html">← report</a>
+    <a href="cad/step/vbat_assembly.step" download>assembly.step</a>
+    <a href="cad/step/vbat_fused.step" download>fused.step</a>
+    <a href="cad/step/prop_rotor.step" download>prop_rotor.step</a>
+    <a href="cad/stl/vbat_fused.stl" download>fused.stl</a>
   </div>
+  <div id="parts"></div>
   <canvas id="canvas"></canvas>
-  <div id="status">loading STL…</div>
+  <div id="status">loading…</div>
 
   <script type="importmap">
   {
@@ -49,38 +64,94 @@
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1a1e24);
-
     const camera = new THREE.PerspectiveCamera(45, 2, 1, 100000);
     const controls = new OrbitControls(camera, renderer.domElement);
-
     scene.add(new THREE.HemisphereLight(0xffffff, 0x444455, 1.1));
     const key = new THREE.DirectionalLight(0xffffff, 1.4);
     key.position.set(1, 2, 1.5);
     scene.add(key);
 
-    new STLLoader().load('cad/stl/vbat_fused.stl', geometry => {
-      geometry.computeVertexNormals();
-      const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
-        color: 0xb7c4d4, metalness: 0.15, roughness: 0.55,
-      }));
-      // Model is exported in mm, body FRD; recentre on its bounding box
-      geometry.computeBoundingBox();
-      const bb = geometry.boundingBox;
-      const centre = bb.getCenter(new THREE.Vector3());
-      mesh.position.sub(centre);
-      scene.add(mesh);
+    const root = new THREE.Group();
+    scene.add(root);
+    const loader = new STLLoader();
+    const status = document.getElementById('status');
+    const partsBox = document.getElementById('parts');
+    const partMeshes = [];   // { mesh, name, dir (explode direction), base (position) }
 
+    const PALETTE = [0xb7c4d4, 0x6fa66f, 0x505a66, 0xd4544f, 0x4d6fc4,
+                     0xd99a3d, 0x8a6fb8, 0x5fb0a8];
+
+    function frameScene() {
+      const bb = new THREE.Box3().setFromObject(root);
       const size = bb.getSize(new THREE.Vector3()).length();
+      const centre = bb.getCenter(new THREE.Vector3());
+      root.position.sub(centre);
       camera.position.set(size * 0.7, size * 0.45, size * 0.7);
       camera.near = size / 100; camera.far = size * 10;
       camera.updateProjectionMatrix();
       controls.update();
+    }
 
-      document.getElementById('status').textContent =
-        `${geometry.attributes.position.count / 3} triangles · units: mm`;
-    }, undefined, err => {
-      document.getElementById('status').textContent = 'failed to load STL: ' + err;
+    function addPart(geometry, name, idx, centreAll) {
+      geometry.computeVertexNormals();
+      const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
+        color: PALETTE[idx % PALETTE.length], metalness: 0.15, roughness: 0.55,
+      }));
+      root.add(mesh);
+      geometry.computeBoundingBox();
+      const c = geometry.boundingBox.getCenter(new THREE.Vector3());
+      const dir = c.clone().sub(centreAll);
+      if (dir.length() < 1e-6) dir.set(0, 0, 0);
+      partMeshes.push({ mesh, name, dir, base: mesh.position.clone() });
+
+      const row = document.createElement('div');
+      row.innerHTML = `<span class="sw" style="background:#${mesh.material.color.getHexString()}"></span>${name}`;
+      row.onclick = () => {
+        mesh.visible = !mesh.visible;
+        row.classList.toggle('off', !mesh.visible);
+      };
+      partsBox.appendChild(row);
+    }
+
+    async function loadParts() {
+      // parts.json is generated by the docs workflow from cad/stl/parts/
+      let manifest = null;
+      try {
+        const r = await fetch('cad/parts.json');
+        if (r.ok) manifest = await r.json();
+      } catch (e) { /* fall through to fused */ }
+
+      if (manifest && manifest.parts && manifest.parts.length) {
+        // First pass: load all geometries to find the global centre
+        const geoms = [];
+        for (const p of manifest.parts) {
+          const g = await new Promise((res, rej) =>
+            loader.load(`cad/stl/parts/${p}`, res, undefined, rej));
+          geoms.push([g, p.replace(/\.stl$/, '')]);
+        }
+        const all = new THREE.Box3();
+        for (const [g] of geoms) { g.computeBoundingBox(); all.union(g.boundingBox); }
+        const centreAll = all.getCenter(new THREE.Vector3());
+        geoms.forEach(([g, name], i) => addPart(g, name, i, centreAll));
+        status.textContent = `${geoms.length} parts · units: mm · drag=orbit scroll=zoom`;
+      } else {
+        const g = await new Promise((res, rej) =>
+          loader.load('cad/stl/vbat_fused.stl', res, undefined, rej));
+        g.computeBoundingBox();
+        addPart(g, 'vbat_fused', 0, g.boundingBox.getCenter(new THREE.Vector3()));
+        status.textContent = 'fused solid · units: mm';
+      }
+      frameScene();
+    }
+
+    document.getElementById('explode').addEventListener('input', ev => {
+      const f = parseFloat(ev.target.value);
+      for (const p of partMeshes) {
+        p.mesh.position.copy(p.base).addScaledVector(p.dir, f * 0.9);
+      }
     });
+
+    loadParts().catch(e => { status.textContent = 'load failed: ' + e; });
 
     function resize() {
       const w = canvas.clientWidth, h = canvas.clientHeight;

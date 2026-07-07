@@ -9,6 +9,7 @@ import pytest
 from conceptual_design.forward_flight_power import ForwardFlightParams
 from conceptual_design.models import (
     Aerodynamics,
+    Avionics,
     Battery,
     Mission,
     PropulsiveSystemParameters,
@@ -21,14 +22,25 @@ from conceptual_design.wing_sizing import WingStructureParams
 def test_mission(config_dir):
     m = Mission.from_yaml(config_dir / "mission.yaml")
     assert m.V_cruise == 20.0
-    assert m.t_hover + m.t_cruise == pytest.approx(1800.0)  # 30 min endurance
+    # COTS 195 mm EDF design review: mission in the 15-20 min band
+    total_min = (m.t_hover + m.t_transition + m.t_cruise) / 60.0
+    assert 15.0 <= total_min <= 20.0
+    assert m.t_transition > 0.0
     assert m.reserve_factor > 1.0
+    assert m.payload_kg == pytest.approx(0.5)
 
 
 def test_battery(config_dir):
     b = Battery.from_yaml(config_dir / "battery.yaml")
     assert 100.0 <= b.specific_energy <= 300.0
     assert 0.0 < b.usable_fraction <= 1.0
+    assert 0.9 < b.eta_bat <= 1.0
+    assert b.c_rate_max >= 10.0
+
+
+def test_avionics(config_dir):
+    av = Avionics.from_yaml(config_dir / "avionics.yaml")
+    assert 0.0 < av.P_hotel_W < 100.0
 
 
 def test_aerodynamics(config_dir):
@@ -54,8 +66,8 @@ def test_propulsive_parameters(config_dir):
 
 def test_rotor(config_dir):
     r = RotorParams.from_yaml(config_dir / "rotor.yaml")
-    assert r.D_rotor_m > 0
-    assert r.disk_loading > 0
+    # COTS EDF class decision: 195 mm
+    assert r.D_rotor_m == pytest.approx(0.195)
 
 
 def test_forward_flight_params(config_dir):

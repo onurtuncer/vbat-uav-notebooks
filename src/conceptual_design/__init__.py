@@ -15,6 +15,7 @@ from .models import (
     MassBreakdown,
     Battery,
     RotorParams,
+    Avionics,
     WingSizing,
 )
 
