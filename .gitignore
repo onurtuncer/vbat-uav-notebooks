@@ -22,6 +22,8 @@ eggs/
 lib/
 lib64/
 parts/
+!out/cad/**/parts/
+!out/cad/**/parts/**
 sdist/
 var/
 wheels/
