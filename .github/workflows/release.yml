@@ -35,7 +35,8 @@ jobs:
         run: |
           set -euo pipefail
           for nb in vbat_conceptual_design wing_design control_vane_design \
-                    fuselage_design vehicle_solid_model mass_properties; do
+                    fuselage_design vehicle_solid_model mass_properties \
+                    wiring_diagram; do
             jupyter nbconvert --to notebook --execute \
               --ExecutePreprocessor.timeout=1200 \
               --output-dir executed "notebooks/${nb}.ipynb"

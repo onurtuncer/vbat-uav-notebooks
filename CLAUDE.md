@@ -22,9 +22,19 @@ that the next one reads:
 4. `fuselage_design` — layout, CG, drag → `out/fuselage.yaml`
 5. `vehicle_solid_model` — CadQuery CAD → `out/cad/` (STEP/STL, per-part + fused + prop rotor)
 6. `mass_properties` — inertia tensor, BOM → `out/mass_properties.yaml`, `out/bom.csv`
+7. `wiring_diagram` — electrical block diagram → `out/wiring_diagram.svg`, `out/electrical.yaml`
 
-NB2–NB6 re-run `run_sizing_loop` from `config/` to reconstruct the same
-design point — if you change the sizing API, update **all six** call sites.
+NB2–NB7 re-run `run_sizing_loop` from `config/` to reconstruct the same
+design point — if you change the sizing API, update **all seven** call sites.
+
+`wiring_diagram` is generated, not hand-drawn: box positions/wiring
+topology are a fixed layout in `electrical_diagram.py`, but every label
+(pack voltage/capacity, operating current, wire gauge, connector,
+servo torque) is computed from `config/electrical.yaml` +
+`config/battery.yaml` + `config/rotor.yaml` + the sizing result. Only
+`battery_series_cells` (cell count) is a free electrical variable — the
+mass-closure loop is voltage-agnostic. Doesn't need CadQuery, so it
+also runs in the local 3.14 venv.
 
 ## Hard rules
 
@@ -97,3 +107,7 @@ YAMLs). A span failure usually means `out/cad/` is stale, not wrong.
 - OpenFOAM scripts assume `OpenFOAM.com v2306+`, run on Linux
   (`.gitattributes` forces LF under `cfd/`). `Allrun.case` needs
   `python3` on PATH.
+- Generated SVGs (`electrical_diagram.py`) must be strict XML: only
+  numeric character references (`&#183;`, `&#8212;`), never named HTML
+  entities (`&middot;`, `&mdash;`) — the latter aren't defined in bare
+  XML and break parsers (GitHub's SVG viewer, `xml.etree`, Illustrator).

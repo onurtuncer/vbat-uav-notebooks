@@ -64,3 +64,11 @@ from .fuselage_design import (
     size_fuselage,
     write_fuselage_yaml,
 )
+
+from .electrical_diagram import (
+    ElectricalParams,
+    OperatingPoint,
+    compute_operating_point,
+    render_wiring_svg,
+    write_wiring_diagram,
+)

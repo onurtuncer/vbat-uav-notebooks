@@ -42,7 +42,8 @@ jobs:
         run: |
           set -euo pipefail
           for nb in vbat_conceptual_design wing_design control_vane_design \
-                    fuselage_design vehicle_solid_model mass_properties; do
+                    fuselage_design vehicle_solid_model mass_properties \
+                    wiring_diagram; do
             echo "::group::notebooks/${nb}.ipynb"
             jupyter nbconvert --to notebook --execute \
               --ExecutePreprocessor.timeout=1200 \
@@ -229,6 +230,7 @@ jobs:
           print("bom.html written")
           PYEOF
           cp out/bom.csv site/
+          cp out/wiring_diagram.svg site/
           cat > site/index.html << 'EOF'
           <!DOCTYPE html>
           <html lang="en">
@@ -253,6 +255,7 @@ jobs:
                — exploded view, per-part toggles, STEP/STL downloads
                (incl. the parametric fan rotor)</p>
             <p><a href="bom.html"><b>📋 Bill of materials</b></a></p>
+            <p><a href="wiring_diagram.svg"><b>🔌 Electrical block wiring diagram</b></a></p>
             <p><img src="img/vehicle_iso.png" alt="Vehicle isometric view"></p>
 
             <h2>Design notebooks (run order)</h2>
@@ -263,6 +266,7 @@ jobs:
               <li><a href="fuselage_design.html">Fuselage design — layout &amp; drag trade</a></li>
               <li><a href="vehicle_solid_model.html">Full-vehicle solid model (CadQuery)</a></li>
               <li><a href="mass_properties.html">Mass properties — inertia tensor &amp; BOM</a></li>
+              <li><a href="wiring_diagram.html">Electrical block wiring diagram</a></li>
             </ol>
 
             <p><a href="https://github.com/onurtuncer/vbat-uav-notebooks">Source repository</a></p>

@@ -1,0 +1,412 @@
+"""
+electrical_diagram.py  --  Generated electrical block wiring diagram
+
+Renders the propulsion/power/avionics wiring diagram (SVG) from the
+converged sizing result and config/*.yaml -- no hand-maintained
+drawing file. Re-running the source notebook after a design change
+(different cell count, EDF diameter, hotel load, ...) regenerates a
+diagram that matches the new numbers.
+
+DIAGRAM TOPOLOGY (fixed -- a design decision, not derived from sizing):
+    BT1 (battery) -> PDB -> ESC1 -> M1 (EDF motor), 3-phase
+    PDB -> BEC1 (sensor rail) -> FC1 + RX1/TLM1/GPS1/ASP1
+    PDB -> BEC2 (servo/CC rail) -> CC1 + 4x vane servos
+    FC1 -> ESC1 (throttle), FC1 -> 4x vane servos (PWM)
+    FC1 <-> RX1/TLM1/GPS1/ASP1/CC1 (serial/data), CC1 -> CAM1
+
+Component labels, current ratings, wire gauges, and connectors are
+computed from config/electrical.yaml, config/battery.yaml,
+config/rotor.yaml, config/avionics.yaml, out/control_vanes.yaml, and
+the mass_closure.SizingResult -- see compute_operating_point().
+
+Grounds/returns are common and intentionally not drawn individually;
+this is a block diagram, not a full schematic.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import yaml
+
+from .mass_closure import SizingResult
+from .models import Battery, RotorParams
+
+
+# ---------------------------------------------
+#  Electrical architecture parameters
+# ---------------------------------------------
+@dataclass
+class ElectricalParams:
+    """config/electrical.yaml -- the electrical design choices not
+    already implied by the mass/power sizing."""
+    battery_series_cells: int
+    cell_nominal_v:       float
+    esc_current_margin:   float
+    bec1_budget_a:        float
+    bec2_budget_a:        float
+
+    @classmethod
+    def from_yaml(cls, path) -> "ElectricalParams":
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        return cls(
+            battery_series_cells = int(data["battery_series_cells"]),
+            cell_nominal_v       = float(data["cell_nominal_v"]),
+            esc_current_margin   = float(data["esc_current_margin"]),
+            bec1_budget_a        = float(data["bec1_budget_a"]),
+            bec2_budget_a        = float(data["bec2_budget_a"]),
+        )
+
+
+# ---------------------------------------------
+#  Wire gauge / connector reference tables
+# ---------------------------------------------
+# Conservative continuous-current ratings for short (<0.5 m) leads --
+# standard hobby-electronics reference values, not a tunable design
+# parameter (same status as e.g. the NACA thickness coefficients in
+# airfoil_selection.py).
+_MAIN_BUS_TABLE = [   # (max continuous A, AWG, connector)
+    (15.0,  20, "XT30"),
+    (25.0,  16, "XT60"),
+    (40.0,  14, "XT60"),
+    (60.0,  12, "XT90"),
+    (90.0,  10, "XT90"),
+]
+_LOW_CURRENT_TABLE = [   # (max continuous A, AWG) -- JST-GH / servo connectors throughout
+    (3.0,  22),
+    (6.0,  20),
+    (10.0, 18),
+]
+
+
+def _select_main_bus(current_a: float) -> tuple[int, str]:
+    for limit, awg, conn in _MAIN_BUS_TABLE:
+        if current_a <= limit:
+            return awg, conn
+    return _MAIN_BUS_TABLE[-1][1], _MAIN_BUS_TABLE[-1][2]
+
+
+def _select_low_current_awg(current_a: float) -> int:
+    for limit, awg in _LOW_CURRENT_TABLE:
+        if current_a <= limit:
+            return awg
+    return _LOW_CURRENT_TABLE[-1][1]
+
+
+# ---------------------------------------------
+#  Operating point
+# ---------------------------------------------
+@dataclass
+class OperatingPoint:
+    pack_voltage_v:    float
+    pack_capacity_ah:  float
+    hover_current_a:   float
+    cruise_current_a:  float
+    esc_rating_a:      float
+    main_gauge_awg:    int
+    main_connector:    str
+    bec1_gauge_awg:    int
+    bec2_gauge_awg:    int
+
+
+def compute_operating_point(
+    result: SizingResult,
+    batt:   Battery,
+    elec:   ElectricalParams,
+) -> OperatingPoint:
+    """Derive pack voltage/capacity, operating currents, and the
+    resulting gauge/connector selections from the converged design."""
+    V = elec.battery_series_cells * elec.cell_nominal_v
+    Ah = result.m_battery_kg * batt.specific_energy / V
+    I_hover  = result.P_hover_W  / V
+    I_cruise = result.P_cruise_W / V
+    esc_rating = I_hover * elec.esc_current_margin
+    main_awg, main_conn = _select_main_bus(esc_rating)
+
+    return OperatingPoint(
+        pack_voltage_v   = V,
+        pack_capacity_ah = Ah,
+        hover_current_a  = I_hover,
+        cruise_current_a = I_cruise,
+        esc_rating_a     = esc_rating,
+        main_gauge_awg   = main_awg,
+        main_connector   = main_conn,
+        bec1_gauge_awg   = _select_low_current_awg(elec.bec1_budget_a),
+        bec2_gauge_awg   = _select_low_current_awg(elec.bec2_budget_a),
+    )
+
+
+# ---------------------------------------------
+#  SVG rendering
+# ---------------------------------------------
+def render_wiring_svg(
+    op:            OperatingPoint,
+    elec:          ElectricalParams,
+    rotor:         RotorParams,
+    batt:          Battery,
+    servo_torque_gcm: float,
+    package_version: str,
+) -> str:
+    """Render the electrical block diagram as a standalone SVG string.
+
+    Box positions and wire routing are a fixed, hand-verified,
+    collision-free layout (see the coordinate plan in this module's
+    git history); only the text content is data-driven.
+    """
+    S = elec.battery_series_cells
+    D_mm = rotor.D_rotor_m * 1000.0
+
+    return f'''<svg viewBox="0 0 1480 1000" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-labelledby="wd-title wd-desc">
+  <title id="wd-title">V-BAT Tail-Sitter -- Electrical Block Diagram</title>
+  <desc id="wd-desc">Generated from config/electrical.yaml, config/battery.yaml, config/rotor.yaml and the converged sizing result. Battery, power distribution, ESC, EDF motor, regulators, flight controller, RC receiver, telemetry, GNSS, airspeed sensor, companion computer, camera, and four vane servos.</desc>
+  <style>
+    text {{ font-family: ui-monospace, "Cascadia Mono", "SF Mono", "JetBrains Mono", Consolas, monospace; fill: #1B2128; }}
+    .ref {{ font-weight: 700; font-size: 15px; }}
+    .name {{ font-size: 11.5px; font-weight: 500; }}
+    .spec {{ font-size: 9.5px; fill: #58626D; }}
+    .wire-label {{ font-size: 9.5px; fill: #58626D; }}
+    .box {{ fill: #FFFFFF; stroke: #1B2128; stroke-width: 1.4; }}
+    .box.hub {{ fill: #E9F1F8; stroke-width: 1.8; }}
+    .jx {{ fill: #1B2128; }}
+    .grid-line {{ stroke: rgba(27,33,40,0.07); stroke-width: 1; }}
+    .power {{ stroke: #B23A2E; }}
+    .signal {{ stroke: #2A5D8C; }}
+    .data {{ stroke: #2E8074; }}
+  </style>
+
+  <rect x="0" y="0" width="1480" height="1000" fill="#F1F3F5"/>
+
+  <g class="grid-line">
+    <path d="M0,60 H1480 M0,160 H1480 M0,260 H1480 M0,360 H1480 M0,460 H1480 M0,560 H1480 M0,660 H1480 M0,760 H1480 M0,860 H1480 M0,960 H1480" />
+    <path d="M60,0 V1000 M180,0 V1000 M300,0 V1000 M420,0 V1000 M540,0 V1000 M660,0 V1000 M780,0 V1000 M900,0 V1000 M1020,0 V1000 M1140,0 V1000 M1260,0 V1000 M1380,0 V1000" />
+  </g>
+
+  <g fill="none">
+    <path class="power" d="M210,105 H290" stroke-width="6"/>
+    <path class="power" d="M440,105 H520" stroke-width="6"/>
+    <path class="power" d="M670,105 H750" stroke-width="6"/>
+    <text class="wire-label" x="695" y="97">3&#215; phase</text>
+
+    <path class="power" d="M340,150 V210 H315 V260" stroke-width="3.5"/>
+    <path class="power" d="M390,150 V230 H605 V260" stroke-width="3.5"/>
+
+    <path class="power" d="M270,340 V380 H675 V420" stroke-width="2.5"/>
+
+    <path class="power" d="M360,340 V560" stroke-width="2.5"/>
+    <path class="power" d="M80,560 H620" stroke-width="2.5"/>
+    <path class="power" d="M80,560 V640 M260,560 V640 M440,560 V640 M620,560 V640" stroke-width="2.5"/>
+
+    <path class="power" d="M570,340 V615 H895 V640" stroke-width="2.5"/>
+
+    <path class="power" d="M640,340 V745" stroke-width="2.5"/>
+    <path class="power" d="M70,745 H640" stroke-width="2.5"/>
+    <path class="power" d="M70,745 V820 M230,745 V820 M390,745 V820 M550,745 V820" stroke-width="2.5"/>
+
+    <path class="signal" d="M740,420 V180 H595 V150" stroke-width="2.25"/>
+
+    <path class="data" d="M675,520 V600" stroke-width="2" stroke-dasharray="6 4"/>
+    <path class="data" d="M150,600 H690" stroke-width="2" stroke-dasharray="6 4"/>
+    <path class="data" d="M150,600 V640 M330,600 V640 M510,600 V640 M690,600 V640" stroke-width="2" stroke-dasharray="6 4"/>
+
+    <path class="data" d="M790,460 H1010 V680 H990" stroke-width="2" stroke-dasharray="6 4"/>
+    <path class="data" d="M990,660 H1040" stroke-width="2" stroke-dasharray="6 4"/>
+
+    <path class="signal" d="M700,520 V780" stroke-width="2.25"/>
+    <path class="signal" d="M150,780 H630" stroke-width="2.25"/>
+    <path class="signal" d="M150,780 V820 M310,780 V820 M470,780 V820 M630,780 V820" stroke-width="2.25"/>
+  </g>
+
+  <g class="jx">
+    <circle cx="315" cy="560" r="3.4"/>
+    <circle cx="80" cy="560" r="3.4"/><circle cx="260" cy="560" r="3.4"/>
+    <circle cx="440" cy="560" r="3.4"/><circle cx="620" cy="560" r="3.4"/>
+    <circle cx="675" cy="600" r="3.4"/>
+    <circle cx="150" cy="600" r="3.4"/><circle cx="330" cy="600" r="3.4"/>
+    <circle cx="510" cy="600" r="3.4"/><circle cx="690" cy="600" r="3.4"/>
+    <circle cx="640" cy="745" r="3.4"/>
+    <circle cx="70" cy="745" r="3.4"/><circle cx="230" cy="745" r="3.4"/>
+    <circle cx="390" cy="745" r="3.4"/><circle cx="550" cy="745" r="3.4"/>
+    <circle cx="700" cy="780" r="3.4"/>
+    <circle cx="150" cy="780" r="3.4"/><circle cx="310" cy="780" r="3.4"/>
+    <circle cx="470" cy="780" r="3.4"/><circle cx="630" cy="780" r="3.4"/>
+  </g>
+
+  <g>
+    <rect class="box" x="40" y="60" width="170" height="90" rx="2"/>
+    <text class="ref" x="56" y="88">BT1</text>
+    <text class="name" x="56" y="105">Battery Pack</text>
+    <text class="spec" x="56" y="120">{S}S LiPo &#183; {op.pack_capacity_ah:.2f} Ah &#183; {batt.c_rate_max:.0f}C</text>
+    <text class="spec" x="56" y="133">{op.main_connector} connector</text>
+  </g>
+  <g>
+    <rect class="box" x="290" y="60" width="150" height="90" rx="2"/>
+    <text class="ref" x="306" y="88">PDB</text>
+    <text class="name" x="306" y="105">Power Distribution</text>
+    <text class="spec" x="306" y="120">{op.main_connector} in, bullets out</text>
+  </g>
+  <g>
+    <rect class="box" x="520" y="60" width="150" height="90" rx="2"/>
+    <text class="ref" x="536" y="88">ESC1</text>
+    <text class="name" x="536" y="105">Speed Controller</text>
+    <text class="spec" x="536" y="120">{S}S &#183; &#8805;{op.esc_rating_a:.0f} A cont.</text>
+  </g>
+  <g>
+    <rect class="box" x="750" y="60" width="190" height="90" rx="2"/>
+    <text class="ref" x="766" y="88">M1</text>
+    <text class="name" x="766" y="105">EDF Motor + Fan</text>
+    <text class="spec" x="766" y="120">{D_mm:.0f} mm BLDC outrunner</text>
+    <text class="spec" x="766" y="133">COTS &#8212; config/rotor.yaml</text>
+  </g>
+
+  <g>
+    <rect class="box" x="230" y="260" width="170" height="80" rx="2"/>
+    <text class="ref" x="246" y="288">BEC1</text>
+    <text class="name" x="246" y="305">5V Sensor Rail</text>
+    <text class="spec" x="246" y="320">&#8776; {elec.bec1_budget_a:.0f} A regulated</text>
+  </g>
+  <g>
+    <rect class="box" x="520" y="260" width="170" height="80" rx="2"/>
+    <text class="ref" x="536" y="288">BEC2</text>
+    <text class="name" x="536" y="305">5V Servo / CC Rail</text>
+    <text class="spec" x="536" y="320">&#8776; {elec.bec2_budget_a:.0f} A regulated</text>
+  </g>
+
+  <g>
+    <rect class="box hub" x="560" y="420" width="230" height="100" rx="2"/>
+    <text class="ref" x="580" y="452">FC1</text>
+    <text class="name" x="580" y="470">Flight Controller</text>
+    <text class="spec" x="580" y="486">Pixhawk-class autopilot</text>
+    <text class="spec" x="580" y="499">hub &#8212; power, PWM &amp; data</text>
+  </g>
+
+  <g>
+    <rect class="box" x="40" y="640" width="150" height="80" rx="2"/>
+    <text class="ref" x="56" y="668">RX1</text>
+    <text class="name" x="56" y="685">RC Receiver</text>
+    <text class="spec" x="56" y="700">CRSF link</text>
+  </g>
+  <g>
+    <rect class="box" x="220" y="640" width="150" height="80" rx="2"/>
+    <text class="ref" x="236" y="668">TLM1</text>
+    <text class="name" x="236" y="685">Telemetry Radio</text>
+    <text class="spec" x="236" y="700">UART, 915/433 MHz</text>
+  </g>
+  <g>
+    <rect class="box" x="400" y="640" width="150" height="80" rx="2"/>
+    <text class="ref" x="416" y="668">GPS1</text>
+    <text class="name" x="416" y="685">GNSS + Compass</text>
+    <text class="spec" x="416" y="700">UART + I2C</text>
+  </g>
+  <g>
+    <rect class="box" x="580" y="640" width="150" height="80" rx="2"/>
+    <text class="ref" x="596" y="668">ASP1</text>
+    <text class="name" x="596" y="685">Airspeed Sensor</text>
+    <text class="spec" x="596" y="700">I2C</text>
+  </g>
+  <g>
+    <rect class="box" x="800" y="640" width="190" height="80" rx="2"/>
+    <text class="ref" x="816" y="668">CC1</text>
+    <text class="name" x="816" y="685">Companion Computer</text>
+    <text class="spec" x="816" y="700">MAVLink over UART/USB</text>
+  </g>
+  <g>
+    <rect class="box" x="1040" y="640" width="160" height="80" rx="2"/>
+    <text class="ref" x="1056" y="668">CAM1</text>
+    <text class="name" x="1056" y="685">EO Camera</text>
+    <text class="spec" x="1056" y="700">CSI / USB</text>
+  </g>
+
+  <g>
+    <rect class="box" x="40" y="820" width="140" height="75" rx="2"/>
+    <text class="ref" x="56" y="847">S-T</text>
+    <text class="name" x="56" y="863">Vane Servo &#183; Top</text>
+    <text class="spec" x="56" y="877">&#8805;{servo_torque_gcm:.0f} g&#183;cm, PWM</text>
+  </g>
+  <g>
+    <rect class="box" x="200" y="820" width="140" height="75" rx="2"/>
+    <text class="ref" x="216" y="847">S-B</text>
+    <text class="name" x="216" y="863">Vane Servo &#183; Bottom</text>
+    <text class="spec" x="216" y="877">&#8805;{servo_torque_gcm:.0f} g&#183;cm, PWM</text>
+  </g>
+  <g>
+    <rect class="box" x="360" y="820" width="140" height="75" rx="2"/>
+    <text class="ref" x="376" y="847">S-L</text>
+    <text class="name" x="376" y="863">Vane Servo &#183; Left</text>
+    <text class="spec" x="376" y="877">&#8805;{servo_torque_gcm:.0f} g&#183;cm, PWM</text>
+  </g>
+  <g>
+    <rect class="box" x="520" y="820" width="140" height="75" rx="2"/>
+    <text class="ref" x="536" y="847">S-R</text>
+    <text class="name" x="536" y="863">Vane Servo &#183; Right</text>
+    <text class="spec" x="536" y="877">&#8805;{servo_torque_gcm:.0f} g&#183;cm, PWM</text>
+  </g>
+  <text class="spec" x="40" y="920">T/B/L/R = aft-view labels, matching vehicle_assembly.py VANE_ANGLES &#183; torque from out/control_vanes.yaml</text>
+
+  <g transform="translate(1010,50)">
+    <rect class="box" x="0" y="0" width="440" height="190" rx="2"/>
+    <text class="name" x="16" y="24" font-weight="650">Wire legend</text>
+    <line x1="16" y1="44" x2="52" y2="44" class="power" stroke-width="6"/>
+    <text class="spec" x="60" y="48">Main power bus ({op.main_gauge_awg} AWG, {op.main_connector}/bullets)</text>
+    <line x1="16" y1="66" x2="52" y2="66" class="power" stroke-width="2.5"/>
+    <text class="spec" x="60" y="70">Regulated 5V power ({op.bec2_gauge_awg}&#8211;{op.bec1_gauge_awg} AWG)</text>
+    <line x1="16" y1="88" x2="52" y2="88" class="signal" stroke-width="2.25"/>
+    <text class="spec" x="60" y="92">PWM / discrete signal</text>
+    <line x1="16" y1="110" x2="52" y2="110" class="data" stroke-width="2" stroke-dasharray="6 4"/>
+    <text class="spec" x="60" y="114">Serial / data bus (UART, I2C, MAVLink)</text>
+    <circle class="jx" cx="34" cy="132" r="3.4"/>
+    <text class="spec" x="60" y="136">Junction (connected)</text>
+    <text class="spec" x="16" y="158">Crossing lines without a dot are NOT connected.</text>
+    <text class="spec" x="16" y="174">Grounds/returns common, not individually drawn.</text>
+  </g>
+
+  <g transform="translate(1000,800)">
+    <rect class="box" x="0" y="0" width="440" height="170" rx="2"/>
+    <line x1="0" y1="34" x2="440" y2="34" stroke="#1B2128" stroke-width="1.2"/>
+    <text class="name" x="16" y="24" font-weight="650" font-size="13px">VBAT TAIL-SITTER</text>
+    <text class="spec" x="16" y="52">ELECTRICAL BLOCK DIAGRAM</text>
+    <text class="spec" x="16" y="66">Electric ducted-fan tail-sitter VTOL &#183; {D_mm:.0f} mm COTS EDF</text>
+    <line x1="0" y1="80" x2="440" y2="80" stroke="#1B2128" stroke-width="1"/>
+    <text class="spec" x="16" y="98">Dwg No. VBT-ELEC-001</text>
+    <text class="spec" x="16" y="112">Rev A &#8212; draft, pre-hardware-selection</text>
+    <text class="spec" x="16" y="126">Scale: NTS</text>
+    <text class="spec" x="240" y="98">Generated by electrical_diagram.py</text>
+    <text class="spec" x="240" y="112">conceptual_design v{package_version}</text>
+    <text class="spec" x="240" y="126">source: config/*.yaml, out/*.yaml</text>
+    <text class="spec" x="16" y="150">vbat-uav-notebooks &#183; conceptual design study</text>
+  </g>
+</svg>
+'''
+
+
+def write_wiring_diagram(svg: str, op: OperatingPoint, elec: ElectricalParams, out_dir) -> dict:
+    """Write out/wiring_diagram.svg and out/electrical.yaml. Returns paths."""
+    from pathlib import Path
+
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    svg_path = out_dir / "wiring_diagram.svg"
+    yaml_path = out_dir / "electrical.yaml"
+
+    svg_path.write_text(svg, encoding="utf-8")
+
+    data = {
+        "battery_series_cells": elec.battery_series_cells,
+        "pack_voltage_v":       round(op.pack_voltage_v, 2),
+        "pack_capacity_ah":     round(op.pack_capacity_ah, 3),
+        "hover_current_a":      round(op.hover_current_a, 2),
+        "cruise_current_a":     round(op.cruise_current_a, 2),
+        "esc_rating_a":         round(op.esc_rating_a, 1),
+        "main_gauge_awg":       op.main_gauge_awg,
+        "main_connector":       op.main_connector,
+        "bec1_gauge_awg":       op.bec1_gauge_awg,
+        "bec2_gauge_awg":       op.bec2_gauge_awg,
+    }
+    with open(yaml_path, "w", encoding="utf-8") as f:
+        f.write("# AUTO-GENERATED by electrical_diagram.py -- do not edit by hand.\n")
+        f.write("# Source  : config/electrical.yaml, config/battery.yaml, config/rotor.yaml\n")
+        f.write("# Regen   : re-run notebooks/wiring_diagram.ipynb\n\n")
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+    return {"svg": str(svg_path), "yaml": str(yaml_path)}

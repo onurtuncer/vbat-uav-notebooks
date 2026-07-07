@@ -6,6 +6,7 @@ src/conceptual_design/models.py (key renames, typos, missing fields).
 
 import pytest
 
+from conceptual_design.electrical_diagram import ElectricalParams
 from conceptual_design.forward_flight_power import ForwardFlightParams
 from conceptual_design.models import (
     Aerodynamics,
@@ -82,3 +83,12 @@ def test_wing_structure_params(config_dir):
     assert ws.method in ("raymer", "nicolai")
     assert 0.0 < ws.tc_ratio < 0.3
     assert ws.n_ult >= 1.0
+
+
+def test_electrical(config_dir):
+    e = ElectricalParams.from_yaml(config_dir / "electrical.yaml")
+    assert e.battery_series_cells in range(1, 15)
+    assert 3.0 < e.cell_nominal_v < 4.5
+    assert e.esc_current_margin > 1.0
+    assert e.bec1_budget_a > 0.0
+    assert e.bec2_budget_a > 0.0
