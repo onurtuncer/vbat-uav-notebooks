@@ -8,6 +8,8 @@ Assembles the sized components into one parametric vehicle:
     duct          annular EDF shroud        (out/fuselage.yaml)
     duct struts   4x flat plates fuselage->duct
     vanes         4x jet control vanes      (out/control_vanes.yaml)
+    servos        4x 9g-class vane servos, recessed in the centerbody
+                  hub, output shaft on the vane hinge line
     legs          4x landing skids on the duct (tail-sitter stands on them)
 
 AXIS CONVENTION (Aetherion):  body FRD -- x forward (out the nose),
@@ -89,6 +91,43 @@ def duct_solid(
         return ring
 
 
+def _servo_box(
+    x_hinge_m:  float,   # station of the vane hinge line [m, +aft]
+    r_hub_m:    float,   # exhaust centerbody (hub) radius [m]
+    angle_deg:  float,   # rotation about +x, 0 = +z (same convention as vanes)
+    body_l_mm:  float = 23.0,   # 9g-class servo case: L x W x H
+    body_w_mm:  float = 12.4,
+    body_h_mm:  float = 27.0,
+    shaft_d_mm: float = 5.0,
+    recess_mm:  float = 22.0,   # how deep the case sits inside the hub
+) -> cq.Workplane:
+    """
+    9g-class vane servo, recessed into the exhaust centerbody with its
+    output shaft on the vane hinge line (radial axis).
+
+    Case long axis runs fore-aft (body x); the shaft protrudes radially
+    to meet the vane root.  Built along +z, then rotated about +x by the
+    same aft-view angle used for the vane it drives.
+    """
+    x0 = -(x_hinge_m * MM)                     # body x of the hinge line
+    r_top = r_hub_m * MM - recess_mm + body_h_mm   # outer face of the case
+
+    case = (
+        cq.Workplane("XY", origin=(x0, 0, 0))
+        # servo shaft is offset toward one end of the case: put the shaft
+        # on the hinge line and let the case extend forward (+x)
+        .box(body_l_mm, body_w_mm, body_h_mm,
+             centered=(False, True, False))
+        .translate((-0.25 * body_l_mm, 0, r_hub_m * MM - recess_mm))
+    )
+    shaft = (
+        cq.Workplane("XY", origin=(x0, 0, r_top))
+        .circle(shaft_d_mm / 2.0)
+        .extrude(r_hub_m * MM - r_top + 1.0)   # reach the hub surface (+1 mm)
+    )
+    return case.union(shaft).rotate((0, 0, 0), (1, 0, 0), angle_deg)
+
+
 def _radial_plate(
     x_aft_m:   float,   # station of the plate's aft edge [m, +aft]
     chord_m:   float,   # axial extent [m]
@@ -160,6 +199,14 @@ def build_vehicle(
         for name, ang in VANE_ANGLES.items()
     }
 
+    # -- vane servos: one per vane, recessed in the centerbody hub with
+    #    the output shaft on the hinge line (hinge_xc of the vane chord)
+    x_hinge = x_vane_te - (1.0 - vanes.get("hinge_xc", 0.25)) * vanes["c_vane_m"]
+    servo_parts = {
+        name: _servo_box(x_hinge, vanes["R_hub_m"], ang)
+        for name, ang in VANE_ANGLES.items()
+    }
+
     # -- exhaust centerbody: hub cylinder carrying the vane hinges, plus
     #    an exhaust cone.  Without it the vanes would float in the jet.
     r_hub_mm = vanes["R_hub_m"] * MM
@@ -198,8 +245,11 @@ def build_vehicle(
     asm.add(centerbody, name="centerbody", color=grey)
     for i, s in enumerate(struts):
         asm.add(s, name=f"strut_{i+1}", color=dark)
+    blue   = cq.Color(0.17, 0.35, 0.78)
     for name, v in vane_parts.items():
         asm.add(v, name=f"vane_{name}", color=accent)
+    for name, sv in servo_parts.items():
+        asm.add(sv, name=f"servo_{name}", color=blue)
     for i, leg in enumerate(legs):
         asm.add(leg, name=f"leg_{i+1}", color=dark)
 
@@ -209,6 +259,8 @@ def build_vehicle(
         fused = fused.union(s)
     for v in vane_parts.values():
         fused = fused.union(v)
+    for sv in servo_parts.values():
+        fused = fused.union(sv)
     for leg in legs:
         fused = fused.union(leg)
 
