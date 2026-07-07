@@ -133,7 +133,9 @@ def build_prop_rotor(D_rotor_m: float, geom: PropGeometry) -> cq.Workplane:
         desig = _naca_designation(geom.camber_M, geom.camber_P, tc)
         sections.append(_blade_section_wire(r, chord, beta, desig))
 
-    blade = cq.Workplane("XY").newObject(sections).loft(combine=True)
+    # newObject() fills the stack but not the pending-wire list that
+    # loft() consumes -- toPending() bridges the two
+    blade = cq.Workplane("XY").newObject(sections).toPending().loft(combine=True)
 
     # -- circular pattern about the rotor (+x) axis ----------------------
     blades = blade
