@@ -7,6 +7,8 @@ Assembles the sized components into one parametric vehicle:
     wing          NACA section, constant chord  (mass closure + out/airfoil.yaml)
     ailerons      2x outboard TE control surfaces, split from the wing
                   at zero deflection (cruise trim)  (out/aileron.yaml)
+    ail. servos   2x 9g-class servos as lower-surface pods on the fixed
+                  wing forward of the aileron hinge (thin wing -> pod)
     duct          annular EDF shroud        (out/fuselage.yaml)
     duct struts   4x flat plates fuselage->duct
     vanes         4x jet control vanes      (out/control_vanes.yaml)
@@ -32,6 +34,7 @@ import cadquery as cq
 from .fuselage_body import fuselage_solid, MM
 from .wing_profile import naca4_points
 from conceptual_design.fuselage_design import fuselage_radius
+from conceptual_design.airfoil_selection import parse_naca4, naca4_coordinates
 
 # minimum manufacturable plate thickness for flat parts [mm]
 T_PLATE_MIN_MM = 2.0
@@ -184,6 +187,51 @@ def _servo_box(
     return case.union(shaft).rotate((0, 0, 0), (1, 0, 0), angle_deg)
 
 
+def _aileron_servo_pod(
+    designation:  str,     # wing airfoil (out/airfoil.yaml)
+    chord_m:      float,   # wing MAC [m]
+    x_wing_LE_m:  float,   # wing LE station [m, +aft]
+    y_center_m:   float,   # spanwise station of the aileron centroid [m]
+    xc_frac:      float = 0.40,   # chord fraction of the servo (near max t/c)
+    body_l_mm:    float = 22.8,   # 9g-class body: chord x span x thickness
+    body_w_mm:    float = 22.5,
+    body_h_mm:    float = 12.2,
+    embed_mm:     float = 4.0,    # how far the pod top sits up into the wing
+) -> cq.Workplane:
+    """
+    9g-class aileron servo as a lower-surface pod on the fixed wing,
+    at the aileron centroid, forward of the hinge line.
+
+    A 9g servo is ~12 mm thick; this wing is only ~6 mm thick at the
+    aileron hinge (0.88c) and ~22 mm at max thickness (0.30c), so the
+    servo CANNOT be buried inside the aileron the way the vane servos
+    bury in the exhaust hub.  It is modeled the way thin-wing UAVs
+    actually mount it: a shallow fairing on the lower (pressure) surface
+    near max thickness, driving the aileron via a short pushrod (the
+    pushrod itself is below conceptual-model fidelity).
+
+    The lower-surface offset is read from the SAME airfoil coordinates
+    the wing solid is built from, so the pod always seats on the skin.
+    """
+    c    = chord_m * MM
+    x_le = x_wing_LE_m * MM
+
+    # lower-surface z at xc_frac from the airfoil math (wing_solid uses
+    # z = -yc * c, so the lower surface -- yc < 0 -- is at positive z/down)
+    M, P, t = parse_naca4(designation)
+    xu, yu, xl, yl = naca4_coordinates(M, P, t, n=200)
+    il = min(range(len(xl)), key=lambda i: abs(xl[i] - xc_frac))
+    z_lower = -yl[il] * c
+
+    x0 = -(x_le + xc_frac * c)
+    pod = (
+        cq.Workplane("XY", origin=(x0, y_center_m * MM, z_lower - embed_mm))
+        # extrude downward (+z is down in FRD): pod hangs below the skin
+        .box(body_l_mm, body_w_mm, body_h_mm, centered=(True, True, False))
+    )
+    return pod
+
+
 def _radial_plate(
     x_aft_m:   float,   # station of the plate's aft edge [m, +aft]
     chord_m:   float,   # axial extent [m]
@@ -229,6 +277,17 @@ def build_vehicle(
         wing_full, chord_wing_m, b_wing_m, fus["x_wing_LE_m"],
         ail["span_frac_wing"], ail["chord_frac"],
     )
+
+    # -- aileron servos: one lower-surface pod per aileron, on the fixed
+    #    wing at the aileron centroid (out/aileron.yaml y_arm), forward of
+    #    the hinge where the wing is thick enough to carry it.
+    y_arm_m = ail["y_arm_m"]
+    aileron_servo_parts = {
+        "servo_aileron_L": _aileron_servo_pod(
+            wing_designation, chord_wing_m, fus["x_wing_LE_m"], +y_arm_m),
+        "servo_aileron_R": _aileron_servo_pod(
+            wing_designation, chord_wing_m, fus["x_wing_LE_m"], -y_arm_m),
+    }
 
     # -- duct ----------------------------------------------------------
     x_duct_c = next(it["x_cg_m"] for it in fus["layout"] if it["name"] == "duct")
@@ -315,6 +374,8 @@ def build_vehicle(
         asm.add(v, name=f"vane_{name}", color=accent)
     for name, sv in servo_parts.items():
         asm.add(sv, name=f"servo_{name}", color=blue)
+    for name, asv in aileron_servo_parts.items():
+        asm.add(asv, name=name, color=blue)
     for i, leg in enumerate(legs):
         asm.add(leg, name=f"leg_{i+1}", color=dark)
 
@@ -322,6 +383,8 @@ def build_vehicle(
     fused = fuselage.union(wing).union(duct).union(centerbody)
     for ap in aileron_parts_dict.values():
         fused = fused.union(ap)
+    for asv in aileron_servo_parts.values():
+        fused = fused.union(asv)
     for s in struts:
         fused = fused.union(s)
     for v in vane_parts.values():
