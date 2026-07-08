@@ -5,6 +5,8 @@ Assembles the sized components into one parametric vehicle:
 
     fuselage      body of revolution        (out/fuselage.yaml)
     wing          NACA section, constant chord  (mass closure + out/airfoil.yaml)
+    ailerons      2x outboard TE control surfaces, split from the wing
+                  at zero deflection (cruise trim)  (out/aileron.yaml)
     duct          annular EDF shroud        (out/fuselage.yaml)
     duct struts   4x flat plates fuselage->duct
     vanes         4x jet control vanes      (out/control_vanes.yaml)
@@ -65,6 +67,60 @@ def wing_solid(
     # Workplane("XZ") local (u, v) -> global (u, 0, v); extrude is +/- y.
     profile = cq.Workplane("XZ").polyline(pts).close()
     return profile.extrude(span_m / 2.0 * MM, both=True)
+
+
+def aileron_parts(
+    wing:            cq.Workplane,   # full wing solid, from wing_solid()
+    chord_m:         float,          # wing MAC [m]
+    span_m:          float,          # wing span [m]
+    x_wing_LE_m:     float,          # wing LE station [m, +aft]
+    span_frac_wing:  float,          # aileron span / wing half-span [-] (out/aileron.yaml)
+    chord_frac:      float,          # aileron chord / wing MAC [-]      (out/aileron.yaml)
+) -> Tuple[cq.Workplane, Dict[str, cq.Workplane]]:
+    """
+    Split the outboard trailing-edge aileron surfaces out of the wing solid.
+
+    This is a cruise-trim (zero-deflection) solid model, not an
+    articulated one: the wing is cut along the hinge line and the two
+    span stations into three pieces (wing_cut, aileron_L, aileron_R)
+    whose union reproduces the original wing exactly -- the aileron
+    parameters (`span_frac_wing`, `chord_frac`) match aileron_design.py's
+    own geometry exactly, so the CAD split sits precisely where the
+    physics model assumes it does.
+
+    Returns (wing_cut, {"aileron_L": ..., "aileron_R": ...}).
+    """
+    bb = wing.val().BoundingBox()
+    c    = chord_m * MM
+    x_le = x_wing_LE_m * MM
+    x_te_body    = -(x_le + c)                          # trailing edge
+    x_hinge_body = -(x_le + (1.0 - chord_frac) * c)      # aileron hinge line
+
+    b_half  = span_m / 2.0 * MM
+    y_inner = (1.0 - span_frac_wing) * b_half
+    y_outer = b_half
+
+    z_margin = 5.0   # mm, generous beyond the airfoil thickness
+    z_lo, z_hi = bb.zmin - z_margin, bb.zmax + z_margin
+    x_lo = min(x_te_body, x_hinge_body) - 1.0
+    x_hi = max(x_te_body, x_hinge_body) + 1.0
+
+    def _span_box(y_lo: float, y_hi: float) -> cq.Workplane:
+        return (
+            cq.Workplane("XY")
+            .box(x_hi - x_lo, y_hi - y_lo, z_hi - z_lo,
+                 centered=(False, False, False))
+            .translate((x_lo, y_lo, z_lo))
+        )
+
+    box_L = _span_box(y_inner, y_outer)     # +y (left, FRD)
+    box_R = _span_box(-y_outer, -y_inner)   # -y (right, FRD)
+
+    aileron_L = wing.intersect(box_L)
+    aileron_R = wing.intersect(box_R)
+    wing_cut  = wing.cut(box_L).cut(box_R)
+
+    return wing_cut, {"aileron_L": aileron_L, "aileron_R": aileron_R}
 
 
 def duct_solid(
@@ -149,6 +205,7 @@ def _radial_plate(
 def build_vehicle(
     fus:    Dict,            # out/fuselage.yaml
     vanes:  Dict,            # out/control_vanes.yaml
+    ail:    Dict,            # out/aileron.yaml
     b_wing_m:     float,     # wing span (mass closure)
     chord_wing_m: float,     # wing chord (mass closure)
     wing_designation: str,   # e.g. "NACA 2412" (out/airfoil.yaml)
@@ -166,8 +223,12 @@ def build_vehicle(
     # -- fuselage ------------------------------------------------------
     fuselage = fuselage_solid(D, L, fus["f_nose"], fus["f_tail"], fus["r_hub_m"])
 
-    # -- wing ----------------------------------------------------------
-    wing = wing_solid(wing_designation, chord_wing_m, b_wing_m, fus["x_wing_LE_m"])
+    # -- wing (split into fixed wing + 2 ailerons, at zero deflection) --
+    wing_full = wing_solid(wing_designation, chord_wing_m, b_wing_m, fus["x_wing_LE_m"])
+    wing, aileron_parts_dict = aileron_parts(
+        wing_full, chord_wing_m, b_wing_m, fus["x_wing_LE_m"],
+        ail["span_frac_wing"], ail["chord_frac"],
+    )
 
     # -- duct ----------------------------------------------------------
     x_duct_c = next(it["x_cg_m"] for it in fus["layout"] if it["name"] == "duct")
@@ -238,9 +299,13 @@ def build_vehicle(
     accent = cq.Color(0.84, 0.15, 0.16)
     green  = cq.Color(0.10, 0.59, 0.25)
 
+    aileron_color = cq.Color(0.13, 0.45, 0.20)   # darker green: distinguish from fixed wing
+
     asm = cq.Assembly(name="vbat_tailsitter")
     asm.add(fuselage,   name="fuselage",   color=grey)
     asm.add(wing,       name="wing",       color=green)
+    for name, ap in aileron_parts_dict.items():
+        asm.add(ap, name=name, color=aileron_color)
     asm.add(duct,       name="duct",       color=dark)
     asm.add(centerbody, name="centerbody", color=grey)
     for i, s in enumerate(struts):
@@ -255,6 +320,8 @@ def build_vehicle(
 
     # -- fused single solid ----------------------------------------------
     fused = fuselage.union(wing).union(duct).union(centerbody)
+    for ap in aileron_parts_dict.values():
+        fused = fused.union(ap)
     for s in struts:
         fused = fused.union(s)
     for v in vane_parts.values():
