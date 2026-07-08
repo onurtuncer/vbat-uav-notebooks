@@ -5,7 +5,7 @@ This repository contains a **first-principles conceptual sizing study** for a **
 The focus is **not** on a production UAV, but on:
 - architectural feasibility,
 - mass / power / energy closure,
-- and understanding design trade-offs at the **pre-SBIR / technology-demonstrator level**.
+- and understanding design trade-offs at the **technology-demonstrator level**.
 
 The code is intentionally simple, transparent, and extensible.
 
