@@ -88,8 +88,8 @@ References
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from dataclasses import dataclass
+from typing import List
 
 from .models import (
     Aerodynamics, Battery, Environment, Mission,
@@ -100,6 +100,12 @@ from .forward_flight_power import (
     ForwardFlightParams, compute_size_matching_diagram, cruise_power_W,
 )
 from .wing_sizing import WingStructureParams, size_wing
+
+
+# Divergence guard: above this battery fraction the airframe class is
+# physically unrealistic and the fixed-point iteration is running away
+# (see CONVERGENCE note in the module docstring).
+MAX_BATT_FRACTION = 0.60
 
 
 # ---------------------------------------------
@@ -133,15 +139,21 @@ class SizingResult:
     m_misc_kg:      float   # misc fraction mass              [kg]
     m_payload_kg:   float   # payload (fixed requirement)     [kg]
 
-    # Power
+    # Power (all electrical, i.e. at the battery terminals)
     P_hover_W:      float   # electrical power in hover       [W]
     P_cruise_W:     float   # electrical power in cruise      [W]
     P_design_W:     float   # design (max) power              [W]
+    P_hotel_W:      float   # continuous avionics/hotel load  [W]
 
     # Energy
     E_hover_Wh:     float   # hover energy                    [Wh]
+    E_transition_Wh: float  # transition energy (at hover power) [Wh]
     E_cruise_Wh:    float   # cruise energy                   [Wh]
     E_total_Wh:     float   # total required energy (with reserve) [Wh]
+
+    # Rotor / battery operating point
+    disk_loading_N_m2: float  # converged DL = MTOW*g/(pi*D^2/4) [N/m^2]
+    C_rate_peak:    float   # peak discharge C-rate = P_design/(m_batt*e_spec) [1/h]
 
     # Wing
     wing: WingSizing        # wing geometry
@@ -173,11 +185,15 @@ class SizingResult:
                        + self.m_misc_kg + self.m_payload_kg)
         print(f"  {'Sum check':<30}: {total_check:>8.3f} kg")
         print()
-        print(f"  {'P_hover':<30}: {self.P_hover_W:>8.1f} W")
-        print(f"  {'P_cruise':<30}: {self.P_cruise_W:>8.1f} W")
+        print(f"  {'P_hover (elec, incl hotel)':<30}: {self.P_hover_W:>8.1f} W")
+        print(f"  {'P_cruise (elec, incl hotel)':<30}: {self.P_cruise_W:>8.1f} W")
         print(f"  {'P_design':<30}: {self.P_design_W:>8.1f} W")
+        print(f"  {'P_hotel':<30}: {self.P_hotel_W:>8.1f} W")
+        print(f"  {'Disk loading (converged)':<30}: {self.disk_loading_N_m2:>8.1f} N/m^2")
+        print(f"  {'Peak C-rate':<30}: {self.C_rate_peak:>8.1f} C")
         print()
         print(f"  {'E_hover':<30}: {self.E_hover_Wh:>8.2f} Wh")
+        print(f"  {'E_transition':<30}: {self.E_transition_Wh:>8.2f} Wh")
         print(f"  {'E_cruise':<30}: {self.E_cruise_Wh:>8.2f} Wh")
         print(f"  {'E_total (with reserve)':<30}: {self.E_total_Wh:>8.2f} Wh")
         print()
@@ -198,7 +214,6 @@ class SizingResult:
 def battery_mass_from_energy(
     E_Wh:       float,
     batt:       Battery,
-    eta_bat:    float = 0.97,   # battery discharge efficiency
 ) -> float:
     """
     Tyan et al. eq. (2-49):
@@ -207,14 +222,14 @@ def battery_mass_from_energy(
     Parameters
     ----------
     E_Wh     : total required energy including reserve  [Wh]
-    batt     : Battery dataclass (specific_energy, usable_fraction)
-    eta_bat  : battery efficiency (internal resistance losses)  [-]
+    batt     : Battery dataclass (specific_energy, usable_fraction,
+               eta_bat -- all loaded from config/battery.yaml)
 
     Returns
     -------
     float -- battery mass [kg]
     """
-    effective_capacity = batt.specific_energy * eta_bat * batt.usable_fraction
+    effective_capacity = batt.specific_energy * batt.eta_bat * batt.usable_fraction
     if effective_capacity <= 0:
         raise ValueError(
             "Battery effective capacity is zero or negative. "
@@ -289,12 +304,13 @@ def run_sizing_loop(
     ws_params:      WingStructureParams,
     env:            Environment = Environment(),
 
-    # VTOL rotor geometry (for tail-sitter: single EDF diameter)
-    D_rotor_m:      float = 0.28,
-    disk_loading:   float = 150.0,   # [N/m^2]  initial guess; will be updated
+    # VTOL rotor geometry (for tail-sitter: single EDF diameter).
+    # Disk loading is NOT a parameter: the rotor carries the full weight,
+    # so DL = MTOW*g/(pi*D^2/4) is recomputed every iteration.
+    D_rotor_m:      float = 0.195,
 
-    # Battery model
-    eta_bat:        float = 0.97,
+    # Continuous avionics / hotel load (FC, companion, telemetry, GNSS...)
+    P_hotel_W:      float = 0.0,
 
     # Convergence
     tol:            float = 1e-5,
@@ -371,9 +387,15 @@ def run_sizing_loop(
         # -- 4d. Power at current MTOW ---------------------------------
         W_N = m_total * env.g
 
-        # VTOL hover power  (W/N x N = W)
+        # Disk loading follows the weight: the EDF must lift all of it
+        disk_loading = W_N / (math.pi * D_rotor_m**2 / 4.0)
+
+        # VTOL hover power (W/N x N = W).  vtol_* return SHAFT power
+        # (momentum theory / FoM covers rotor aero only); convert to
+        # electrical with the motor+ESC chain.
+        eta_elec  = prop_params.eta_motor * prop_params.eta_esc
         P_W_hover = vtol_hover_power_to_weight(disk_loading, vtol_p)
-        P_hover   = P_W_hover * W_N
+        P_hover   = P_W_hover * W_N / eta_elec + P_hotel_W
 
         # VTOL climb power
         P_W_climb = vtol_climb_power_to_weight(
@@ -383,23 +405,37 @@ def run_sizing_loop(
             D_rotor_m         = D_rotor_m,
             p                 = vtol_p,
         )
-        P_climb = P_W_climb * W_N
+        P_climb = P_W_climb * W_N / eta_elec + P_hotel_W
 
         # Use the larger of hover / climb as the VTOL design power
         P_vtol = max(P_hover, P_climb)
 
-        # Cruise power  (L/D model)
+        # Cruise power  (L/D model, eta_total covers prop+motor+ESC)
         cruise = cruise_power_W(m_total, aero, mission, prop_params.eta_total, env)
-        P_cruise = cruise["P_elec_W"]
+        P_cruise = cruise["P_elec_W"] + P_hotel_W
 
         # -- 4e. Mission energy ----------------------------------------
-        # t_hover already includes takeoff + landing hover budget
-        E_hover_Wh  = P_vtol   * mission.t_hover  / 3600.0
-        E_cruise_Wh = P_cruise * mission.t_cruise / 3600.0
-        E_total_Wh  = mission.reserve_factor * (E_hover_Wh + E_cruise_Wh)
+        # t_hover already includes takeoff + landing hover budget;
+        # transitions are budgeted at hover power (conservative).
+        E_hover_Wh  = P_vtol   * mission.t_hover      / 3600.0
+        E_trans_Wh  = P_vtol   * mission.t_transition / 3600.0
+        E_cruise_Wh = P_cruise * mission.t_cruise     / 3600.0
+        E_total_Wh  = mission.reserve_factor * (E_hover_Wh + E_trans_Wh + E_cruise_Wh)
 
         # -- 4f. New battery mass --------------------------------------
-        m_batt_new = battery_mass_from_energy(E_total_Wh, batt, eta_bat)
+        m_batt_new = battery_mass_from_energy(E_total_Wh, batt)
+
+        # Divergence guard: stop instead of iterating to infinity
+        mtow_next = mtow_from_components(m_payload_kg, m_batt_new, wf)
+        if (not math.isfinite(m_batt_new)
+                or m_batt_new / mtow_next > MAX_BATT_FRACTION):
+            raise ValueError(
+                f"Sizing loop diverged: battery fraction "
+                f"{m_batt_new / mtow_next:.2f} > {MAX_BATT_FRACTION} at "
+                f"iteration {i + 1}. The mission does not close for this "
+                f"rotor/battery/weight-fraction combination -- shorten the "
+                f"mission, enlarge the rotor, or improve the battery."
+            )
 
         # -- 4g. Convergence check -------------------------------------
         delta = abs(m_batt_new - m_batt)
@@ -434,9 +470,13 @@ def run_sizing_loop(
     batt_fraction  = m_batt  / m_total
     fixed_fraction = f_fixed
 
-    # Wing assumption check: Raymer wing mass vs structural fraction
-    wing_fraction_actual = wing.mass_wing_kg / m_total
-    wing_fraction_assumed = wf.fs   # structure fraction is a proxy
+    # Recompute the operating point at the FINAL MTOW (the loop body's
+    # values are one tolerance-step stale after the convergence update)
+    disk_loading = m_total * env.g / (math.pi * D_rotor_m**2 / 4.0)
+
+    # Peak discharge C-rate: design power drawn from the converged pack
+    P_design    = max(P_vtol, P_cruise)
+    C_rate_peak = P_design / (m_batt * batt.specific_energy) if m_batt > 0 else 0.0
 
     return SizingResult(
         m_total_kg      = m_total,
@@ -449,10 +489,14 @@ def run_sizing_loop(
         m_payload_kg    = m_payload_kg,
         P_hover_W       = P_vtol,
         P_cruise_W      = P_cruise,
-        P_design_W      = max(P_vtol, P_cruise),
+        P_design_W      = P_design,
+        P_hotel_W       = P_hotel_W,
         E_hover_Wh      = E_hover_Wh,
+        E_transition_Wh = E_trans_Wh,
         E_cruise_Wh     = E_cruise_Wh,
         E_total_Wh      = E_total_Wh,
+        disk_loading_N_m2 = disk_loading,
+        C_rate_peak     = C_rate_peak,
         wing            = wing,
         batt_fraction   = batt_fraction,
         fixed_fraction  = fixed_fraction,
@@ -475,7 +519,6 @@ def write_sizing_result(
     prop_params,
     env,
     D_rotor_m:   float,
-    disk_loading: float,
     out_dir,
 ) -> None:
     """
@@ -496,7 +539,6 @@ def write_sizing_result(
     prop_params  : PropulsiveSystemParameters dataclass
     env          : Environment dataclass
     D_rotor_m    : rotor/EDF diameter                             [m]
-    disk_loading : rotor disk loading                             [N/m^2]
     out_dir      : output directory path (e.g. Path("out"))
     """
     import yaml
@@ -522,9 +564,12 @@ def write_sizing_result(
         "P_hover_W":        round(result.P_hover_W, 2),
         "P_cruise_W":       round(result.P_cruise_W, 2),
         "P_design_W":       round(result.P_design_W, 2),
+        "P_hotel_W":        round(result.P_hotel_W, 2),
         "E_hover_Wh":       round(result.E_hover_Wh, 3),
+        "E_transition_Wh":  round(result.E_transition_Wh, 3),
         "E_cruise_Wh":      round(result.E_cruise_Wh, 3),
         "E_total_Wh":       round(result.E_total_Wh, 3),
+        "C_rate_peak":      round(result.C_rate_peak, 2),
 
         # -- Wing geometry (the numbers the next notebook needs most) --
         "WS_design_N_m2":   round(smd_WS, 2),
@@ -540,12 +585,13 @@ def write_sizing_result(
         "V_max_ms":         round(aero.V_max, 3),
         "CL_max_assumed":   round(aero.CL_max, 4),
         "t_hover_s":        round(mission.t_hover, 1),
+        "t_transition_s":   round(mission.t_transition, 1),
         "t_cruise_s":       round(mission.t_cruise, 1),
         "reserve_factor":   round(mission.reserve_factor, 3),
 
         # -- Propulsion geometry --
         "D_rotor_m":        round(D_rotor_m, 4),
-        "disk_loading_N_m2": round(disk_loading, 2),
+        "disk_loading_N_m2": round(result.disk_loading_N_m2, 2),
         "eta_total":        round(prop_params.eta_total, 5),
 
         # -- Environment --
@@ -576,12 +622,14 @@ if __name__ == "__main__":
     from .wing_sizing import WingStructureParams
 
     env     = Environment()
-    mission = Mission(t_hover=120, t_cruise=1800, V_cruise=20.0,
-                      rate_of_climb=2.5, reserve_factor=1.20)
+    mission = Mission(t_hover=120, t_cruise=900, V_cruise=20.0,
+                      rate_of_climb=2.5, reserve_factor=1.20,
+                      t_transition=40.0)
     aero    = Aerodynamics(LD=8.0, CD0=0.025, AR=6.0, e=0.80,
                            CL_max=1.4, V_stall=12.0, V_max=35.0)
-    batt    = Battery(specific_energy=140.0, usable_fraction=0.85)
-    wf      = WeightFraction(fs=0.30, fp=0.20, fa=0.10, fm=0.10)
+    batt    = Battery(specific_energy=140.0, usable_fraction=0.85,
+                      eta_bat=0.97, c_rate_max=25.0)
+    wf      = WeightFraction(fs=0.25, fp=0.15, fa=0.08, fm=0.07)
     prop    = PropulsiveSystemParameters(
         eta_prop=0.80, eta_motor=0.90, eta_esc=0.95,
         fom=0.70, Cd_blade=0.01, sigma_rotor=0.077,
@@ -600,8 +648,8 @@ if __name__ == "__main__":
         ff_params     = ff,
         ws_params     = ws,
         env           = env,
-        D_rotor_m     = 0.28,
-        disk_loading  = 150.0,
+        D_rotor_m     = 0.195,
+        P_hotel_W     = 15.0,
     )
     result.print_summary()
 

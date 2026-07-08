@@ -1,0 +1,282 @@
+name: Design Pipeline
+
+# Tier-2/3 CI: execute the design notebooks end-to-end from config/,
+# regression-check the resulting design point, validate the exported
+# geometry, smoke-test the OpenFOAM case on a coarse mesh, and publish
+# the design report (rendered notebooks + interactive 3D geometry) to
+# GitHub Pages.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: design-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-notebooks:
+    name: Execute notebooks & check design
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # setuptools-scm needs tags for the version
+      - uses: actions/setup-python@v6
+        with:
+          # CadQuery wheels lag the newest CPython; pin a supported one
+          python-version: "3.12"
+          cache: pip
+      - name: Install package with CAD + notebook deps
+        run: pip install -e ".[cad,notebooks,dev]"
+
+      - name: Execute notebooks (dependency order)
+        run: |
+          set -euo pipefail
+          for nb in vbat_conceptual_design wing_design control_vane_design \
+                    fuselage_design vehicle_solid_model mass_properties \
+                    wiring_diagram; do
+            echo "::group::notebooks/${nb}.ipynb"
+            jupyter nbconvert --to notebook --execute \
+              --ExecutePreprocessor.timeout=1200 \
+              --output-dir executed "notebooks/${nb}.ipynb"
+            echo "::endgroup::"
+          done
+
+      - name: Design regression & geometry checks
+        run: pytest tests/test_design_outputs.py tests/test_geometry.py -v
+
+      - name: Upload design outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-outputs
+          path: |
+            out/
+            executed/
+          retention-days: 30
+
+  cfd-smoke:
+    name: OpenFOAM smoke run (coarse mesh)
+    needs: run-notebooks
+    # Coarse but still ~15-25 min: run on main and on demand, not per-PR
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container:
+      image: opencfd/openfoam-default:2406
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch design outputs (STL geometry)
+        uses: actions/download-artifact@v4
+        with:
+          name: design-outputs
+
+      - name: Install python3 (Allrun.case computes freestream with it)
+        run: |
+          apt-get update -qq && apt-get install -y -qq python3 > /dev/null
+
+      - name: Coarsen mesh settings
+        working-directory: cfd/vehicle
+        run: |
+          set -euo pipefail
+          # Drop surface refinement 6-7 -> 2-3 and disable boundary
+          # layers: we are testing that the case machinery runs, not
+          # chasing resolved aerodynamics.
+          sed -i 's/level (6 7);/level (2 3);/'                system/snappyHexMeshDict
+          sed -i 's/level 7;/level 3;/'                        system/snappyHexMeshDict
+          sed -i 's/addLayers       true;/addLayers       false;/' system/snappyHexMeshDict
+          sed -i 's/levels ((1E15 5));/levels ((1E15 2));/'    system/snappyHexMeshDict
+          sed -i 's/levels ((1E15 4));/levels ((1E15 1));/'    system/snappyHexMeshDict
+          sed -i 's/levels ((1E15 6));/levels ((1E15 2));/'    system/snappyHexMeshDict
+
+      - name: Mesh (blockMesh + snappyHexMesh, serial)
+        working-directory: cfd/vehicle
+        run: |
+          set -eo pipefail
+          # OpenFOAM's bashrc probes unset variables -- source before set -u
+          source /openfoam/bash.rc
+          set -u
+          ./Allrun.mesh ../.. 1
+          # Hard gate: default checkMesh must report a usable mesh
+          checkMesh > log/checkMesh.gate.log
+          grep -q "Mesh OK" log/checkMesh.gate.log || {
+            echo "::error::checkMesh did not report 'Mesh OK'"
+            tail -40 log/checkMesh.gate.log; exit 1; }
+
+      - name: Case setup + short simpleFoam run
+        working-directory: cfd/vehicle
+        run: |
+          set -eo pipefail
+          source /openfoam/bash.rc
+          set -u
+          ./Allrun.case -a 0 -V 20 -n 1
+          # 60 iterations: enough to prove BCs, schemes, and the
+          # forceCoeffs function object all work; not converged.
+          foamDictionary system/controlDict -entry endTime -set 60
+          potentialFoam > log/potentialFoam.log
+          simpleFoam > log/simpleFoam.log
+          grep -q "^End" log/simpleFoam.log || {
+            echo "::error::simpleFoam did not finish"; tail -40 log/simpleFoam.log; exit 1; }
+
+      - name: Check force coefficients are finite
+        working-directory: cfd/vehicle
+        run: |
+          set -euo pipefail
+          coeff=$(find postProcessing -name "coefficient*.dat" | head -1)
+          [[ -n "$coeff" ]] || { echo "::error::no forceCoeffs output"; exit 1; }
+          echo "last iterations of $coeff:"
+          tail -5 "$coeff"
+          tail -1 "$coeff" | grep -qiE "nan|inf" && {
+            echo "::error::non-finite force coefficients"; exit 1; } || true
+
+      - name: Upload CFD logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfd-smoke-logs
+          path: |
+            cfd/vehicle/log/
+            cfd/vehicle/postProcessing/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  docs:
+    name: Publish design report (GitHub Pages)
+    needs: run-notebooks
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch executed notebooks & outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: design-outputs
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install nbconvert
+        run: pip install nbconvert
+
+      - name: Render executed notebooks to HTML
+        run: |
+          mkdir -p site
+          jupyter nbconvert --to html --output-dir site executed/*.ipynb
+
+      - name: Assemble site (geometry viewer, CAD downloads, BOM, plots)
+        run: |
+          set -euo pipefail
+          cp assets/pages/viewer.html site/
+          mkdir -p site/cad site/img
+          cp -r out/cad/stl out/cad/step site/cad/
+          cp out/*.png site/img/ 2>/dev/null || true
+
+          # Part manifest for the exploded-view viewer
+          python3 - << 'PYEOF'
+          import json, pathlib
+          parts = sorted(p.name for p in pathlib.Path("site/cad/stl/parts").glob("*.stl"))
+          pathlib.Path("site/cad/parts.json").write_text(json.dumps({"parts": parts}))
+          print(f"parts.json: {len(parts)} parts")
+          PYEOF
+
+          # Bill of materials page from out/bom.csv
+          python3 - << 'PYEOF'
+          import csv, html, pathlib
+          rows = list(csv.reader(open("out/bom.csv", encoding="utf-8")))
+          head, body = rows[0], rows[1:]
+          cells = "".join(f"<th>{html.escape(h)}</th>" for h in head)
+          trs = "\n".join(
+              "<tr>" + "".join(f"<td>{html.escape(c)}</td>" for c in r) + "</tr>"
+              for r in body)
+          page = f"""<!DOCTYPE html>
+          <html lang="en"><head><meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>V-BAT — Bill of Materials</title>
+          <style>
+            body {{ font-family: system-ui, sans-serif; max-width: 60rem;
+                   margin: 3rem auto; padding: 0 1rem; }}
+            table {{ border-collapse: collapse; width: 100%; font-size: 0.9rem; }}
+            th, td {{ border: 1px solid #ccc; padding: 0.35rem 0.6rem; text-align: left; }}
+            th {{ background: #f0f2f5; }}
+            tr:nth-child(even) {{ background: #fafbfc; }}
+          </style></head><body>
+          <h1>Bill of Materials</h1>
+          <p>Generated by <code>notebooks/mass_properties.ipynb</code> —
+             <a href="index.html">back to report</a> ·
+             <a href="bom.csv" download>download CSV</a></p>
+          <table><thead><tr>{cells}</tr></thead><tbody>{trs}</tbody></table>
+          </body></html>"""
+          pathlib.Path("site/bom.html").write_text(page, encoding="utf-8")
+          print("bom.html written")
+          PYEOF
+          cp out/bom.csv site/
+          cp out/wiring_diagram.svg site/
+          cat > site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>V-BAT Tail-Sitter — Conceptual Design Report</title>
+            <style>
+              body { font-family: system-ui, sans-serif; max-width: 46rem;
+                     margin: 3rem auto; padding: 0 1rem; line-height: 1.6; }
+              li { margin: 0.4rem 0; }
+              img { max-width: 100%; border: 1px solid #ccc; border-radius: 6px; }
+            </style>
+          </head>
+          <body>
+            <h1>Electric V-BAT-Like Tail-Sitter — Design Report</h1>
+            <p>Generated end-to-end from <code>config/</code> by CI on every
+               push to <code>main</code>.</p>
+
+            <h2>Geometry</h2>
+            <p><a href="viewer.html"><b>🛩 Interactive 3D viewer</b></a>
+               — exploded view, per-part toggles, STEP/STL downloads
+               (incl. the parametric fan rotor)</p>
+            <p><a href="bom.html"><b>📋 Bill of materials</b></a></p>
+            <p><a href="wiring_diagram.svg"><b>🔌 Electrical block wiring diagram</b></a></p>
+            <p><img src="img/vehicle_iso.png" alt="Vehicle isometric view"></p>
+
+            <h2>Design notebooks (run order)</h2>
+            <ol>
+              <li><a href="vbat_conceptual_design.html">Conceptual design — mission sizing &amp; mass closure</a></li>
+              <li><a href="wing_design.html">Wing design — airfoil selection &amp; planform</a></li>
+              <li><a href="control_vane_design.html">Control vane design</a></li>
+              <li><a href="fuselage_design.html">Fuselage design — layout &amp; drag trade</a></li>
+              <li><a href="vehicle_solid_model.html">Full-vehicle solid model (CadQuery)</a></li>
+              <li><a href="mass_properties.html">Mass properties — inertia tensor &amp; BOM</a></li>
+              <li><a href="wiring_diagram.html">Electrical block wiring diagram</a></li>
+            </ol>
+
+            <p><a href="https://github.com/onurtuncer/vbat-uav-notebooks">Source repository</a></p>
+          </body>
+          </html>
+          EOF
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v5

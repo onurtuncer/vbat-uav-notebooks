@@ -1,0 +1,66 @@
+name: Release
+
+# Tag-driven releases: pushing a version tag (v0.2.0, ...) re-runs the
+# whole design pipeline and attaches the frozen design outputs (YAML
+# design point, STEP/STL geometry, plots, rendered notebooks) to a
+# GitHub Release. Each release is therefore a complete, reproducible
+# snapshot of the design.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build design snapshot & release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install package with CAD + notebook deps
+        run: pip install -e ".[cad,notebooks,dev]"
+
+      - name: Execute notebooks (dependency order)
+        run: |
+          set -euo pipefail
+          for nb in vbat_conceptual_design wing_design control_vane_design \
+                    fuselage_design vehicle_solid_model mass_properties \
+                    wiring_diagram; do
+            jupyter nbconvert --to notebook --execute \
+              --ExecutePreprocessor.timeout=1200 \
+              --output-dir executed "notebooks/${nb}.ipynb"
+          done
+
+      - name: Design regression & geometry checks
+        run: pytest tests/test_design_outputs.py tests/test_geometry.py -v
+
+      - name: Package design snapshot
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME}"
+          zip -r "vbat-design-${version}.zip" out/ executed/
+          cp out/cad/step/vbat_fused.step "vbat_fused-${version}.step"
+          cp out/cad/stl/vbat_fused.stl  "vbat_fused-${version}.stl"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "Design snapshot ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            "vbat-design-${GITHUB_REF_NAME}.zip" \
+            "vbat_fused-${GITHUB_REF_NAME}.step" \
+            "vbat_fused-${GITHUB_REF_NAME}.stl"

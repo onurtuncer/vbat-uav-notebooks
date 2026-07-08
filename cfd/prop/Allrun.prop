@@ -1,0 +1,352 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# Ducted-fan propulsion map via actuator disk (no blade CAD in the repo).
+#
+#   ./Allrun.prop [-n nProcs] [-V "v1 v2 ..."] [-T "t1 t2 ..."]
+#   defaults:  V = "0 5 10 15 20 25"  (m/s, axial inflow)
+#              T = "2 5 10 15 20"     (N, disk thrust)
+#
+# Physics: uniform momentum source of magnitude T_disk over a disk cellZone
+# (r = 0.143 m, duct inner radius; thickness 20 mm at duct mid-chord x=0).
+# CFD predicts the INSTALLED result: duct lip suction, centerbody drag,
+# ram drag.  Exporter builds T_installed(V, T_disk) = T_disk + Fx(duct+cb).
+#
+# Frame: x = duct axis (FRD-consistent), inflow from +x, jet exits -x.
+# The momentum source acts on the fluid in -x; reaction thrust is +x.
+# ---------------------------------------------------------------------------
+set -euo pipefail
+cd "$(dirname "$0")"
+
+NPROCS=8
+VLIST="0 5 10 15 20 25"
+TLIST="2 5 10 15 20"
+while getopts "n:V:T:" opt; do
+    case $opt in
+        n) NPROCS=$OPTARG ;;
+        V) VLIST=$OPTARG ;;
+        T) TLIST=$OPTARG ;;
+        *) exit 1 ;;
+    esac
+done
+
+command -v blockMesh >/dev/null || { echo "ERROR: source OpenFOAM first."; exit 1; }
+mkdir -p base/system base/constant/triSurface base/0 log
+
+# ===========================================================================
+# 1. Base case (mesh once, reuse for every sweep point)
+# ===========================================================================
+python3 make_geom.py --out base/constant/triSurface
+
+cat > base/system/blockMeshDict << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object blockMeshDict; }
+scale 1;
+// Duct D=0.302 m at origin; 8D upstream (+x), 12D wake (-x), 6D lateral.
+vertices
+(
+    (-3.6 -1.8 -1.8) ( 2.4 -1.8 -1.8) ( 2.4  1.8 -1.8) (-3.6  1.8 -1.8)
+    (-3.6 -1.8  1.8) ( 2.4 -1.8  1.8) ( 2.4  1.8  1.8) (-3.6  1.8  1.8)
+);
+blocks ( hex (0 1 2 3 4 5 6 7) (100 60 60) simpleGrading (1 1 1) ); // 60 mm base
+edges ();
+boundary
+(
+    inlet    { type patch; faces ((1 2 6 5)); }
+    outlet   { type patch; faces ((0 4 7 3)); }
+    farfield { type patch; faces ((0 1 5 4) (3 7 6 2) (0 3 2 1) (4 5 6 7)); }
+);
+EOF
+
+cat > base/system/snappyHexMeshDict << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object snappyHexMeshDict; }
+castellatedMesh true;  snap true;  addLayers true;
+geometry
+{
+    duct.stl       { type triSurfaceMesh; name duct; }
+    centerbody.stl { type triSurfaceMesh; name centerbody; }
+    diskZone       { type searchableCylinder;
+                     point1 (-0.01 0 0); point2 (0.01 0 0); radius 0.143; }
+    jetBox         { type box; min (-1.6 -0.35 -0.35); max (0.4 0.35 0.35); }
+}
+castellatedMeshControls
+{
+    maxLocalCells 1500000; maxGlobalCells 20000000; minRefinementCells 10;
+    maxLoadUnbalance 0.10; nCellsBetweenLevels 3;
+    features
+    (
+        { file "duct.eMesh";       level 6; }
+        { file "centerbody.eMesh"; level 6; }
+    );
+    refinementSurfaces
+    {
+        duct       { level (5 6); patchInfo { type wall; } }  // 1.9/0.94 mm
+        centerbody { level (5 6); patchInfo { type wall; } }
+        diskZone   { level (4 4); cellZone actuatorDisk;
+                     faceZone actuatorDiskFaces; cellZoneInside inside; }
+    }
+    resolveFeatureAngle 30;
+    refinementRegions
+    {
+        jetBox   { mode inside; levels ((1E15 3)); }   // 7.5 mm jet/wake
+        diskZone { mode inside; levels ((1E15 4)); }
+    }
+    locationInMesh (1.5 0.9 0.9);
+    allowFreeStandingZoneFaces true;
+}
+snapControls
+{
+    nSmoothPatch 3; tolerance 2.0; nSolveIter 50; nRelaxIter 5;
+    nFeatureSnapIter 15; implicitFeatureSnap false; explicitFeatureSnap true;
+    multiRegionFeatureSnap false;
+}
+addLayersControls
+{
+    relativeSizes true;
+    layers { duct { nSurfaceLayers 6; } centerbody { nSurfaceLayers 6; } }
+    expansionRatio 1.2; finalLayerThickness 0.5; minThickness 0.05; nGrow 0;
+    featureAngle 150; slipFeatureAngle 30; nRelaxIter 5;
+    nSmoothSurfaceNormals 1; nSmoothNormals 3; nSmoothThickness 10;
+    maxFaceThicknessRatio 0.5; maxThicknessToMedialRatio 0.3;
+    minMedianAxisAngle 90; nBufferCellsNoExtrude 0; nLayerIter 50;
+    nRelaxedIter 20;
+}
+meshQualityControls
+{
+    #includeEtc "caseDicts/meshQualityDict"
+    relaxed { maxNonOrtho 75; }
+    nSmoothScale 4; errorReduction 0.75;
+}
+mergeTolerance 1e-6;
+EOF
+
+cat > base/system/surfaceFeatureExtractDict << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object surfaceFeatureExtractDict; }
+duct.stl       { extractionMethod extractFromSurface; includedAngle 150; }
+centerbody.stl { extractionMethod extractFromSurface; includedAngle 150; }
+EOF
+
+cat > base/system/decomposeParDict << EOF
+FoamFile { version 2.0; format ascii; class dictionary; object decomposeParDict; }
+numberOfSubdomains $NPROCS;
+method scotch;
+EOF
+
+# minimal dicts for meshing stage
+cat > base/system/controlDict << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object controlDict; }
+application snappyHexMesh; startFrom startTime; startTime 0;
+stopAt endTime; endTime 1; deltaT 1; writeControl timeStep; writeInterval 1;
+writeFormat binary; runTimeModifiable true;
+EOF
+cat > base/system/fvSchemes << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object fvSchemes; }
+ddtSchemes { default steadyState; } gradSchemes { default Gauss linear; }
+divSchemes { default none; } laplacianSchemes { default Gauss linear corrected; }
+interpolationSchemes { default linear; } snGradSchemes { default corrected; }
+EOF
+cat > base/system/fvSolution << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object fvSolution; }
+solvers {}
+EOF
+
+if [[ ! -d base/constant/polyMesh ]]; then
+    echo ">> Meshing base ducted-fan case..."
+    ( cd base
+      surfaceFeatureExtract > ../log/prop.surfaceFeatureExtract.log
+      blockMesh             > ../log/prop.blockMesh.log
+      decomposePar          > ../log/prop.decomposePar.log
+      mpirun -np "$NPROCS" snappyHexMesh -overwrite -parallel \
+                             > ../log/prop.snappyHexMesh.log
+      reconstructParMesh -constant > ../log/prop.reconstructParMesh.log
+      rm -rf processor*
+      checkMesh > ../log/prop.checkMesh.log || true )
+    grep -E "cells:|Mesh OK|Failed" log/prop.checkMesh.log || true
+fi
+
+# ===========================================================================
+# 2. Sweep T_disk x V
+# ===========================================================================
+DISK_VOL_NOTE="volumeMode absolute -> source integrates to exactly T_disk [N]"
+
+for V in $VLIST; do
+for T in $TLIST; do
+    TAG=$(printf "V%05.1f_T%05.1f" "$V" "$T")
+    DIR="sweep/$TAG"
+    echo "== $TAG =="
+    mkdir -p "$DIR/constant" "$DIR/0"
+    cp -r base/system "$DIR/"
+    ln -sfn "$(pwd)/base/constant/polyMesh"   "$DIR/constant/polyMesh"
+    ln -sfn "$(pwd)/base/constant/triSurface" "$DIR/constant/triSurface"
+
+    cat > "$DIR/constant/transportProperties" << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object transportProperties; }
+transportModel Newtonian;
+nu 1.5e-05;
+EOF
+    cat > "$DIR/constant/turbulenceProperties" << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object turbulenceProperties; }
+simulationType RAS;
+RAS { RASModel kOmegaSST; turbulence on; printCoeffs off; }
+EOF
+
+    # momentum source: force on fluid in -x (jet aft) => vehicle thrust +x
+    # NOTE: fvOptions momentum sources are per unit rho for incompressible
+    # solvers (U-eqn in m/s^2 * m^3) -> divide by rho = 1.225 kg/m^3.
+    TRHO=$(python3 -c "print($T/1.225)")
+    cat > "$DIR/constant/fvOptions" << EOF
+FoamFile { version 2.0; format ascii; class dictionary; object fvOptions; }
+// $DISK_VOL_NOTE
+actuatorDisk
+{
+    type            vectorSemiImplicitSource;
+    volumeMode      absolute;
+    selectionMode   cellZone;
+    cellZone        actuatorDisk;
+    injectionRateSuSp
+    {
+        U    ((-$TRHO 0 0) 0);   // T_disk = $T N / rho
+    }
+}
+EOF
+
+    # freestream turbulence (floor for the static V=0 case)
+    read K OMEGA << EOF2
+$(python3 -c "
+V=max($V,1.0); I=0.01
+k=1.5*(I*V)**2
+print(f'{k:.6g} {k**0.5/(0.09**0.25*0.03):.6g}')")
+EOF2
+
+    cat > "$DIR/0/U" << EOF
+FoamFile { version 2.0; format ascii; class volVectorField; object U; }
+dimensions [0 1 -1 0 0 0 0];
+internalField uniform (-$V 0 0);
+boundaryField
+{
+    inlet    { type freestreamVelocity; freestreamValue uniform (-$V 0 0); }
+    outlet   { type freestreamVelocity; freestreamValue uniform (-$V 0 0); }
+    farfield { type freestreamVelocity; freestreamValue uniform (-$V 0 0); }
+    "(duct|centerbody)" { type noSlip; }
+}
+EOF
+    cat > "$DIR/0/p" << 'EOF'
+FoamFile { version 2.0; format ascii; class volScalarField; object p; }
+dimensions [0 2 -2 0 0 0 0];
+internalField uniform 0;
+boundaryField
+{
+    inlet    { type freestreamPressure; freestreamValue uniform 0; }
+    outlet   { type freestreamPressure; freestreamValue uniform 0; }
+    farfield { type freestreamPressure; freestreamValue uniform 0; }
+    "(duct|centerbody)" { type zeroGradient; }
+}
+EOF
+    cat > "$DIR/0/k" << EOF
+FoamFile { version 2.0; format ascii; class volScalarField; object k; }
+dimensions [0 2 -2 0 0 0 0];
+internalField uniform $K;
+boundaryField
+{
+    inlet    { type turbulentIntensityKineticEnergyInlet; intensity 0.01; value uniform $K; }
+    outlet   { type inletOutlet; inletValue uniform $K; value uniform $K; }
+    farfield { type inletOutlet; inletValue uniform $K; value uniform $K; }
+    "(duct|centerbody)" { type kqRWallFunction; value uniform $K; }
+}
+EOF
+    cat > "$DIR/0/omega" << EOF
+FoamFile { version 2.0; format ascii; class volScalarField; object omega; }
+dimensions [0 0 -1 0 0 0 0];
+internalField uniform $OMEGA;
+boundaryField
+{
+    inlet    { type fixedValue; value uniform $OMEGA; }
+    outlet   { type inletOutlet; inletValue uniform $OMEGA; value uniform $OMEGA; }
+    farfield { type inletOutlet; inletValue uniform $OMEGA; value uniform $OMEGA; }
+    "(duct|centerbody)" { type omegaWallFunction; value uniform $OMEGA; }
+}
+EOF
+    cat > "$DIR/0/nut" << 'EOF'
+FoamFile { version 2.0; format ascii; class volScalarField; object nut; }
+dimensions [0 2 -1 0 0 0 0];
+internalField uniform 0;
+boundaryField
+{
+    inlet    { type calculated; value uniform 0; }
+    outlet   { type calculated; value uniform 0; }
+    farfield { type calculated; value uniform 0; }
+    "(duct|centerbody)" { type nutUSpaldingWallFunction; value uniform 0; }
+}
+EOF
+
+    cat > "$DIR/system/controlDict" << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object controlDict; }
+application simpleFoam; startFrom latestTime; startTime 0;
+stopAt endTime; endTime 1500; deltaT 1;
+writeControl timeStep; writeInterval 500; purgeWrite 2;
+writeFormat binary; runTimeModifiable true;
+functions
+{
+    forces
+    {
+        type            forces;
+        libs            (forces);
+        writeControl    timeStep;
+        writeInterval   1;
+        patches         (duct centerbody);
+        rho             rhoInf;
+        rhoInf          1.225;
+        CofR            (0 0 0);
+    }
+}
+EOF
+    cat > "$DIR/system/fvSchemes" << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object fvSchemes; }
+ddtSchemes { default steadyState; }
+gradSchemes { default cellLimited Gauss linear 1; }
+divSchemes
+{
+    default none;
+    div(phi,U)     bounded Gauss linearUpwind grad(U);
+    div(phi,k)     bounded Gauss upwind;
+    div(phi,omega) bounded Gauss upwind;
+    div((nuEff*dev2(T(grad(U))))) Gauss linear;
+}
+laplacianSchemes { default Gauss linear limited corrected 0.5; }
+interpolationSchemes { default linear; }
+snGradSchemes { default limited corrected 0.5; }
+wallDist { method meshWave; }
+EOF
+    cat > "$DIR/system/fvSolution" << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object fvSolution; }
+solvers
+{
+    p { solver GAMG; smoother GaussSeidel; tolerance 1e-7; relTol 0.01; }
+    Phi { $p; }
+    "(U|k|omega)" { solver smoothSolver; smoother symGaussSeidel;
+                    tolerance 1e-8; relTol 0.1; }
+}
+SIMPLE
+{
+    consistent yes;
+    nNonOrthogonalCorrectors 1;
+    residualControl { p 1e-5; U 1e-6; "(k|omega)" 1e-6; }
+}
+potentialFlow { nNonOrthogonalCorrectors 10; }
+relaxationFactors { equations { U 0.6; "(k|omega)" 0.5; } }  // jet cases: gentler
+EOF
+
+    cat > "$DIR/run_meta.yaml" << EOF
+V_mps: $V
+T_disk_N: $T
+rho: 1.225
+A_disk_m2: 0.064237
+EOF
+
+    ( cd "$DIR"
+      rm -rf processor*
+      decomposePar > decomposePar.log
+      mpirun -np "$NPROCS" simpleFoam -parallel > simpleFoam.log
+      rm -rf processor* )
+done
+done
+
+echo ">> Sweep done. Export:  python3 ../postprocess/foam2dml_prop.py --prop-dir sweep"

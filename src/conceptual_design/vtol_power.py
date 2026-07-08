@@ -57,7 +57,7 @@ References
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from math import sqrt, pi
 from typing import Dict
 

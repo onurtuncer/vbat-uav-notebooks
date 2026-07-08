@@ -1,4 +1,12 @@
 # config/rotor.yaml
+#
+# D_rotor_m : rotor / EDF diameter [m]
+#   0.195 targets the largest readily available COTS EDF class
+#   (e.g. Schuebeler DS-215 family, ~195 mm carbon fan). Decision from
+#   the 2026-07 design review: no custom fan development -- COTS only.
+#
+# NOTE: disk loading is intentionally NOT configured here. For a
+# tail-sitter the rotor carries the full weight, so the sizing loop
+# computes DL = MTOW*g / (pi*D^2/4) at every iteration.
 
-D_rotor_m:      0.28     # rotor / EDF diameter [m]
-disk_loading:   150.0    # rotor disk loading [N/m2]
+D_rotor_m: 0.195

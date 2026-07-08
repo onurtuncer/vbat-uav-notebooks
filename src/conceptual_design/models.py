@@ -15,7 +15,7 @@ Bugs fixed vs. original:
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import yaml
 
 
@@ -38,6 +38,8 @@ class Mission:
     V_cruise:      float   # cruise speed        [m/s]
     rate_of_climb: float   # VTOL vertical RoC   [m/s]
     reserve_factor: float  # energy reserve (e.g. 1.20 = +20%)
+    payload_kg:    float = 0.0   # mission payload requirement [kg]
+    t_transition:  float = 0.0   # total transition time budget (both ways) [s]
 
     @classmethod
     def from_yaml(cls, path: str) -> "Mission":
@@ -49,6 +51,8 @@ class Mission:
             V_cruise       = float(data["V_cruise"]),
             rate_of_climb  = float(data["rate_of_climb"]),
             reserve_factor = float(data["reserve_factor"]),
+            payload_kg     = float(data["payload_kg"]),
+            t_transition   = float(data.get("t_transition", 0.0)),
         )
 
 
@@ -195,37 +199,56 @@ class MassBreakdown:
 class Battery:
     specific_energy: float   # pack-level specific energy  [Wh/kg]
     usable_fraction: float   # usable depth-of-discharge   [-]
+    eta_bat:         float   # discharge efficiency (IR losses) [-]
+    c_rate_max:      float   # max continuous discharge C-rate  [1/h]
 
     @classmethod
     def from_yaml(cls, path: str) -> "Battery":
         with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
-        se = data.get("specific_energy")
-        uf = data.get("usable_fraction")
-        if se is None or uf is None:
-            raise ValueError(
-                f"battery.yaml is missing values.  "
-                f"Set 'specific_energy' (Wh/kg) and 'usable_fraction' (0-1)."
-            )
+        missing = [k for k in
+                   ("specific_energy", "usable_fraction", "eta_bat", "c_rate_max")
+                   if data.get(k) is None]
+        if missing:
+            raise ValueError(f"battery.yaml is missing values: {missing}")
         return cls(
-            specific_energy = float(se),
-            usable_fraction = float(uf),
+            specific_energy = float(data["specific_energy"]),
+            usable_fraction = float(data["usable_fraction"]),
+            eta_bat         = float(data["eta_bat"]),
+            c_rate_max      = float(data["c_rate_max"]),
         )
-    
+
 
 @dataclass
 class RotorParams:
-    D_rotor_m:    float   # rotor / EDF diameter [m]
-    disk_loading: float   # disk loading [N/m2]
+    """EDF geometry. Disk loading is NOT an input: for a tail-sitter the
+    rotor must carry the full weight, so DL = MTOW*g / (pi*D^2/4) is
+    computed inside the sizing loop, not configured."""
+    D_rotor_m: float   # rotor / EDF diameter [m]
 
     @classmethod
     def from_yaml(cls, path: str) -> "RotorParams":
         with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
         return cls(
-            D_rotor_m    = float(data["D_rotor_m"]),
-            disk_loading = float(data["disk_loading"]),
+            D_rotor_m = float(data["D_rotor_m"]),
         )
+
+
+# ---------------------------------------------
+#  Avionics / hotel load
+# ---------------------------------------------
+@dataclass
+class Avionics:
+    """Continuous non-propulsive electrical load (flight controller,
+    companion computer, telemetry, GNSS, camera, servo idle, BEC)."""
+    P_hotel_W: float   # continuous hotel load [W]
+
+    @classmethod
+    def from_yaml(cls, path: str) -> "Avionics":
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        return cls(P_hotel_W=float(data["P_hotel_W"]))
 
 # ---------------------------------------------
 #  Wing sizing  (output container)

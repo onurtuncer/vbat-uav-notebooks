@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vbat-conceptual-design"
+dynamic = ["version"]
+description = "First-principles conceptual sizing study for a small electric tail-sitter VTOL UAV"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Onur Tuncer", email = "onur.tuncer@itu.edu.tr" }]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24.4",
+    "scipy>=1.10",
+    "matplotlib>=3.7.5",
+    "pandas>=2.0.3",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+cad = ["cadquery>=2.3"]
+notebooks = ["jupyter>=1.0"]
+dev = ["pytest>=7.4", "ruff>=0.4", "trimesh>=4.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+# Version comes from git tags (v0.1.0, v0.2.0, ...); commits after a tag
+# get a .devN suffix automatically. Bump by tagging, never by editing.
+version_file = "src/conceptual_design/_version.py"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+extend-exclude = ["notebooks", "out", "data", ".vs"]
+
+[tool.ruff.lint]
+# Default rules (pyflakes + a pycodestyle subset). Keep pragmatic for
+# research code; tighten (e.g. add "I" for import sorting) as it matures.
+select = ["E4", "E7", "E9", "F", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+# Package root re-exports the public API
+"src/conceptual_design/__init__.py" = ["F401"]

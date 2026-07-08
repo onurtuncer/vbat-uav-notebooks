@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: check src tests scripts printprep cfd
+
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install package
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        # Design-output and geometry tests validate regenerable artifacts
+        # (out/); they run in the design pipeline against FRESH outputs.
+        # Here they would only re-test whatever is committed, which may
+        # legitimately lag the design between pipeline runs.
+        run: >-
+          pytest -v
+          --ignore=tests/test_design_outputs.py
+          --ignore=tests/test_geometry.py
+
+  shellcheck:
+    name: ShellCheck (OpenFOAM scripts)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint Allrun scripts
+        run: |
+          scripts=$(find cfd -name 'Allrun*' -type f)
+          echo "Checking: $scripts"
+          shellcheck --severity=warning $scripts

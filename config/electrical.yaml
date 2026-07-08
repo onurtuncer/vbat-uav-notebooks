@@ -1,0 +1,26 @@
+# Electrical architecture parameters not already implied by the mass/
+# power sizing (config/battery.yaml, config/rotor.yaml, ...).
+#
+# battery_series_cells : pack cell count (S) [-]
+#   The sizing loop (mass_closure.py) is chemistry/voltage-agnostic --
+#   it only knows Wh and kg. Cell count is the one genuinely free
+#   electrical variable, chosen here to keep operating current in a
+#   buildable range for COTS hobby components.
+#
+# cell_nominal_v : nominal LiPo cell voltage [V]
+#
+# esc_current_margin : ESC continuous-current rating as a multiple of
+#   the converged hover current [-]. 1.6 leaves headroom for a colder
+#   pack / higher discharge resistance than assumed.
+#
+# bec1_budget_a / bec2_budget_a : design current budgets for the two
+#   regulated 5V rails [A]. BEC1 feeds sensor-grade loads (FC, GPS,
+#   telemetry, RX, airspeed); BEC2 feeds the four vane servos and the
+#   companion computer. These are engineering margins, not derived
+#   physical quantities -- revisit once hardware is selected.
+
+battery_series_cells: 6
+cell_nominal_v: 3.7
+esc_current_margin: 1.6
+bec1_budget_a: 3.0
+bec2_budget_a: 6.0

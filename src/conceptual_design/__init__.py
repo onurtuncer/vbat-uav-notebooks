@@ -1,5 +1,10 @@
 # conceptual_design/__init__.py
 
+try:
+    from ._version import __version__
+except ImportError:  # editable install without build step / bare checkout
+    __version__ = "0.0.0+unknown"
+
 from .models import (
     Environment,
     Mission,
@@ -10,6 +15,7 @@ from .models import (
     MassBreakdown,
     Battery,
     RotorParams,
+    Avionics,
     WingSizing,
 )
 
@@ -48,4 +54,21 @@ from .mass_closure import (
     battery_mass_from_energy,
     mtow_from_components,
     run_sizing_loop,
+)
+
+from .fuselage_design import (
+    FuselageParams,
+    FuselageSizing,
+    LayoutItem,
+    fuselage_radius,
+    size_fuselage,
+    write_fuselage_yaml,
+)
+
+from .electrical_diagram import (
+    ElectricalParams,
+    OperatingPoint,
+    compute_operating_point,
+    render_wiring_svg,
+    write_wiring_diagram,
 )

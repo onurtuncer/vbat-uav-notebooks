@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# Grid generator for the V-BAT tail-sitter (vbat-uav-notebooks).
+#
+#   ./Allrun.mesh [path/to/repo/root] [nProcs]   (default: ../.., this repo)
+#
+# Pipeline:
+#   1. Get geometry (repo STL preferred; STEP -> STL via gmsh as fallback)
+#   2. Scale mm -> m (repo CAD is exported in millimetres)
+#   3. surfaceFeatureExtract -> blockMesh -> snappyHexMesh (parallel)
+#   4. reconstructParMesh + checkMesh
+#
+# Tested against OpenFOAM.com (v2306+). For Foundation releases:
+#   - use `surfaceFeatures` with system/surfaceFeaturesDict
+#   - `reconstructParMesh -constant` -> `reconstructPar -constant` (>=v11)
+# ---------------------------------------------------------------------------
+set -euo pipefail
+cd "$(dirname "$0")"
+
+REPO="${1:-../..}"
+NPROCS="${2:-8}"
+
+STL_SRC="$REPO/out/cad/stl/vbat_fused.stl"
+STEP_SRC="$REPO/out/cad/step/vbat_fused.step"
+TRI="constant/triSurface"
+
+command -v blockMesh >/dev/null || {
+    echo "ERROR: OpenFOAM environment not sourced (blockMesh not found)."; exit 1; }
+
+mkdir -p "$TRI" log
+
+# --- 1. Geometry ------------------------------------------------------------
+if [[ -f "$STL_SRC" ]]; then
+    echo ">> Using repo STL: $STL_SRC"
+    cp "$STL_SRC" "$TRI/vbat_raw.stl"
+elif [[ -f "$STEP_SRC" ]]; then
+    echo ">> No STL found; tessellating STEP with gmsh: $STEP_SRC"
+    command -v gmsh >/dev/null || { echo "ERROR: gmsh required for STEP."; exit 1; }
+    gmsh "$STEP_SRC" -2 -format stl \
+         -clmin 0.5 -clmax 4 \
+         -o "$TRI/vbat_raw.stl" > log/gmsh.log 2>&1
+else
+    echo "ERROR: neither $STL_SRC nor $STEP_SRC exists."; exit 1
+fi
+
+# --- 2. Scale mm -> m -------------------------------------------------------
+# Repo axis convention: body FRD, nose at x=0, tail at x=-712.56 mm.
+surfaceTransformPoints -scale '(0.001 0.001 0.001)' \
+    "$TRI/vbat_raw.stl" "$TRI/vbat.stl" > log/surfaceTransformPoints.log
+
+surfaceCheck "$TRI/vbat.stl" > log/surfaceCheck.log 2>&1 || \
+    echo "!! surfaceCheck reported issues -- inspect log/surfaceCheck.log"
+
+# --- 3. Meshing -------------------------------------------------------------
+surfaceFeatureExtract  > log/surfaceFeatureExtract.log
+blockMesh              > log/blockMesh.log
+
+if [[ "$NPROCS" -gt 1 ]]; then
+    foamDictionary system/decomposeParDict \
+        -entry numberOfSubdomains -set "$NPROCS" > /dev/null
+    decomposePar > log/decomposePar.log
+    mpirun -np "$NPROCS" snappyHexMesh -overwrite -parallel \
+        > log/snappyHexMesh.log
+    reconstructParMesh -constant > log/reconstructParMesh.log
+    rm -rf processor*
+else
+    snappyHexMesh -overwrite > log/snappyHexMesh.log
+fi
+
+# --- 4. Verify --------------------------------------------------------------
+checkMesh -allTopology -allGeometry > log/checkMesh.log || true
+
+echo
+echo ">> Done. Summary from checkMesh:"
+grep -E "cells:|Mesh OK|Failed|non-orthogonality|skewness" log/checkMesh.log || true
+echo ">> Full logs in ./log/, view mesh with:  paraFoam  (or touch case.foam)"

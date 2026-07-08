@@ -24,20 +24,31 @@ conceptual design codebase.
 
 ## Directory Structure
 
+This package contains the geometry **generators**:
+
 cad/
-├─ step/ # STEP solids for CAD exchange
-├─ stl/ # Mesh exports for visualization or 3D printing
-├─ dxf/ # 2D profiles (laser / CNC)
-├─ drawings/ # Rendered drawings (PDF, PNG)
+├─ wing_profile.py      # NACA sections (math from airfoil_selection.py)
+├─ fuselage_body.py     # body of revolution (meridian from fuselage_design.py)
+├─ vehicle_assembly.py  # full vehicle: fuselage, wing, duct, vanes, legs
 └─ README.md
+
+Generated artifacts are **derived outputs** and live under `out/` (gitignored):
+
+out/cad/
+├─ step/ # STEP solids for CAD exchange (assembly + fused)
+└─ stl/  # Mesh exports for visualization or 3D printing
+
+## Axis Convention (Aetherion-compatible)
+
+Body frame **FRD**: x forward (out the nose), y right, z down.
+Origin at the nose tip; the EDF exhaust points in -x.
+World frame is NED.
 
 ## Units
 
-All geometry is defined in:
-
-- **meters (m)**
-
-Unless otherwise stated.
+- Public function arguments and all `out/*.yaml` handoffs: **meters (m)**
+- OCCT geometry and STEP/STL exports: **millimetres (mm)** (CAD convention);
+  scaling happens inside the modules.
 
 ---
 
@@ -48,20 +59,22 @@ CAD geometry is generated from Python using:
 
 Typical workflow:
 
-1. Adjust parameters in notebook or YAML.
-2. Run CAD generation script.
-3. Export to:
-   - `cad/step/`
-   - `cad/stl/`
-   - etc.
+1. Adjust parameters in `config/*.yaml`.
+2. Re-run the upstream notebooks (sizing -> airfoil -> vanes -> fuselage).
+3. Run `notebooks/vehicle_solid_model.ipynb` to regenerate
+   `out/cad/step/` and `out/cad/stl/`.
 
-Example:
+Example (full vehicle from the YAML handoffs):
 
 ```python
-from conceptual_design.cad.wing_profile import extrude_wing, export_step
+import yaml
+from conceptual_design.cad.vehicle_assembly import build_vehicle, export_vehicle
 
-wing = extrude_wing(span=0.6, chord=0.18, thickness=0.12)
-export_step(wing, "../cad/step/wing.step")
+fus   = yaml.safe_load(open("out/fuselage.yaml"))
+vanes = yaml.safe_load(open("out/control_vanes.yaml"))
+asm, fused = build_vehicle(fus, vanes, b_wing_m=1.002,
+                           chord_wing_m=0.167, wing_designation="NACA 2412")
+export_vehicle(asm, fused, "out/cad")
 ```
 
 ## Planned Geometry Modules
