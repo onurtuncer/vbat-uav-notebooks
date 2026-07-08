@@ -5,72 +5,92 @@
 
 axis_convention: body FRD (x fwd, y right, z down); stations from nose, +aft; x_body
   = -station
-D_fus_m: 0.10145
-L_fus_m: 0.50725
-L_nose_m: 0.1116
-L_mid_m: 0.24348
-L_tail_m: 0.15218
+D_fus_m: 0.09933
+L_fus_m: 0.49664
+L_nose_m: 0.10926
+L_mid_m: 0.23839
+L_tail_m: 0.14899
 r_hub_m: 0.039
 f_nose: 0.22
 f_tail: 0.3
 fineness: 5.0
 active_constraint: packaging
-S_wet_m2: 0.15067
-CD0_fus: 0.00533
-m_shell_kg: 0.2507
+S_wet_m2: 0.1448
+CD0_fus: 0.00516
+m_shell_kg: 0.2409
 t_shell_m: 0.0008
-x_CG_m: 0.24003
-x_wing_LE_m: 0.20359
-x_wing_AC_m: 0.24914
-x_vane_m: 0.5322
-L_vane_arm_m: 0.29216
+m_struct_pool_kg: 0.49919
+m_struct_carved_kg: 0.02466
+m_avionics_budget_kg: 0.20014
+m_avionics_carved_kg: 0.048
+m_avionics_net_kg: 0.15214
+m_misc_budget_kg: 0.17512
+m_misc_carved_kg: 0.015
+m_misc_net_kg: 0.16012
+x_CG_m: 0.24527
+x_wing_LE_m: 0.20882
+x_wing_AC_m: 0.25438
+x_vane_m: 0.52159
+L_vane_arm_m: 0.27632
 static_margin: 0.05
+x_battery_trim_m: 0.0
+battery_tray_travel_m: 0.025
 duct_chord_m: 0.08775
 D_duct_inner_m: 0.201
 D_duct_outer_m: 0.217
 layout:
 - name: payload
   mass_kg: 0.5
-  x_start_m: 0.0279
-  length_m: 0.13303
-  x_cg_m: 0.09441
+  x_start_m: 0.02732
+  length_m: 0.13887
+  x_cg_m: 0.09675
 - name: avionics
-  mass_kg: 0.2001
-  x_start_m: 0.16093
-  length_m: 0.07745
-  x_cg_m: 0.19965
+  mass_kg: 0.1521
+  x_start_m: 0.16618
+  length_m: 0.06146
+  x_cg_m: 0.19691
 - name: battery
   mass_kg: 0.6258
-  x_start_m: 0.23838
-  length_m: 0.0888
-  x_cg_m: 0.28278
+  x_start_m: 0.22764
+  length_m: 0.09269
+  x_cg_m: 0.27399
 - name: esc
   mass_kg: 0.0938
-  x_start_m: 0.23363
+  x_start_m: 0.22832
   length_m: 0.04
-  x_cg_m: 0.25363
+  x_cg_m: 0.24832
 - name: motor_fan
   mass_kg: 0.2252
-  x_start_m: 0.46921
+  x_start_m: 0.4594
   length_m: 0.0
-  x_cg_m: 0.46921
+  x_cg_m: 0.4594
 - name: duct
   mass_kg: 0.0563
-  x_start_m: 0.48237
+  x_start_m: 0.47256
   length_m: 0.0
-  x_cg_m: 0.48237
+  x_cg_m: 0.47256
 - name: shell_struct
-  mass_kg: 0.4992
-  x_start_m: 0.22826
+  mass_kg: 0.4745
+  x_start_m: 0.22349
   length_m: 0.0
-  x_cg_m: 0.22826
+  x_cg_m: 0.22349
+- name: battery_tray
+  mass_kg: 0.015
+  x_start_m: 0.27399
+  length_m: 0.0
+  x_cg_m: 0.27399
+- name: control_hw
+  mass_kg: 0.0727
+  x_start_m: 0.51662
+  length_m: 0.0
+  x_cg_m: 0.51662
 - name: misc
-  mass_kg: 0.1751
-  x_start_m: 0.2029
+  mass_kg: 0.1601
+  x_start_m: 0.19866
   length_m: 0.0
-  x_cg_m: 0.2029
+  x_cg_m: 0.19866
 - name: wing
   mass_kg: 0.1262
-  x_start_m: 0.24003
+  x_start_m: 0.24527
   length_m: 0.0
-  x_cg_m: 0.24003
+  x_cg_m: 0.24527

@@ -1,15 +1,16 @@
 part_no,item,qty,material_spec,unit_mass_kg,x_cg_mm,total_mass_kg
-VBT-STR-001,Fuselage monocoque shell,1,"CFRP 2-ply, 0.8 mm + frames (k_struct)",0.4992,228.3,0.4992
-VBT-STR-002,"Wing, constant chord",1,"CFRP skin/foam core, NACA 2412",0.1262,240.0,0.1262
-VBT-PRP-001,EDF motor + fan rotor,1,"D = 195 mm EDF, BLDC outrunner",0.2252,469.2,0.2252
-VBT-PRP-002,Duct / shroud annulus,1,"CFRP wound annulus, 8 mm wall",0.0563,482.4,0.0563
-VBT-PWR-001,Battery pack,1,"LiPo, 140 Wh/kg pack-level",0.6258,282.8,0.6258
-VBT-PWR-002,ESC,1,sized to hover power,0.0938,253.6,0.0938
-VBT-AVI-001,Avionics stack,1,FC + GPS + RX + telemetry,0.2001,199.6,0.2001
-VBT-PLD-001,Payload (EO sensor + mount),1,"requirement, 0.5 kg",0.5,94.4,0.5
-VBT-CTL-001,Jet control vane,4,"CFRP flat plate 2 mm, c=19.9 mm, h=49.7 mm",0.0031648967999999993,532.2,0.012659587199999997
-VBT-CTL-002,"Vane servo, 9g-class",4,"~1800 g-cm >= req 461 g-cm, recessed in hub, shaft on hinge line",0.012,527.2,0.048
-VBT-CTL-003,Hinge + pushrod set,4,pin hinge + wire pushrod per vane,0.003,527.2,0.012
-VBT-STR-090,"Misc: harness, fasteners, bonding, margin",1,allocation (remainder),0.1024404128,202.9,0.1024404128
-VBT-STR-010,Duct support strut,4,"flat plate, min 2 mm (in k_struct)",,482.4,
-VBT-GEA-001,Landing leg / skid,4,"on duct, tail-sitter stance (in k_struct)",,532.2,
+VBT-STR-001,Fuselage monocoque shell,1,"CFRP 2-ply, 0.8 mm + frames (k_struct)",0.4745,223.5,0.4745
+VBT-STR-002,"Wing, constant chord",1,"CFRP skin/foam core, NACA 2412",0.1262,245.3,0.1262
+VBT-PRP-001,EDF motor + fan rotor,1,"D = 195 mm EDF, BLDC outrunner",0.2252,459.4,0.2252
+VBT-PRP-002,Duct / shroud annulus,1,"CFRP wound annulus, 8 mm wall",0.0563,472.6,0.0563
+VBT-PWR-001,Battery pack,1,"LiPo, 140 Wh/kg pack-level",0.6258,273.9,0.6258
+VBT-PWR-002,ESC,1,sized to hover power,0.0938,248.3,0.0938
+VBT-AVI-001,Avionics stack,1,FC + GPS + RX + telemetry,0.1521,196.9,0.1521
+VBT-PLD-001,Payload (EO sensor + mount),1,"requirement, 0.5 kg",0.5,96.8,0.5
+VBT-CTL-001,Jet control vane,4,"CFRP flat plate 2 mm, c=19.9 mm, h=49.7 mm",0.0031648967999999993,521.6,0.012659587199999997
+VBT-CTL-002,"Vane servo, 9g-class",4,"~1800 g-cm >= req 461 g-cm, recessed in hub, shaft on hinge line",0.012,516.6,0.048
+VBT-CTL-003,Hinge + pushrod set,4,pin hinge + wire pushrod per vane,0.003,516.6,0.012
+VBT-STR-091,"Battery tray, adjustable rail",1,"sliding rail, +/-25 mm travel, trimmed -0.1 mm",0.015,273.9,0.015
+VBT-STR-090,"Misc: harness, fasteners, bonding, margin",1,allocation (remainder),0.1601,198.7,0.1601
+VBT-STR-010,Duct support strut,4,"flat plate, min 2 mm (in k_struct)",,472.6,
+VBT-GEA-001,Landing leg / skid,4,"on duct, tail-sitter stance (in k_struct)",,521.6,

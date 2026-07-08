@@ -52,9 +52,9 @@ class TestAirfoil:
 class TestFuselage:
     def test_design_point(self, fuselage):
         # 195 mm COTS EDF design point (2026-07 design review)
-        assert fuselage["D_fus_m"] == pytest.approx(0.10145, rel=1e-2)
-        assert fuselage["L_fus_m"] == pytest.approx(0.50725, rel=1e-2)
-        assert fuselage["x_CG_m"] == pytest.approx(0.24003, rel=1e-2)
+        assert fuselage["D_fus_m"] == pytest.approx(0.09933, rel=1e-2)
+        assert fuselage["L_fus_m"] == pytest.approx(0.49664, rel=1e-2)
+        assert fuselage["x_CG_m"] == pytest.approx(0.24527, rel=1e-2)
         assert fuselage["static_margin"] == pytest.approx(0.05, rel=1e-2)
 
     def test_internal_consistency(self, fuselage):

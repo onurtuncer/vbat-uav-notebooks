@@ -4,108 +4,120 @@
 # Regen  : re-run notebooks/mass_properties.ipynb
 axis_convention: body FRD (x fwd, y right, z down); stations from nose, +aft; x_body
   = -station
-m_total_kg: 2.5017
-x_CG_m: 0.24948
-x_CG_nb4_m: 0.24003
-static_margin_refined: -0.0019
+m_total_kg: 2.50166
+x_CG_m: 0.24527
+x_CG_nb4_m: 0.24527
+x_CG_as_packaged_m: 0.2453
+x_battery_trim_m: -0.00012
+battery_tray_travel_m: 0.025
+battery_trim_within_travel: true
+static_margin_refined: 0.05
+static_margin_as_packaged: 0.0498
 static_margin_nb4: 0.05
 r_CG_body_m:
-- -0.24948
+- -0.24527
 - 0.0
 - 0.0
 inertia_about_CG_body_FRD:
-  Ixx_kgm2: 0.015717
-  Iyy_kgm2: 0.0468
-  Izz_kgm2: 0.059365
+  Ixx_kgm2: 0.015567
+  Iyy_kgm2: 0.044075
+  Izz_kgm2: 0.05664
   Ixy_kgm2: 0.0
   Ixz_kgm2: 0.0
   Iyz_kgm2: 0.0
 radii_of_gyration_m:
-  k_x: 0.07926
-  k_y: 0.13677
-  k_z: 0.15405
+  k_x: 0.07888
+  k_y: 0.13273
+  k_z: 0.15047
 components:
 - name: payload
   primitive: solid cylinder
   mass_kg: 0.5
-  x_cg_m: 0.09441
-  Ixx_kgm2: 0.0003739
-  Iyy_kgm2: 0.0009243
-  Izz_kgm2: 0.0009243
+  x_cg_m: 0.09675
+  Ixx_kgm2: 0.0003582
+  Iyy_kgm2: 0.0009826
+  Izz_kgm2: 0.0009826
 - name: avionics
   primitive: solid cylinder
-  mass_kg: 0.2001
-  x_cg_m: 0.19965
-  Ixx_kgm2: 0.0001496
-  Iyy_kgm2: 0.0001748
-  Izz_kgm2: 0.0001748
+  mass_kg: 0.1521
+  x_cg_m: 0.19691
+  Ixx_kgm2: 0.000109
+  Iyy_kgm2: 0.0001024
+  Izz_kgm2: 0.0001024
 - name: battery
   primitive: solid cylinder
   mass_kg: 0.6258
-  x_cg_m: 0.28278
-  Ixx_kgm2: 0.0004679
-  Iyy_kgm2: 0.0006452
-  Izz_kgm2: 0.0006452
+  x_cg_m: 0.27387
+  Ixx_kgm2: 0.0004483
+  Iyy_kgm2: 0.0006722
+  Izz_kgm2: 0.0006722
+- name: battery_tray
+  primitive: solid cylinder
+  mass_kg: 0.015
+  x_cg_m: 0.27387
+  Ixx_kgm2: 1.07e-05
+  Iyy_kgm2: 5.4e-06
+  Izz_kgm2: 5.4e-06
 - name: esc
   primitive: solid cylinder
   mass_kg: 0.0938
-  x_cg_m: 0.25363
-  Ixx_kgm2: 7.01e-05
-  Iyy_kgm2: 4.76e-05
-  Izz_kgm2: 4.76e-05
+  x_cg_m: 0.24832
+  Ixx_kgm2: 6.72e-05
+  Iyy_kgm2: 4.61e-05
+  Izz_kgm2: 4.61e-05
 - name: motor_fan
   primitive: solid cylinder
   mass_kg: 0.2252
-  x_cg_m: 0.46921
+  x_cg_m: 0.4594
   Ixx_kgm2: 0.0001713
   Iyy_kgm2: 0.0001532
   Izz_kgm2: 0.0001532
 - name: duct
   primitive: thin tube
   mass_kg: 0.0563
-  x_cg_m: 0.48237
+  x_cg_m: 0.47256
   Ixx_kgm2: 0.0006148
   Iyy_kgm2: 0.0003435
   Izz_kgm2: 0.0003435
 - name: shell_struct
   primitive: shell of revolution
-  mass_kg: 0.4992
-  x_cg_m: 0.22826
-  Ixx_kgm2: 0.00114
-  Iyy_kgm2: 0.0102899
-  Izz_kgm2: 0.0102899
+  mass_kg: 0.4745
+  x_cg_m: 0.22349
+  Ixx_kgm2: 0.0010425
+  Iyy_kgm2: 0.0094063
+  Izz_kgm2: 0.0094063
 - name: wing
   primitive: flat plate
   mass_kg: 0.1262
-  x_cg_m: 0.24003
+  x_cg_m: 0.24527
   Ixx_kgm2: 0.0125756
   Iyy_kgm2: 0.0003542
   Izz_kgm2: 0.0129197
 - name: vanes (4x)
   primitive: radial cluster
   mass_kg: 0.01266
-  x_cg_m: 0.5322
+  x_cg_m: 0.52159
   Ixx_kgm2: 5.9e-05
   Iyy_kgm2: 2.95e-05
   Izz_kgm2: 2.95e-05
 - name: servos (4x)
   primitive: radial cluster
   mass_kg: 0.048
-  x_cg_m: 0.52723
+  x_cg_m: 0.51662
   Ixx_kgm2: 4.47e-05
   Iyy_kgm2: 2.23e-05
   Izz_kgm2: 2.23e-05
 - name: linkages (4x)
   primitive: radial cluster
   mass_kg: 0.012
-  x_cg_m: 0.52723
+  x_cg_m: 0.51662
   Ixx_kgm2: 1.83e-05
   Iyy_kgm2: 9.1e-06
   Izz_kgm2: 9.1e-06
 - name: misc (rem.)
   primitive: solid cylinder
-  mass_kg: 0.10244
-  x_cg_m: 0.2029
-  Ixx_kgm2: 3.19e-05
-  Iyy_kgm2: 0.0005651
-  Izz_kgm2: 0.0005651
+  mass_kg: 0.1601
+  x_cg_m: 0.19866
+  Ixx_kgm2: 4.78e-05
+  Iyy_kgm2: 0.0008466
+  Izz_kgm2: 0.0008466

@@ -59,6 +59,38 @@
 #                    positive value; hover control comes from the jet
 #                    vanes, cruise needs only mild static stability.
 #
+# battery_tray_travel_m : +/- fore-aft rail travel of the battery tray [m]
+#                    A sliding tray turns any future payload swap or
+#                    mass-estimate refinement into a bounded, checked
+#                    adjustment instead of a silent static-margin
+#                    regression.  25 mm is a plausible rail length for a
+#                    ~90 mm-long battery bay; it is NOT sized to fix a
+#                    modeling error (see control-hardware placement below,
+#                    which is the actual fix for the previously-observed
+#                    NB4/NB6 CG drift).
+#
+# battery_tray_mass_kg : sliding-rail hardware mass [kg]
+#                    two aluminum rails + lock pin + wiring service loop;
+#                    carved out of the misc/fasteners budget, not added
+#                    on top of MTOW.
+#
+# --- Control hardware (vane + servo + linkage) mass model -------------
+# t_vane_plate_m   : jet-vane CFRP plate thickness [m] (min manufacturable,
+#                    NB5) -- combined with `rho_shell` (same CFRP) and the
+#                    vane planform area (`out/control_vanes.yaml`) gives
+#                    the per-vane mass.
+#
+# servo_mass_kg    : mass of one 9g-class vane servo + horn + wiring [kg]
+#                    (e.g. SG90-class, ~1800 g-cm at 4.8 V).
+#
+# linkage_mass_kg  : mass of one pushrod + hinge pin set per vane [kg]
+#
+# This hardware physically sits at the aft hinge line (recessed in the
+# exhaust centerbody hub -- matching the NB5 solid model), not mid-body;
+# `size_fuselage` places it there directly instead of leaving it inside
+# the mid-body `misc` lump, which used to cause the vehicle CG to drift
+# ~9 mm aft of the NB4 estimate once NB6 re-derived it from true stations.
+#
 # --- Duct (geometry only; mass is in the propulsion fraction) --------
 # duct_chord_ratio : duct chord (axial length) / D_rotor [-]
 # t_duct_m         : duct annulus wall thickness [m]
@@ -81,6 +113,13 @@ k_struct: 1.30
 Q_interference: 1.05
 
 static_margin: 0.05
+
+battery_tray_travel_m: 0.025
+battery_tray_mass_kg: 0.015
+
+t_vane_plate_m: 0.002
+servo_mass_kg: 0.012
+linkage_mass_kg: 0.003
 
 duct_chord_ratio: 0.45
 t_duct_m: 0.008

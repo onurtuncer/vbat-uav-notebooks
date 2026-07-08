@@ -93,6 +93,13 @@ MU_AIR = 1.789e-5   # dynamic viscosity of air, ISA sea level [Pa s]
 # cooling air is available, the duct ring is at the tail.
 PROP_SPLIT = {"motor_fan": 0.60, "esc": 0.25, "duct": 0.15}
 
+# Guard on how much of a top-down mass-fraction budget
+# (config/initial_weight_fraction_estimation.yaml: structural/avionics/misc)
+# may be re-allocated to named hardware that used to hide inside it, before
+# the fraction assumption itself needs revisiting rather than being
+# silently netted down.
+MAX_HARDWARE_CARVE_FRACTION = 0.5
+
 
 # ---------------------------------------------
 #  Input parameters (config/fuselage.yaml)
@@ -117,6 +124,13 @@ class FuselageParams:
     Q_interference:   float   # [-]
     # stability
     static_margin:    float   # (x_AC - x_CG)/MAC [-]
+    # battery CG trim
+    battery_tray_travel_m: float   # +/- rail travel [m]
+    battery_tray_mass_kg:  float   # sliding-rail hardware [kg]
+    # control hardware (vane + servo + linkage) mass model
+    t_vane_plate_m:   float   # CFRP vane plate thickness [m]
+    servo_mass_kg:    float   # per-vane servo + horn + wiring [kg]
+    linkage_mass_kg:  float   # per-vane pushrod + hinge pin [kg]
     # duct geometry
     duct_chord_ratio: float   # duct chord / D_rotor [-]
     t_duct_m:         float   # [m]
@@ -144,6 +158,11 @@ class FuselageParams:
             k_struct         = float(data["k_struct"]),
             Q_interference   = float(data["Q_interference"]),
             static_margin    = float(data["static_margin"]),
+            battery_tray_travel_m = float(data["battery_tray_travel_m"]),
+            battery_tray_mass_kg  = float(data["battery_tray_mass_kg"]),
+            t_vane_plate_m   = float(data["t_vane_plate_m"]),
+            servo_mass_kg    = float(data["servo_mass_kg"]),
+            linkage_mass_kg  = float(data["linkage_mass_kg"]),
             duct_chord_ratio = float(data["duct_chord_ratio"]),
             t_duct_m         = float(data["t_duct_m"]),
             tip_clearance_m  = float(data["tip_clearance_m"]),
@@ -192,8 +211,18 @@ class FuselageSizing:
     FF:           float   # form factor                 [-]
     CD0_fus:      float   # fuselage CD0 on S_wing      [-]
     # structure
-    m_shell_kg:   float   # shell + frames mass         [kg]
-    m_struct_budget_kg: float  # (m_structure - m_wing) budget [kg]
+    m_shell_kg:   float   # shell + frames mass                    [kg]
+    m_struct_pool_kg:   float  # (m_structure - m_wing) pool        [kg]
+    m_struct_carved_kg: float  # vanes + linkages pulled out        [kg]
+    m_struct_budget_kg: float  # pool - carved: left for the shell  [kg]
+    # avionics allocation traceability (top-down fraction vs. carved servos)
+    m_avionics_budget_kg: float   # original mass-closure avionics fraction [kg]
+    m_avionics_carved_kg: float   # vane servos pulled out                 [kg]
+    m_avionics_net_kg:    float   # what remains as the "avionics" bay     [kg]
+    # misc allocation traceability (top-down fraction vs. carved allowances)
+    m_misc_budget_kg: float   # original mass-closure misc fraction    [kg]
+    m_misc_carved_kg: float   # battery_tray pulled out                [kg]
+    m_misc_net_kg:    float   # what remains as the "misc" LayoutItem  [kg]
     # layout / balance
     items:        List[LayoutItem]
     x_CG:         float   # CG station from nose        [m, +aft]
@@ -201,6 +230,9 @@ class FuselageSizing:
     x_wing_AC:    float   # wing AC station             [m, +aft]
     x_vane:       float   # vane mid-chord station      [m, +aft]
     L_vane_arm:   float   # |x_vane - x_CG| control arm [m]
+    # battery CG trim
+    x_battery_trim_m:      float   # applied trim offset       [m, +aft]
+    battery_tray_travel_m: float   # available +/- rail travel [m]
     # duct geometry (for CAD)
     duct_chord:   float   # duct axial length           [m]
     D_duct_inner: float   # duct inner diameter         [m]
@@ -353,6 +385,9 @@ def size_fuselage(
     R_hub_m:        float,   # EDF hub radius (from control vane design) [m]
     D_rotor_m:      float,   # EDF rotor diameter [m]
     c_vane_m:       float,   # vane chord [m]
+    n_vanes:        int,     # vane count (control vane design) [-]
+    S_vane_m2:      float,   # single vane planform area [m^2]
+    hinge_xc:       float,   # vane hinge line, fraction of chord [-]
     chord_mean_m:   float,   # wing MAC [m]
     # flight condition
     V_cruise:       float,
@@ -360,15 +395,75 @@ def size_fuselage(
     S_wing:         float,
     # parameters
     p:              FuselageParams = None,
+    # battery CG trim (0 = nominal, no trim)
+    x_battery_trim_m: float = 0.0,
 ) -> FuselageSizing:
     """
     Complete fuselage sizing.  See module docstring for the model.
     """
     if p is None:
         raise ValueError("FuselageParams required (config/fuselage.yaml)")
+    if abs(x_battery_trim_m) > p.battery_tray_travel_m:
+        raise ValueError(
+            f"x_battery_trim_m={x_battery_trim_m*1e3:.1f} mm exceeds the "
+            f"battery tray travel of +/-{p.battery_tray_travel_m*1e3:.1f} mm"
+        )
+
+    # -- 0. control hardware (vane + servo + linkage) mass model -----------
+    # This hardware physically sits at the aft hinge line (recessed in the
+    # exhaust centerbody -- config/fuselage.yaml), not where the top-down
+    # mass-closure fractions nominally book it.  Per
+    # config/initial_weight_fraction_estimation.yaml: servos are documented
+    # under the AVIONICS fraction ("... + servos + wiring"); vanes and
+    # linkages are control-surface/mechanical hardware closest to the
+    # STRUCTURAL fraction ("wing + fuselage + booms + landing legs").  Carve
+    # each piece from the budget that already documents it, not from misc.
+    m_vane_each   = S_vane_m2 * p.t_vane_plate_m * p.rho_shell
+    m_servo_total = n_vanes * p.servo_mass_kg
+    m_vanelink_total = n_vanes * (m_vane_each + p.linkage_mass_kg)
+    m_ctl_total   = m_servo_total + m_vanelink_total
+
+    m_avionics_budget = m_avionics_kg
+    m_avionics_carved = m_servo_total
+    m_avionics_net    = m_avionics_budget - m_avionics_carved
+    assert 0.0 < m_avionics_carved < MAX_HARDWARE_CARVE_FRACTION * m_avionics_budget, (
+        f"vane servos ({m_avionics_carved*1e3:.1f} g) take more than "
+        f"{MAX_HARDWARE_CARVE_FRACTION*100:.0f}% of the avionics budget "
+        f"({m_avionics_budget*1e3:.1f} g) -- the avionics mass-fraction "
+        f"assumption in config/initial_weight_fraction_estimation.yaml "
+        f"needs revisiting, not a silent net-down"
+    )
+
+    m_struct_pool   = m_structure_kg - m_wing_kg
+    m_struct_carved = m_vanelink_total
+    assert 0.0 < m_struct_carved < MAX_HARDWARE_CARVE_FRACTION * m_struct_pool, (
+        f"vanes + linkages ({m_struct_carved*1e3:.1f} g) take more than "
+        f"{MAX_HARDWARE_CARVE_FRACTION*100:.0f}% of the non-wing structural "
+        f"pool ({m_struct_pool*1e3:.1f} g) -- the structural mass-fraction "
+        f"assumption in config/initial_weight_fraction_estimation.yaml "
+        f"needs revisiting, not a silent net-down"
+    )
+
+    # m_misc_kg is the top-down mass-closure fraction assumption (fasteners,
+    # bonding, harness, margin only -- servos/vanes/linkages now come from
+    # their own documented fractions above); the battery tray is the one
+    # piece of new hardware with no better-documented home, so it alone is
+    # carved from misc.  The original budget and the carve-out are both
+    # kept on the returned FuselageSizing/handoff so the history of the
+    # fraction assumption isn't lost -- only the *net* misc item shrinks.
+    m_misc_budget = m_misc_kg
+    m_misc_carved = p.battery_tray_mass_kg
+    m_misc_net    = m_misc_budget - m_misc_carved
+    assert 0.0 < m_misc_carved < MAX_HARDWARE_CARVE_FRACTION * m_misc_budget, (
+        f"battery tray ({m_misc_carved*1e3:.1f} g) takes more than "
+        f"{MAX_HARDWARE_CARVE_FRACTION*100:.0f}% of the misc budget "
+        f"({m_misc_budget*1e3:.1f} g) -- the misc mass-fraction assumption "
+        f"in config/initial_weight_fraction_estimation.yaml needs revisiting, "
+        f"not a silent net-down"
+    )
 
     # -- 1. volumes and diameter ---------------------------------------
-    vols = component_volumes(m_battery_kg, m_payload_kg, m_avionics_kg, p)
+    vols = component_volumes(m_battery_kg, m_payload_kg, m_avionics_net, p)
     D, active = solve_diameter(vols, R_hub_m, p)
     L = p.fineness_ratio * D
 
@@ -387,7 +482,7 @@ def size_fuselage(
 
     # -- 4. shell mass -----------------------------------------------------
     m_shell = p.k_struct * p.rho_shell * p.t_shell_m * S_wet
-    m_struct_budget = m_structure_kg - m_wing_kg
+    m_struct_budget = m_struct_pool - m_struct_carved
 
     # -- 5. layout -------------------------------------------------------
     r_int = D / 2.0 - p.t_shell_m
@@ -398,13 +493,19 @@ def size_fuselage(
 
     x = 0.5 * L_nose * 0.5   # first usable station: quarter of the nose
     items: List[LayoutItem] = []
+    battery_item: LayoutItem = None
     for name in ("payload", "avionics", "battery"):   # nose-to-tail order
         li = LayoutItem(name, {"payload": m_payload_kg,
-                               "avionics": m_avionics_kg,
+                               "avionics": m_avionics_net,
                                "battery": m_battery_kg}[name],
                         x_start=x, length=bay_len(vols[name]))
         items.append(li)
         x = li.x_start + li.length
+        if name == "battery":
+            battery_item = li
+
+    # battery tray: slides the packed bay +/- x_battery_trim_m on its rail
+    battery_item.x_start += x_battery_trim_m
 
     m_motor = PROP_SPLIT["motor_fan"] * m_propulsion_kg
     m_esc   = PROP_SPLIT["esc"]       * m_propulsion_kg
@@ -414,12 +515,24 @@ def size_fuselage(
     x_fan      = L - 0.25 * L_tail            # fan plane in the boattail
     x_duct_c   = x_fan + 0.15 * duct_chord    # duct centered around fan
 
+    # vanes sit just aft of the duct exit; servos/linkages recess in the
+    # hub with their shaft on the hinge line -- real aft-mounted hardware,
+    # placed at its true station instead of the forward bays it's booked
+    # against above.
+    x_vane    = L + 0.5 * c_vane_m + 0.015
+    x_vane_te = x_vane + 0.5 * c_vane_m
+    x_hinge   = x_vane_te - (1.0 - hinge_xc) * c_vane_m
+
     items.append(LayoutItem("esc",        m_esc,   x_start=0.5 * L - 0.02, length=0.04))
     items.append(LayoutItem("motor_fan",  m_motor, x_start=x_fan,   length=0.0))
     items.append(LayoutItem("duct",       m_duct,  x_start=x_duct_c, length=0.0))
     items.append(LayoutItem("shell_struct", m_struct_budget,
                             x_start=0.45 * L, length=0.0))
-    items.append(LayoutItem("misc",       m_misc_kg, x_start=0.40 * L, length=0.0))
+    items.append(LayoutItem("battery_tray", p.battery_tray_mass_kg,
+                            x_start=battery_item.x_cg, length=0.0))
+    items.append(LayoutItem("control_hw", m_ctl_total,
+                            x_start=x_hinge, length=0.0))
+    items.append(LayoutItem("misc",       m_misc_net, x_start=0.40 * L, length=0.0))
 
     # -- 6. CG and wing placement (fixed point on wing position) --------
     m_nonwing = sum(it.mass_kg for it in items)
@@ -436,8 +549,6 @@ def size_fuselage(
     items.append(LayoutItem("wing", m_wing_kg, x_start=x_cg, length=0.0))
 
     # -- 7. vane arm cross-check -----------------------------------------
-    # vanes sit just aft of the duct exit
-    x_vane = L + 0.5 * c_vane_m + 0.015
     L_arm  = abs(x_vane - x_cg)
 
     D_duct_inner = D_rotor_m + 2.0 * p.tip_clearance_m
@@ -449,9 +560,17 @@ def size_fuselage(
         V_total_m3=V_tot, V_bays_m3=sum(vols.values()),
         L_stack_m=L_stack, L_avail_m=L_avail,
         S_wet_m2=S_wet, Re_L=Re_L, Cf=Cf, FF=FF, CD0_fus=CD0_fus,
-        m_shell_kg=m_shell, m_struct_budget_kg=m_struct_budget,
+        m_shell_kg=m_shell,
+        m_struct_pool_kg=m_struct_pool, m_struct_carved_kg=m_struct_carved,
+        m_struct_budget_kg=m_struct_budget,
+        m_avionics_budget_kg=m_avionics_budget, m_avionics_carved_kg=m_avionics_carved,
+        m_avionics_net_kg=m_avionics_net,
+        m_misc_budget_kg=m_misc_budget, m_misc_carved_kg=m_misc_carved,
+        m_misc_net_kg=m_misc_net,
         items=items, x_CG=x_cg, x_wing_LE=x_wing_le, x_wing_AC=x_ac,
         x_vane=x_vane, L_vane_arm=L_arm,
+        x_battery_trim_m=x_battery_trim_m,
+        battery_tray_travel_m=p.battery_tray_travel_m,
         duct_chord=duct_chord,
         D_duct_inner=D_duct_inner, D_duct_outer=D_duct_outer,
     )
@@ -485,6 +604,17 @@ def write_fuselage_yaml(fus: FuselageSizing, p: FuselageParams, path) -> None:
         # structure
         "m_shell_kg":     round(fus.m_shell_kg, 4),
         "t_shell_m":      p.t_shell_m,
+        # mass-fraction allocation traceability: top-down budget (from
+        # config/initial_weight_fraction_estimation.yaml) vs. the named
+        # hardware carved out of each, per its documented fraction scope
+        "m_struct_pool_kg":   round(fus.m_struct_pool_kg, 5),
+        "m_struct_carved_kg": round(fus.m_struct_carved_kg, 5),
+        "m_avionics_budget_kg": round(fus.m_avionics_budget_kg, 5),
+        "m_avionics_carved_kg": round(fus.m_avionics_carved_kg, 5),
+        "m_avionics_net_kg":    round(fus.m_avionics_net_kg, 5),
+        "m_misc_budget_kg": round(fus.m_misc_budget_kg, 5),
+        "m_misc_carved_kg": round(fus.m_misc_carved_kg, 5),
+        "m_misc_net_kg":     round(fus.m_misc_net_kg, 5),
         # balance
         "x_CG_m":         round(fus.x_CG, 5),
         "x_wing_LE_m":    round(fus.x_wing_LE, 5),
@@ -492,6 +622,9 @@ def write_fuselage_yaml(fus: FuselageSizing, p: FuselageParams, path) -> None:
         "x_vane_m":       round(fus.x_vane, 5),
         "L_vane_arm_m":   round(fus.L_vane_arm, 5),
         "static_margin":  p.static_margin,
+        # battery CG trim
+        "x_battery_trim_m":      round(fus.x_battery_trim_m, 5),
+        "battery_tray_travel_m": p.battery_tray_travel_m,
         # duct
         "duct_chord_m":   round(fus.duct_chord, 5),
         "D_duct_inner_m": round(fus.D_duct_inner, 5),
