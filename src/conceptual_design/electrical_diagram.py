@@ -10,14 +10,15 @@ diagram that matches the new numbers.
 DIAGRAM TOPOLOGY (fixed -- a design decision, not derived from sizing):
     BT1 (battery) -> PDB -> ESC1 -> M1 (EDF motor), 3-phase
     PDB -> BEC1 (sensor rail) -> FC1 + RX1/TLM1/GPS1/ASP1
-    PDB -> BEC2 (servo/CC rail) -> CC1 + 4x vane servos
-    FC1 -> ESC1 (throttle), FC1 -> 4x vane servos (PWM)
+    PDB -> BEC2 (servo/CC rail) -> CC1 + 4x vane servos + 2x aileron servos
+    FC1 -> ESC1 (throttle), FC1 -> 4x vane servos + 2x aileron servos (PWM)
     FC1 <-> RX1/TLM1/GPS1/ASP1/CC1 (serial/data), CC1 -> CAM1
 
 Component labels, current ratings, wire gauges, and connectors are
 computed from config/electrical.yaml, config/battery.yaml,
-config/rotor.yaml, config/avionics.yaml, out/control_vanes.yaml, and
-the mass_closure.SizingResult -- see compute_operating_point().
+config/rotor.yaml, config/avionics.yaml, out/control_vanes.yaml,
+out/aileron.yaml, and the mass_closure.SizingResult -- see
+compute_operating_point().
 
 Grounds/returns are common and intentionally not drawn individually;
 this is a block diagram, not a full schematic.
@@ -146,6 +147,7 @@ def render_wiring_svg(
     rotor:         RotorParams,
     batt:          Battery,
     servo_torque_gcm: float,
+    aileron_servo_torque_gcm: float,
     package_version: str,
 ) -> str:
     """Render the electrical block diagram as a standalone SVG string.
@@ -160,7 +162,7 @@ def render_wiring_svg(
     return f'''<svg viewBox="0 0 1480 1000" xmlns="http://www.w3.org/2000/svg" role="img"
      aria-labelledby="wd-title wd-desc">
   <title id="wd-title">V-BAT Tail-Sitter -- Electrical Block Diagram</title>
-  <desc id="wd-desc">Generated from config/electrical.yaml, config/battery.yaml, config/rotor.yaml and the converged sizing result. Battery, power distribution, ESC, EDF motor, regulators, flight controller, RC receiver, telemetry, GNSS, airspeed sensor, companion computer, camera, and four vane servos.</desc>
+  <desc id="wd-desc">Generated from config/electrical.yaml, config/battery.yaml, config/rotor.yaml and the converged sizing result. Battery, power distribution, ESC, EDF motor, regulators, flight controller, RC receiver, telemetry, GNSS, airspeed sensor, companion computer, camera, four vane servos, and two aileron servos.</desc>
   <style>
     text {{ font-family: ui-monospace, "Cascadia Mono", "SF Mono", "JetBrains Mono", Consolas, monospace; fill: #1B2128; }}
     .ref {{ font-weight: 700; font-size: 15px; }}
@@ -201,8 +203,8 @@ def render_wiring_svg(
     <path class="power" d="M570,340 V615 H895 V640" stroke-width="2.5"/>
 
     <path class="power" d="M640,340 V745" stroke-width="2.5"/>
-    <path class="power" d="M70,745 H640" stroke-width="2.5"/>
-    <path class="power" d="M70,745 V820 M230,745 V820 M390,745 V820 M550,745 V820" stroke-width="2.5"/>
+    <path class="power" d="M70,745 H870" stroke-width="2.5"/>
+    <path class="power" d="M70,745 V820 M230,745 V820 M390,745 V820 M550,745 V820 M710,745 V820 M870,745 V820" stroke-width="2.5"/>
 
     <path class="signal" d="M740,420 V180 H595 V150" stroke-width="2.25"/>
 
@@ -214,8 +216,8 @@ def render_wiring_svg(
     <path class="data" d="M990,660 H1040" stroke-width="2" stroke-dasharray="6 4"/>
 
     <path class="signal" d="M700,520 V780" stroke-width="2.25"/>
-    <path class="signal" d="M150,780 H630" stroke-width="2.25"/>
-    <path class="signal" d="M150,780 V820 M310,780 V820 M470,780 V820 M630,780 V820" stroke-width="2.25"/>
+    <path class="signal" d="M150,780 H950" stroke-width="2.25"/>
+    <path class="signal" d="M150,780 V820 M310,780 V820 M470,780 V820 M630,780 V820 M790,780 V820 M950,780 V820" stroke-width="2.25"/>
   </g>
 
   <g class="jx">
@@ -228,9 +230,11 @@ def render_wiring_svg(
     <circle cx="640" cy="745" r="3.4"/>
     <circle cx="70" cy="745" r="3.4"/><circle cx="230" cy="745" r="3.4"/>
     <circle cx="390" cy="745" r="3.4"/><circle cx="550" cy="745" r="3.4"/>
+    <circle cx="710" cy="745" r="3.4"/><circle cx="870" cy="745" r="3.4"/>
     <circle cx="700" cy="780" r="3.4"/>
     <circle cx="150" cy="780" r="3.4"/><circle cx="310" cy="780" r="3.4"/>
     <circle cx="470" cy="780" r="3.4"/><circle cx="630" cy="780" r="3.4"/>
+    <circle cx="790" cy="780" r="3.4"/><circle cx="950" cy="780" r="3.4"/>
   </g>
 
   <g>
@@ -342,7 +346,20 @@ def render_wiring_svg(
     <text class="name" x="536" y="863">Vane Servo &#183; Right</text>
     <text class="spec" x="536" y="877">&#8805;{servo_torque_gcm:.0f} g&#183;cm, PWM</text>
   </g>
+  <g>
+    <rect class="box" x="680" y="820" width="140" height="75" rx="2"/>
+    <text class="ref" x="696" y="847">S-AL</text>
+    <text class="name" x="696" y="863">Aileron Servo &#183; L</text>
+    <text class="spec" x="696" y="877">&#8805;{aileron_servo_torque_gcm:.0f} g&#183;cm, PWM</text>
+  </g>
+  <g>
+    <rect class="box" x="840" y="820" width="140" height="75" rx="2"/>
+    <text class="ref" x="856" y="847">S-AR</text>
+    <text class="name" x="856" y="863">Aileron Servo &#183; R</text>
+    <text class="spec" x="856" y="877">&#8805;{aileron_servo_torque_gcm:.0f} g&#183;cm, PWM</text>
+  </g>
   <text class="spec" x="40" y="920">T/B/L/R = aft-view labels, matching vehicle_assembly.py VANE_ANGLES &#183; torque from out/control_vanes.yaml</text>
+  <text class="spec" x="40" y="933">S-AL/S-AR = outboard aileron servos (out/aileron.yaml), cruise-phase roll backup to the jet vanes</text>
 
   <g transform="translate(1010,50)">
     <rect class="box" x="0" y="0" width="440" height="190" rx="2"/>

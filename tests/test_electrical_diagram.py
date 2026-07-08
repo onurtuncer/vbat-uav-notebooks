@@ -92,6 +92,7 @@ class TestSvgRendering:
     def test_produces_valid_xml(self, sizing_result, batt, elec, rotor):
         op = compute_operating_point(sizing_result, batt, elec)
         svg = render_wiring_svg(op, elec, rotor, batt, servo_torque_gcm=461.0,
+                                aileron_servo_torque_gcm=86.0,
                                 package_version="0.0.2")
         root = ET.fromstring(svg)  # raises if malformed / undefined entities
         assert root.tag.endswith("}svg")
@@ -101,6 +102,7 @@ class TestSvgRendering:
         # XML/SVG and previously broke the standalone file -- guard the regression.
         op = compute_operating_point(sizing_result, batt, elec)
         svg = render_wiring_svg(op, elec, rotor, batt, servo_torque_gcm=461.0,
+                                aileron_servo_torque_gcm=86.0,
                                 package_version="0.0.2")
         for entity in ("&middot;", "&mdash;", "&hellip;", "&ndash;"):
             assert entity not in svg
@@ -108,6 +110,7 @@ class TestSvgRendering:
     def test_key_values_appear_in_output(self, sizing_result, batt, elec, rotor):
         op = compute_operating_point(sizing_result, batt, elec)
         svg = render_wiring_svg(op, elec, rotor, batt, servo_torque_gcm=461.0,
+                                aileron_servo_torque_gcm=86.0,
                                 package_version="0.0.2")
         assert op.main_connector in svg
         assert "195 mm" in svg
@@ -118,6 +121,7 @@ class TestWriteOutputs:
     def test_writes_svg_and_yaml(self, tmp_path, sizing_result, batt, elec, rotor):
         op = compute_operating_point(sizing_result, batt, elec)
         svg = render_wiring_svg(op, elec, rotor, batt, servo_torque_gcm=461.0,
+                                aileron_servo_torque_gcm=86.0,
                                 package_version="0.0.2")
         paths = write_wiring_diagram(svg, op, elec, tmp_path)
 
