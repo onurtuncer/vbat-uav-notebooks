@@ -170,22 +170,15 @@ This mirrors best practice in research and aerospace R&D codebases.
 - Python **3.10+**
 
 ### Python packages
-Install the full stack (numpy, scipy, matplotlib, pandas, pyyaml, jupyter,
-cadquery) with:
+Install the package in editable mode with the notebook and CAD extras:
 
 ```bash
-pip install -r requirements.txt
+pip install -e ".[cad,notebooks]"
 ```
 
-or install the package itself in editable mode:
-
-```bash
-pip install -e .
-```
-
-CadQuery is only needed for the solid-model notebook
+CadQuery (`cad` extra) is only needed for the solid-model notebook
 (`vehicle_solid_model.ipynb`); everything else runs on the plain
-scientific stack.
+scientific stack (`pip install -e .`).
 
 ### OpenFOAM (optional)
 The `Allrun.*` scripts under [`cfd/`](cfd/) run external-aero RANS

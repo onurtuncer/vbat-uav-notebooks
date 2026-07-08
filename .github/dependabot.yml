@@ -6,7 +6,7 @@ updates:
     schedule:
       interval: monthly
 
-  # Python dependencies (pyproject.toml + requirements.txt).
+  # Python dependencies (pyproject.toml).
   # Ranges are floors (>=), so PRs arrive only when a floor is stale or
   # a security advisory affects a dependency.
   - package-ecosystem: pip
