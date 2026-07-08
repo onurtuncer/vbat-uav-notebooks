@@ -1,0 +1,60 @@
+# Aileron parameters for the V-BAT tail-sitter conceptual design.
+# Used by aileron_design.py.
+#
+# Ailerons are the primary roll actuator in wing-borne cruise, backing up
+# the jet control vanes (control_vane_design.py) whose authority is sized
+# from hover thrust and collapses at cruise power (q_jet scales linearly
+# with thrust). Vanes remain primary for all three axes in hover/transition
+# and stay available as a roll backup in cruise.
+#
+# --- Geometry ---------------------------------------------------------
+# span_frac_wing : aileron span, as a fraction of the wing HALF-span,
+#                  positioned outboard (from the tip inward) [-]
+#
+# chord_frac     : aileron chord, as a fraction of the wing MAC [-]
+#
+# 0.12 / 0.12 is deliberately much smaller than typical full-scale GA
+# proportions (~0.35 span / ~0.25 chord): at this vehicle's cruise q and
+# wing-span moment arm, a GA-proportioned aileron gives ~4300 deg/s^2 of
+# roll acceleration against a 30 deg/s^2 requirement (a >140x margin) and
+# demands an unrealistic ~1500 g*cm servo. Roll authority scales roughly
+# with area x arm, both of which shrink fast with span/chord fraction, so
+# a much smaller surface still clears the requirement by a healthy ~20x
+# margin (see out/aileron.yaml) with a servo torque in a normal small-UAV
+# range. Re-check this margin if the requirement or wing geometry changes.
+#
+# --- Deflection ---------------------------------------------------------
+# delta_max_deg    : maximum deflection [deg] -- matches the jet-vane
+#                    convention (config-free constant shared informally;
+#                    kept separate here since ailerons are a different
+#                    surface with their own structural limits).
+# delta_design_deg : deflection used for the nominal authority check [deg]
+#
+# --- Hardware mass ------------------------------------------------------
+# servo_mass_kg   : per-aileron servo + horn + wiring [kg]
+#                   9g-class, same servo class as the jet vanes (n=2,
+#                   one per aileron) -- carved from the avionics
+#                   mass-closure fraction ("...+ servos + wiring",
+#                   config/initial_weight_fraction_estimation.yaml).
+#
+# linkage_mass_kg : per-aileron pushrod + hinge pin [kg] -- carved from
+#                   the structural fraction (ailerons are part of the
+#                   wing structure).
+#
+# --- Hinge moment model (mirrors control_vane_design.py) ----------------
+# C_hm_coeff : hinge-moment coefficient factor [-] (flat-plate-at-quarter-
+#              chord approximation, same first-order model used for the
+#              jet vanes -- adequate at conceptual stage)
+# SF_servo   : servo torque safety factor [-]
+
+span_frac_wing: 0.12
+chord_frac: 0.12
+
+delta_max_deg: 20.0
+delta_design_deg: 10.0
+
+servo_mass_kg: 0.012
+linkage_mass_kg: 0.003
+
+C_hm_coeff: 0.5
+SF_servo: 2.5

@@ -23,10 +23,14 @@ M_roll_design_Nm: 0.20675511496780782
 ddot_pitch_deg_s2: 631.6719886986011
 ddot_yaw_deg_s2: 631.6719886986011
 ddot_roll_deg_s2: 903.5969444102559
+ddot_min_deg_s2: 30.0
 M_hinge_max_Nmm: 15.063586947654567
 servo_torque_req_gcm: 460.81751508378204
 L_CG_m: 0.12026268158097643
 L_roll_m: 0.06825
+I_pitch_kgm2: 0.01652287084976573
+I_yaw_kgm2: 0.01652287084976573
+I_roll_kgm2: 0.013110043757539568
 mixing_matrix:
 - - 1.0
   - 0.0

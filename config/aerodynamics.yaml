@@ -27,6 +27,13 @@
 #
 # V_max     : maximum airspeed [m/s]
 #             35.0 m/s is the regulatory ceiling for the open category.
+#
+# ddot_min_deg_s2 : minimum required angular acceleration about any axis
+#             [deg/s^2]. 30 deg/s^2 is a soft conceptual-stage floor for
+#             adequate handling response. Shared by control_vane_design
+#             (hover/transition, jet vanes) and aileron_design (cruise,
+#             wing control surfaces) so both notebooks check against the
+#             same requirement.
 
 LD: 8.0
 CD0: 0.025
@@ -35,3 +42,4 @@ e: 0.80
 CL_max: 1.4
 V_stall: 12.0
 V_max: 35.0
+ddot_min_deg_s2: 30.0

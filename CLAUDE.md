@@ -19,13 +19,23 @@ that the next one reads:
 1. `vbat_conceptual_design` — mission sizing, mass closure (MTOW, wing, power)
 2. `wing_design` — airfoil selection → `out/airfoil.yaml`
 3. `control_vane_design` — jet vanes → `out/control_vanes.yaml`
-4. `fuselage_design` — layout, CG, drag → `out/fuselage.yaml`
-5. `vehicle_solid_model` — CadQuery CAD → `out/cad/` (STEP/STL, per-part + fused + prop rotor)
-6. `mass_properties` — inertia tensor, BOM → `out/mass_properties.yaml`, `out/bom.csv`
-7. `wiring_diagram` — electrical block diagram → `out/wiring_diagram.svg`, `out/electrical.yaml`
+4. `aileron_design` — cruise-phase roll backup → `out/aileron.yaml`
+5. `fuselage_design` — layout, CG, drag → `out/fuselage.yaml`
+6. `vehicle_solid_model` — CadQuery CAD → `out/cad/` (STEP/STL, per-part + fused + prop rotor)
+7. `mass_properties` — inertia tensor, BOM → `out/mass_properties.yaml`, `out/bom.csv`
+8. `wiring_diagram` — electrical block diagram → `out/wiring_diagram.svg`, `out/electrical.yaml`
 
-NB2–NB7 re-run `run_sizing_loop` from `config/` to reconstruct the same
-design point — if you change the sizing API, update **all seven** call sites.
+NB2–NB8 re-run `run_sizing_loop` from `config/` to reconstruct the same
+design point — if you change the sizing API, update **all eight** call sites.
+
+`aileron_design` exists because jet-vane control authority is sized from
+**hover** thrust and collapses in cruise (`q_jet` scales linearly with
+thrust — cruise thrust is only ~L/D⁻¹ of hover thrust). Ailerons use wing
+dynamic pressure instead, so they stay effective exactly where jet vanes
+are weakest. Jet vanes remain primary for all three axes in hover/transition
+and stay available as a roll backup in cruise. `ddot_min_deg_s2`
+(`config/aerodynamics.yaml`) is the one requirement both notebooks check
+against — keep it in sync if either notebook's authority margin changes.
 
 `wiring_diagram` is generated, not hand-drawn: box positions/wiring
 topology are a fixed layout in `electrical_diagram.py`, but every label
@@ -71,7 +81,7 @@ also runs in the local 3.14 venv.
 ## CI (GitHub Actions)
 
 - `ci.yml` — ruff, pytest (3.10/3.12/3.14), ShellCheck on `cfd/**/Allrun*`.
-- `design-pipeline.yml` — executes all six notebooks on every PR, runs
+- `design-pipeline.yml` — executes all eight notebooks on every PR, runs
   design-regression + geometry tests, uploads `out/` artifacts; on main
   additionally: coarse OpenFOAM smoke run and GitHub Pages deploy
   (rendered notebooks, 3D viewer with exploded view, BOM page).
@@ -96,10 +106,13 @@ YAMLs). A span failure usually means `out/cad/` is stale, not wrong.
 ## Local environment gotchas
 
 - The local venv is Python 3.14: **CadQuery does not install there**,
-  so NB5/NB6 (and thus `out/cad/`, `out/bom.csv`, `out/mass_properties.yaml`)
-  can only be regenerated in CI (Python 3.12) or a separate 3.12 env.
-  After a design change, the committed copies of those outputs are
-  stale until regenerated — CI validates against fresh ones.
+  so NB6 (`vehicle_solid_model`, and thus `out/cad/`) can only be
+  regenerated in CI (Python 3.12) or a separate 3.12 env. NB7
+  (`mass_properties`) has no CadQuery dependency of its own and *can*
+  run locally, but its BOM/CAD cross-check still lags until NB6 has
+  regenerated in CI. After a design change, the committed copies of
+  CadQuery-dependent outputs are stale until regenerated — CI validates
+  against fresh ones.
 - Run tests with `pip install -e ".[dev]"` then `pytest`; lint with
   `ruff check src tests scripts printprep cfd`.
 - Notebook figures save to `notebooks/figures/` (`FIG_DIR`), design

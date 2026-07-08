@@ -137,6 +137,7 @@ class Aerodynamics:
     CL_max:    float = 1.4    # maximum lift coefficient   [-]
     V_stall:   float = 12.0   # desired stall speed        [m/s]
     V_max:     float = 35.0   # maximum speed              [m/s]
+    ddot_min_deg_s2: float = 30.0  # min required angular accel [deg/s^2]
 
     @property
     def k(self) -> float:
@@ -156,6 +157,7 @@ class Aerodynamics:
             CL_max  = float(data["CL_max"]),
             V_stall = float(data["V_stall"]),
             V_max   = float(data["V_max"]),
+            ddot_min_deg_s2 = float(data["ddot_min_deg_s2"]),
         )
 
 

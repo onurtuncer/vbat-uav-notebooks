@@ -389,6 +389,8 @@ def size_fuselage(
     S_vane_m2:      float,   # single vane planform area [m^2]
     hinge_xc:       float,   # vane hinge line, fraction of chord [-]
     chord_mean_m:   float,   # wing MAC [m]
+    m_aileron_servo_kg:   float,  # total aileron servo mass (both) [kg]
+    m_aileron_linkage_kg: float,  # total aileron linkage mass (both) [kg]
     # flight condition
     V_cruise:       float,
     rho:            float,
@@ -424,24 +426,28 @@ def size_fuselage(
     m_ctl_total   = m_servo_total + m_vanelink_total
 
     m_avionics_budget = m_avionics_kg
-    m_avionics_carved = m_servo_total
+    m_avionics_carved = m_servo_total + m_aileron_servo_kg
     m_avionics_net    = m_avionics_budget - m_avionics_carved
     assert 0.0 < m_avionics_carved < MAX_HARDWARE_CARVE_FRACTION * m_avionics_budget, (
-        f"vane servos ({m_avionics_carved*1e3:.1f} g) take more than "
-        f"{MAX_HARDWARE_CARVE_FRACTION*100:.0f}% of the avionics budget "
-        f"({m_avionics_budget*1e3:.1f} g) -- the avionics mass-fraction "
-        f"assumption in config/initial_weight_fraction_estimation.yaml "
-        f"needs revisiting, not a silent net-down"
+        f"vane + aileron servos ({m_avionics_carved*1e3:.1f} g) take more "
+        f"than {MAX_HARDWARE_CARVE_FRACTION*100:.0f}% of the avionics "
+        f"budget ({m_avionics_budget*1e3:.1f} g) -- the avionics "
+        f"mass-fraction assumption in "
+        f"config/initial_weight_fraction_estimation.yaml needs revisiting, "
+        f"not a silent net-down"
     )
 
+    m_aileron_hw = m_aileron_servo_kg + m_aileron_linkage_kg
+
     m_struct_pool   = m_structure_kg - m_wing_kg
-    m_struct_carved = m_vanelink_total
+    m_struct_carved = m_vanelink_total + m_aileron_linkage_kg
     assert 0.0 < m_struct_carved < MAX_HARDWARE_CARVE_FRACTION * m_struct_pool, (
-        f"vanes + linkages ({m_struct_carved*1e3:.1f} g) take more than "
-        f"{MAX_HARDWARE_CARVE_FRACTION*100:.0f}% of the non-wing structural "
-        f"pool ({m_struct_pool*1e3:.1f} g) -- the structural mass-fraction "
-        f"assumption in config/initial_weight_fraction_estimation.yaml "
-        f"needs revisiting, not a silent net-down"
+        f"vanes + linkages + aileron linkages ({m_struct_carved*1e3:.1f} g) "
+        f"take more than {MAX_HARDWARE_CARVE_FRACTION*100:.0f}% of the "
+        f"non-wing structural pool ({m_struct_pool*1e3:.1f} g) -- the "
+        f"structural mass-fraction assumption in "
+        f"config/initial_weight_fraction_estimation.yaml needs revisiting, "
+        f"not a silent net-down"
     )
 
     # m_misc_kg is the top-down mass-closure fraction assumption (fasteners,
@@ -535,18 +541,22 @@ def size_fuselage(
     items.append(LayoutItem("misc",       m_misc_net, x_start=0.40 * L, length=0.0))
 
     # -- 6. CG and wing placement (fixed point on wing position) --------
+    # Ailerons are chordwise co-located with the wing (mounted on it), so
+    # their hardware acts at the same station in this fixed-point solve.
     m_nonwing = sum(it.mass_kg for it in items)
     mom_nonwing = sum(it.mass_kg * it.x_cg for it in items)
+    m_wing_group = m_wing_kg + m_aileron_hw
 
     x_cg = mom_nonwing / m_nonwing            # initial guess: no wing
     for _ in range(5):
-        x_wing_cg = x_cg                      # wing mass acts at ~its own AC
-        x_cg = (mom_nonwing + m_wing_kg * x_wing_cg) / (m_nonwing + m_wing_kg)
+        x_wing_cg = x_cg                      # wing group acts at ~its own AC
+        x_cg = (mom_nonwing + m_wing_group * x_wing_cg) / (m_nonwing + m_wing_group)
 
     x_ac      = x_cg + p.static_margin * chord_mean_m
     x_wing_le = x_ac - 0.25 * chord_mean_m
 
     items.append(LayoutItem("wing", m_wing_kg, x_start=x_cg, length=0.0))
+    items.append(LayoutItem("aileron_hw", m_aileron_hw, x_start=x_cg, length=0.0))
 
     # -- 7. vane arm cross-check -----------------------------------------
     L_arm  = abs(x_vane - x_cg)

@@ -40,6 +40,11 @@ def vanes() -> dict:
     return yaml.safe_load((OUT / "control_vanes.yaml").read_text(encoding="utf-8"))
 
 
+@pytest.fixture(scope="module")
+def aileron() -> dict:
+    return yaml.safe_load((OUT / "aileron.yaml").read_text(encoding="utf-8"))
+
+
 class TestAirfoil:
     def test_design_point(self, airfoil):
         assert airfoil["designation"] == "NACA 2412"
@@ -52,9 +57,9 @@ class TestAirfoil:
 class TestFuselage:
     def test_design_point(self, fuselage):
         # 195 mm COTS EDF design point (2026-07 design review)
-        assert fuselage["D_fus_m"] == pytest.approx(0.09933, rel=1e-2)
-        assert fuselage["L_fus_m"] == pytest.approx(0.49664, rel=1e-2)
-        assert fuselage["x_CG_m"] == pytest.approx(0.24527, rel=1e-2)
+        assert fuselage["D_fus_m"] == pytest.approx(0.09823, rel=1e-2)
+        assert fuselage["L_fus_m"] == pytest.approx(0.49116, rel=1e-2)
+        assert fuselage["x_CG_m"] == pytest.approx(0.24323, rel=1e-2)
         assert fuselage["static_margin"] == pytest.approx(0.05, rel=1e-2)
 
     def test_internal_consistency(self, fuselage):
@@ -89,6 +94,24 @@ class TestControlVanes:
         assert vanes["M_roll_design_Nm"] > 0
         # X-configuration: pitch and yaw authority identical by symmetry
         assert vanes["M_pitch_design_Nm"] == pytest.approx(vanes["M_yaw_design_Nm"])
+
+
+class TestAileron:
+    def test_design_point(self, aileron):
+        assert aileron["n_ailerons"] == 2
+        assert aileron["span_frac_wing"] == pytest.approx(0.12, rel=1e-3)
+        assert aileron["chord_frac"] == pytest.approx(0.12, rel=1e-3)
+        assert aileron["servo_torque_req_gcm"] == pytest.approx(85.75, rel=2e-2)
+
+    def test_cruise_roll_authority(self, aileron):
+        # The whole point of NB4: combined (aileron + residual jet-vane)
+        # cruise roll authority must clear the shared requirement.
+        assert aileron["cruise_authority_ok"] is True
+        assert (aileron["ddot_roll_total_cruise_deg_s2"]
+                >= aileron["ddot_min_deg_s2"])
+        # Jet-vane authority alone is thin in cruise -- confirm the
+        # aileron is doing real work, not just riding on vane margin.
+        assert aileron["ddot_roll_aileron_deg_s2"] > aileron["ddot_min_deg_s2"]
 
 
 class TestCrossFileConsistency:

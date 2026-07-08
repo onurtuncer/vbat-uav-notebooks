@@ -1,0 +1,28 @@
+# AUTO-GENERATED -- do not edit by hand.
+# Source : src/conceptual_design/aileron_design.py
+# Input  : config/aileron.yaml + wing geometry + control vanes
+# Regen  : re-run notebooks/aileron_design.ipynb
+
+span_frac_wing: 0.12
+chord_frac: 0.12
+c_aileron_m: 0.02187
+b_aileron_m: 0.0656
+S_aileron_m2: 0.001434
+y_arm_m: 0.51385
+tau: 0.43208
+Cl_delta_per_rad: 2.09
+delta_max_deg: 20.0
+delta_design_deg: 10.0
+q_cruise_Pa: 245.0
+F_aileron_design_N: 0.12819
+M_roll_design_Nm: 0.13174
+ddot_roll_aileron_deg_s2: 575.747
+ddot_roll_vane_cruise_deg_s2: 52.578
+ddot_roll_total_cruise_deg_s2: 628.324
+ddot_min_deg_s2: 30.0
+cruise_authority_ok: true
+M_hinge_max_Nmm: 2.8029
+servo_torque_req_gcm: 85.75
+servo_mass_kg_each: 0.012
+linkage_mass_kg_each: 0.003
+n_ailerons: 2
