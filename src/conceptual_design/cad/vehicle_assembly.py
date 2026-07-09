@@ -647,6 +647,18 @@ def export_vehicle(asm: cq.Assembly, fused: cq.Workplane, out_dir) -> Dict[str, 
     for d in (step_dir, stl_dir, step_parts_dir, stl_parts_dir):
         d.mkdir(parents=True, exist_ok=True)
 
+    # Wipe the per-part directories before writing: the set of parts
+    # changes when a component is renamed or split (e.g. fuselage ->
+    # fuselage_nose + fuselage_main), and a bare re-export only WRITES the
+    # current parts -- it never removes the old ones.  Left behind, the
+    # orphaned STEP/STL (e.g. a monolithic fuselage) overlap the new split
+    # pieces in any viewer that loads the folder (the Pages 3D viewer
+    # globs stl/parts/*.stl).  Clean first so parts on disk == parts in
+    # the current assembly, always.
+    for d in (step_parts_dir, stl_parts_dir):
+        for stale in list(d.glob("*.step")) + list(d.glob("*.stl")):
+            stale.unlink()
+
     paths = {
         "step_assembly": str(step_dir / "vbat_assembly.step"),
         "step_fused":    str(step_dir / "vbat_fused.step"),
