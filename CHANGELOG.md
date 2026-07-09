@@ -11,6 +11,25 @@ is tagged.
 
 ### Added
 
+- **Segmented-FDM construction as the baseline airframe** (ADR-0008):
+  `construction_method` + per-method `k_construction` in
+  `config/initial_weight_fraction_estimation.yaml` scale the structural
+  fraction inside the mass closure, re-converging the whole design.
+  Baseline k=1.1 moves the design point from ~2.5 kg to **~3.06 kg MTOW**
+  (~39 N hover thrust, ~1.03 kW hover electrical). NB1 gains a
+  side-by-side construction trade study; a new `T_max_N` guard
+  (`config/rotor.yaml`) fails the sizing loudly if hover thrust exceeds
+  the COTS DS-215-class EDF capability.
+- **Modularity split lines** (`config/modularity.yaml`): removable nose
+  module (payload access, split just aft of the payload bay), 90-degree
+  battery hatch over the battery bay, and a two-piece wing on an 8 mm
+  CFRP carry-through spar (matching `wing_lighten --spar-hole`). Joint
+  hardware (nose ring, hatch frame, spar tube + root fittings) is carved
+  from the structural fraction as named mass; spar tube mass is computed
+  from geometry. New `joint_hw`/`spar_hw` layout items, BOM rows, and CAD
+  parts (`fuselage_nose`/`fuselage_main`/`battery_hatch`,
+  `wing_L`/`wing_R`, assembly-only `spar_tube`) whose unions reproduce
+  the OML exactly.
 - **Vibration isolation** (new pipeline stage `vibration_isolation`, NB5):
   soft-mounts the FC/IMU cluster and the payload against the EDF 1-per-rev
   imbalance (~211 Hz forcing, derived from rotor RPM). Sizes each as a 1-DOF
@@ -28,6 +47,9 @@ is tagged.
 
 ### Changed
 
+- Design point re-baselined: all regression pins, `cfd/vehicle/Allrun.case`
+  references (`lRef`, `Aref`, `CofR`), and committed `out/` artifacts
+  updated for the 3.06 kg segmented-FDM vehicle.
 - Pipeline is now nine notebooks (was eight); `fuselage_design` →NB6,
   `vehicle_solid_model` →NB7, `mass_properties` →NB8, `wiring_diagram` →NB9.
 

@@ -60,6 +60,7 @@ from .fuselage_design import (
     FuselageParams,
     FuselageSizing,
     LayoutItem,
+    ModularityParams,
     fuselage_radius,
     size_fuselage,
     write_fuselage_yaml,

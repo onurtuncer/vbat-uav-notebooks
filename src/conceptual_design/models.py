@@ -99,21 +99,47 @@ class PropulsiveSystemParameters:
 # ---------------------------------------------
 @dataclass
 class WeightFraction:
-    fs: float   # structural fraction   [-]
+    """Non-battery, non-payload mass fractions of MTOW.
+
+    `fs` is the EFFECTIVE structural fraction used by the mass closure:
+    fs = fs_base * k_construction[construction_method]  (ADR-0008).
+    The base value and the multiplier are kept as fields so the top-down
+    assumption's history is never lost (same discipline as ADR-0005).
+    """
+    fs: float   # structural fraction, EFFECTIVE (base * k_construction) [-]
     fp: float   # propulsive fraction   [-]
     fa: float   # avionics fraction     [-]
     fm: float   # miscellaneous fraction[-]
+    # construction-method traceability (ADR-0008)
+    fs_base:             float = None   # structural fraction before the multiplier [-]
+    k_construction:      float = 1.0    # applied multiplier [-]
+    construction_method: str = "monocoque"
+
+    def __post_init__(self):
+        if self.fs_base is None:
+            self.fs_base = self.fs
 
     @classmethod
     def from_yaml(cls, path: str) -> "WeightFraction":
         with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
-        # BUG FIX: original had float(["key"]) instead of float(data["key"])
+        fs_base = float(data["structual_weight_fraction"])   # note: original YAML has typo "structual"
+        method  = str(data.get("construction_method", "monocoque"))
+        k_table = data.get("k_construction", {"monocoque": 1.0})
+        if method not in k_table:
+            raise ValueError(
+                f"construction_method '{method}' has no k_construction entry "
+                f"(available: {sorted(k_table)})"
+            )
+        k = float(k_table[method])
         return cls(
-            fs = float(data["structual_weight_fraction"]),   # note: original YAML has typo "structual"
+            fs = fs_base * k,
             fp = float(data["propulsive_weight_fraction"]),
-            fa = float(data["avionics_weight_fraction"]),    # BUG FIX: was float("avionics_weight_fraction")
+            fa = float(data["avionics_weight_fraction"]),
             fm = float(data["miscellaneous_weight_fraction"]),
+            fs_base = fs_base,
+            k_construction = k,
+            construction_method = method,
         )
 
 
@@ -227,6 +253,7 @@ class RotorParams:
     rotor must carry the full weight, so DL = MTOW*g / (pi*D^2/4) is
     computed inside the sizing loop, not configured."""
     D_rotor_m: float   # rotor / EDF diameter [m]
+    T_max_N:   float = 50.0   # COTS EDF class static-thrust guard [N] (ADR-0003)
 
     @classmethod
     def from_yaml(cls, path: str) -> "RotorParams":
@@ -234,6 +261,7 @@ class RotorParams:
             data = yaml.safe_load(f) or {}
         return cls(
             D_rotor_m = float(data["D_rotor_m"]),
+            T_max_N   = float(data["T_max_N"]),
         )
 
 

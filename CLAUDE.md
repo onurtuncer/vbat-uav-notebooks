@@ -79,11 +79,23 @@ also runs in the local 3.14 venv.
 
 - **COTS 195 mm EDF** (Schübeler DS-215 class) — no custom fan
   development. Disk loading is therefore **derived** (`DL = MTOW·g/A`),
-  never configured.
+  never configured. `T_max_N` (`config/rotor.yaml`) guards the hover
+  thrust requirement against the class capability — the sizing fails
+  loudly rather than sizing past the COTS fan.
 - **15–20 min mission** (120 s hover + 40 s transitions + 900 s cruise);
   hover is expensive at this disk loading, so the mission is
   deliberately short-hover.
-- Design point ≈ 2.5 kg MTOW, ~770 W hover electrical, ~9C peak.
+- **Segmented-FDM construction is the baseline** (ADR-0008): 3D-printed
+  airframe segments on an 8 mm CFRP wing spar, with split lines
+  (removable nose, battery hatch, two-piece wing) in
+  `config/modularity.yaml`. `construction_method`/`k_construction` in
+  `config/initial_weight_fraction_estimation.yaml` scale the structural
+  fraction INSIDE the mass closure — k is the most sensitive mass
+  parameter in the project (its config comment carries the sweep table;
+  MTOW nearly doubles between k=1.1 and 1.2). NB1 shows the
+  monocoque-vs-FDM trade every run.
+- Design point ≈ 3.06 kg MTOW, ~1.03 kW hover electrical, ~9.2C peak
+  (segmented-FDM, k=1.1; the monocoque equivalent is ≈ 2.5 kg / 770 W).
 - The external-aero STL (`vbat_fused.stl`) deliberately excludes the
   fan blades: vehicle CFD uses an actuator disk. The parametric rotor
   (`out/cad/step/prop_rotor.step`) is for visualisation and

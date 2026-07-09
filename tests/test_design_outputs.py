@@ -62,9 +62,9 @@ class TestAirfoil:
 class TestFuselage:
     def test_design_point(self, fuselage):
         # 195 mm COTS EDF design point (2026-07 design review)
-        assert fuselage["D_fus_m"] == pytest.approx(0.09766, rel=1e-2)
-        assert fuselage["L_fus_m"] == pytest.approx(0.48828, rel=1e-2)
-        assert fuselage["x_CG_m"] == pytest.approx(0.24115, rel=1e-2)
+        assert fuselage["D_fus_m"] == pytest.approx(0.10247, rel=1e-2)
+        assert fuselage["L_fus_m"] == pytest.approx(0.51235, rel=1e-2)
+        assert fuselage["x_CG_m"] == pytest.approx(0.25255, rel=1e-2)
         assert fuselage["static_margin"] == pytest.approx(0.05, rel=1e-2)
 
     def test_internal_consistency(self, fuselage):
@@ -82,14 +82,14 @@ class TestFuselage:
         # Rectangular wing: x_AC - x_LE = MAC/4. This MAC feeds the CFD
         # force-coefficient setup, so pin it explicitly.
         mac = 4.0 * (fuselage["x_wing_AC_m"] - fuselage["x_wing_LE_m"])
-        assert mac == pytest.approx(0.1822, rel=1e-2)
+        assert mac == pytest.approx(0.2014, rel=1e-2)
 
 
 class TestControlVanes:
     def test_design_point(self, vanes):
         assert vanes["n_vanes"] == 4
         assert vanes["AR_vane"] == pytest.approx(2.5, rel=1e-3)
-        assert vanes["servo_torque_req_gcm"] == pytest.approx(461.0, rel=2e-2)
+        assert vanes["servo_torque_req_gcm"] == pytest.approx(563.0, rel=2e-2)
 
     def test_deflection_ordering(self, vanes):
         assert vanes["delta_design_deg"] < vanes["delta_stall_deg"] <= vanes["delta_max_deg"]
@@ -106,7 +106,7 @@ class TestAileron:
         assert aileron["n_ailerons"] == 2
         assert aileron["span_frac_wing"] == pytest.approx(0.12, rel=1e-3)
         assert aileron["chord_frac"] == pytest.approx(0.12, rel=1e-3)
-        assert aileron["servo_torque_req_gcm"] == pytest.approx(85.75, rel=2e-2)
+        assert aileron["servo_torque_req_gcm"] == pytest.approx(115.8, rel=2e-2)
 
     def test_cruise_roll_authority(self, aileron):
         # The whole point of NB4: combined (aileron + residual jet-vane)

@@ -1,0 +1,69 @@
+# Modularity & access: split lines and joint hardware for the
+# segmented-FDM airframe (ADR-0008).  Used by fuselage_design.py and the
+# CAD assembly.
+#
+# The airframe has three split lines, each buying a specific access or
+# assembly need:
+#   1. Removable NOSE module  -- payload access/swap (the payload bay is
+#      the first bay in the stack, so the nose cone comes off with it).
+#   2. Battery HATCH          -- battery swap between flights without
+#      breaking the nose joint; panel over the battery bay.
+#   3. Two-piece WING         -- transport/print-bed size; each half slides
+#      onto a CFRP carry-through spar tube.
+#
+# The construction-method mass penalty (k_construction, see
+# initial_weight_fraction_estimation.yaml) covers the distributed cost of
+# printing (thicker walls); the DISCRETE joint hardware below is carved
+# from the structural fraction as named hardware, same discipline as the
+# vane/aileron/isolator carve-outs (ADR-0005).
+#
+# --- Nose split -------------------------------------------------------
+# nose_split_margin_m : axial gap between the payload bay's aft edge and
+#                       the split plane [m]. Leaves room for the joint
+#                       ring and the payload isolator sway space (NB5).
+#
+# nose_ring_mass_kg   : printed joint flange pair + alignment pins +
+#                       3x M3 quarter-turn fasteners. Estimate from a
+#                       ~100 mm dia x 8 mm tall printed ring pair at
+#                       ~1 g/cm^3 effective + hardware.
+#
+# --- Battery hatch ----------------------------------------------------
+# hatch_arc_deg       : angular extent of the hatch panel around the
+#                       body [deg]. 90 deg clears the battery bay width
+#                       without cutting into the wing root region.
+#
+# hatch_frame_mass_kg : printed lip/frame bonded around the opening +
+#                       2x M2 screws + captive nuts. The panel itself is
+#                       shell material already counted in the fraction.
+#
+# --- Wing spar / two-piece wing --------------------------------------
+# spar_od_m           : CFRP tube outer diameter [m]. 8 mm matches the
+#                       printprep default (wing_lighten --spar-hole 8.0),
+#                       so the design and the print tooling agree.
+# spar_wall_m         : tube wall [m] (1 mm typical pultruded CFRP).
+# spar_span_frac      : spar length / wing span [-]. 0.6 carries the
+#                       bending through the root region and well past
+#                       the lift centroid of each half-wing.
+# spar_chord_frac     : spar chordwise station / wing chord [-].
+#                       0.30 matches the printprep web default
+#                       (wing_lighten --webs 0.30 ...), near max t/c
+#                       where the section is deepest.
+# rho_spar            : CFRP tube density [kg/m^3].
+#                       Spar tube MASS is computed from this geometry
+#                       (pi/4*(OD^2-ID^2)*L*rho), never configured.
+#
+# wing_root_fitting_mass_kg : per-side printed root socket + retention
+#                       screw that clamps the half-wing onto the spar.
+
+nose_split_margin_m: 0.015
+nose_ring_mass_kg: 0.018
+
+hatch_arc_deg: 90.0
+hatch_frame_mass_kg: 0.010
+
+spar_od_m: 0.008
+spar_wall_m: 0.001
+spar_span_frac: 0.6
+spar_chord_frac: 0.30
+rho_spar: 1600.0
+wing_root_fitting_mass_kg: 0.006

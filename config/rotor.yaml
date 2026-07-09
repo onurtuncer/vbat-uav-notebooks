@@ -8,5 +8,15 @@
 # NOTE: disk loading is intentionally NOT configured here. For a
 # tail-sitter the rotor carries the full weight, so the sizing loop
 # computes DL = MTOW*g / (pi*D^2/4) at every iteration.
+#
+# T_max_N : static thrust capability of the COTS EDF class [N].
+#   Comfortable continuous rating for a DS-215-class 195 mm fan on the
+#   battery voltages this design carries (high-power HST variants reach
+#   further, but with no margin and at currents this pack can't hold).
+#   Used as a plausibility guard on the hover thrust requirement
+#   (T/W * MTOW * g) after the mass closure re-converges -- a design
+#   that needs more hover thrust than this breaks the COTS assumption
+#   (ADR-0003) and must be caught loudly, not sized past.
 
 D_rotor_m: 0.195
+T_max_N: 50.0

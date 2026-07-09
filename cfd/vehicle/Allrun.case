@@ -14,11 +14,11 @@
 #
 # Reference data (derived from vbat-uav-notebooks outputs):
 #   V_cruise = 20 m/s                      config/mission.yaml
-#   MAC      = 0.18220 m   = 4*(x_AC - x_LE), rectangular wing,
-#                            out/fuselage.yaml (0.24914 - 0.20359)
-#   span     = 1.0933 m                    = AR * MAC (rectangular, AR = 6.0)
-#   S_ref    = 0.19920 m^2 = span * MAC
-#   CG       = (-0.24003 0 0) m           x_CG_m, station -> body x = -station
+#   MAC      = 0.20140 m   = 4*(x_AC - x_LE), rectangular wing,
+#                            out/fuselage.yaml (0.26262 - 0.21227)
+#   span     = 1.2084 m                    = AR * MAC (rectangular, AR = 6.0)
+#   S_ref    = 0.24337 m^2 = span * MAC
+#   CG       = (-0.25255 0 0) m           x_CG_m, station -> body x = -station
 #   Re_MAC   = 2.4e5 at 20 m/s
 #
 # Axis convention (body FRD): x fwd, y right, z DOWN.
@@ -51,7 +51,7 @@ $(python3 -c "
 import math
 a = math.radians($AOA); V = $VMAG
 ux, uz = -V*math.cos(a), -V*math.sin(a)
-I, MAC = 0.01, 0.18220                 # 1% turbulence intensity
+I, MAC = 0.01, 0.20140                 # 1% turbulence intensity
 k = 1.5*(I*V)**2
 om = k**0.5/(0.09**0.25*0.1*MAC)       # l_t = 10% MAC
 print(f'{ux:.6f} 0 {uz:.6f} {ux/V:.6f} {uz/V:.6f} '
@@ -183,10 +183,10 @@ functions
         liftDir         ($LX 0 $LZ);
         dragDir         ($DX 0 $DZ);
         pitchAxis       (0 1 0);
-        CofR            (-0.24115 0 0);   // x_CG from out/fuselage.yaml
+        CofR            (-0.25255 0 0);   // x_CG from out/fuselage.yaml
         magUInf         $VMAG;
-        lRef            0.18220;          // MAC
-        Aref            0.19920;          // S_wing = span x MAC
+        lRef            0.20140;          // MAC
+        Aref            0.24337;          // S_wing = span x MAC
     }
 
     yPlus

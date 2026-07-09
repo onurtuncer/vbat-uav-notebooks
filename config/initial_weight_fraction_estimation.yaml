@@ -14,11 +14,47 @@
 # The correct values below sum to 0.55, leaving 0.45 for battery + payload.
 #
 # structual_weight_fraction    : wing + fuselage + booms + landing legs
+#                                (BASE value, for a CFRP monocoque airframe;
+#                                the effective fraction used by the closure
+#                                is fs_base * k_construction[method] below)
 # propulsive_weight_fraction   : motor + ESC + EDF fan + mounts
 # avionics_weight_fraction     : FC + GPS + IMU + RC + comms + servos + wiring
 # miscellaneous_weight_fraction: fasteners, paint, connectors, margin
+#
+# --- Construction method (ADR-0008) ----------------------------------
+# construction_method : which airframe construction the closure sizes for.
+#   monocoque     : CFRP monocoque shell (the fraction basis above).
+#   segmented_fdm : segmented 3D-printed airframe on a CFRP spar backbone,
+#                   with split lines (removable nose, battery hatch,
+#                   two-piece wing) realized by printprep/step2print.
+#                   Cheaper iteration, worse mass.
+#
+# k_construction : structural-fraction multiplier per method [-].
+#   FDM walls run 2-3x thicker than CFRP laminate at lower specific
+#   stiffness, and segmentation adds joint rings/pins/fastener overhead;
+#   printed airframes typically land 15-30% heavier than composite
+#   equivalents at this scale. The multiplier applies to the STRUCTURAL
+#   fraction only -- the wing keeps its CFRP-spar Raymer estimate (the
+#   spar carries wing bending in both methods).
+#
+#   SENSITIVITY WARNING (ADR-0008): this parameter sits inside the mass
+#   closure's fixed-fraction sum and compounds through the battery, so
+#   MTOW is hypersensitive near the closure singularity:
+#       k=1.0 -> 2.50 kg   k=1.10 -> 3.06 kg
+#       k=1.15 -> 3.53 kg  k=1.20 -> 4.57 kg  (each half-step worse)
+#   1.1 (low end of the published range) is chosen deliberately, paired
+#   with a COMMITMENT to printprep's mass-discipline tooling
+#   (wing_lighten web-removal, shell hollowing) which exists precisely
+#   to shave printed mass toward that low end. At 1.2 the vehicle
+#   nearly doubles and hover thrust (58 N) exceeds what a DS-215-class
+#   EDF comfortably delivers, straining ADR-0003's COTS choice.
 
 structual_weight_fraction: 0.25
 propulsive_weight_fraction: 0.15
 avionics_weight_fraction: 0.08
 miscellaneous_weight_fraction: 0.07
+
+construction_method: segmented_fdm
+k_construction:
+  monocoque: 1.0
+  segmented_fdm: 1.1

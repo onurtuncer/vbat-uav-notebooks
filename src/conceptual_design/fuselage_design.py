@@ -170,6 +170,58 @@ class FuselageParams:
 
 
 # ---------------------------------------------
+#  Modularity parameters (config/modularity.yaml, ADR-0008)
+# ---------------------------------------------
+@dataclass
+class ModularityParams:
+    """Split lines and joint hardware for the segmented airframe.
+
+    Three split lines: removable nose (payload access), battery hatch
+    (swap between flights), two-piece wing on a CFRP carry-through spar.
+    Joint hardware is DISCRETE mass carved from the structural fraction
+    (ADR-0005 discipline); the distributed printing penalty lives in
+    k_construction (initial_weight_fraction_estimation.yaml).
+    """
+    nose_split_margin_m:       float   # payload bay aft edge -> split plane [m]
+    nose_ring_mass_kg:         float   # joint flange pair + pins + fasteners [kg]
+    hatch_arc_deg:             float   # hatch angular extent [deg]
+    hatch_frame_mass_kg:       float   # printed lip/frame + screws [kg]
+    spar_od_m:                 float   # CFRP tube OD [m] (= wing_lighten --spar-hole)
+    spar_wall_m:               float   # tube wall [m]
+    spar_span_frac:            float   # spar length / wing span [-]
+    spar_chord_frac:           float   # spar chordwise station / chord [-]
+    rho_spar:                  float   # CFRP tube density [kg/m^3]
+    wing_root_fitting_mass_kg: float   # per-side root socket + screw [kg]
+
+    @classmethod
+    def from_yaml(cls, path) -> "ModularityParams":
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        return cls(
+            nose_split_margin_m       = float(data["nose_split_margin_m"]),
+            nose_ring_mass_kg         = float(data["nose_ring_mass_kg"]),
+            hatch_arc_deg             = float(data["hatch_arc_deg"]),
+            hatch_frame_mass_kg       = float(data["hatch_frame_mass_kg"]),
+            spar_od_m                 = float(data["spar_od_m"]),
+            spar_wall_m               = float(data["spar_wall_m"]),
+            spar_span_frac            = float(data["spar_span_frac"]),
+            spar_chord_frac           = float(data["spar_chord_frac"]),
+            rho_spar                  = float(data["rho_spar"]),
+            wing_root_fitting_mass_kg = float(data["wing_root_fitting_mass_kg"]),
+        )
+
+    def spar_length_m(self, b_wing_m: float) -> float:
+        return self.spar_span_frac * b_wing_m
+
+    def spar_tube_mass_kg(self, b_wing_m: float) -> float:
+        """Computed from geometry -- never configured."""
+        r_o = self.spar_od_m / 2.0
+        r_i = r_o - self.spar_wall_m
+        area = math.pi * (r_o**2 - r_i**2)
+        return area * self.spar_length_m(b_wing_m) * self.rho_spar
+
+
+# ---------------------------------------------
 #  Layout entry (one mass item on the axis)
 # ---------------------------------------------
 @dataclass
@@ -236,6 +288,17 @@ class FuselageSizing:
     # vibration-isolation packing cost
     sway_pad_m:            float   # rattle space added to the bay stack [m]
     m_isolation_hw_kg:     float   # total isolator hardware (both bays) [kg]
+    # modularity split lines + joint hardware (ADR-0008)
+    x_split_nose_m:   float   # nose module split plane     [m, +aft]
+    hatch_x_start_m:  float   # battery hatch axial start   [m, +aft]
+    hatch_length_m:   float   # battery hatch axial extent  [m]
+    hatch_arc_deg:    float   # hatch angular extent        [deg]
+    spar_od_m:        float   # wing carry-through spar OD  [m]
+    spar_chord_frac:  float   # spar chordwise station / chord [-]
+    spar_length_m:    float   # spar tube length            [m]
+    m_spar_kg:        float   # spar tube mass (computed)   [kg]
+    m_joint_hw_kg:    float   # nose ring + hatch frame     [kg]
+    m_spar_hw_kg:     float   # spar tube + 2 root fittings [kg]
     # duct geometry (for CAD)
     duct_chord:   float   # duct axial length           [m]
     D_duct_inner: float   # duct inner diameter         [m]
@@ -409,6 +472,7 @@ def size_fuselage(
     S_wing:         float,
     # parameters
     p:              FuselageParams = None,
+    mod:            ModularityParams = None,   # config/modularity.yaml (ADR-0008)
     # battery CG trim (0 = nominal, no trim)
     x_battery_trim_m: float = 0.0,
 ) -> FuselageSizing:
@@ -417,6 +481,8 @@ def size_fuselage(
     """
     if p is None:
         raise ValueError("FuselageParams required (config/fuselage.yaml)")
+    if mod is None:
+        raise ValueError("ModularityParams required (config/modularity.yaml)")
     if abs(x_battery_trim_m) > p.battery_tray_travel_m:
         raise ValueError(
             f"x_battery_trim_m={x_battery_trim_m*1e3:.1f} mm exceeds the "
@@ -455,11 +521,22 @@ def size_fuselage(
     m_aileron_hw   = m_aileron_servo_kg + m_aileron_linkage_kg
     m_isolation_hw = m_isolation_avionics_kg + m_isolation_struct_kg
 
+    # Modularity joint hardware (config/modularity.yaml, ADR-0008): nose
+    # joint ring, battery-hatch frame, and the wing carry-through spar tube
+    # + root fittings.  All structural hardware, carved from the structural
+    # pool.  The spar tube mass is computed from geometry (rectangular
+    # wing: span = S_wing / MAC), never configured.
+    b_wing_m   = S_wing / chord_mean_m
+    m_spar     = mod.spar_tube_mass_kg(b_wing_m)
+    m_joint_hw = mod.nose_ring_mass_kg + mod.hatch_frame_mass_kg
+    m_spar_hw  = m_spar + 2.0 * mod.wing_root_fitting_mass_kg
+
     m_struct_pool   = m_structure_kg - m_wing_kg
-    m_struct_carved = m_vanelink_total + m_aileron_linkage_kg + m_isolation_struct_kg
+    m_struct_carved = (m_vanelink_total + m_aileron_linkage_kg
+                       + m_isolation_struct_kg + m_joint_hw + m_spar_hw)
     assert 0.0 < m_struct_carved < MAX_HARDWARE_CARVE_FRACTION * m_struct_pool, (
-        f"vanes + linkages + aileron linkages + payload isolators "
-        f"({m_struct_carved*1e3:.1f} g) take more than "
+        f"vanes + linkages + aileron linkages + payload isolators + joint "
+        f"hardware + spar ({m_struct_carved*1e3:.1f} g) take more than "
         f"{MAX_HARDWARE_CARVE_FRACTION*100:.0f}% of the non-wing structural "
         f"pool ({m_struct_pool*1e3:.1f} g) -- the structural mass-fraction "
         f"assumption in config/initial_weight_fraction_estimation.yaml needs "
@@ -570,14 +647,30 @@ def size_fuselage(
              / m_isolation_hw) if m_isolation_hw > 0 else bay_item["avionics"].x_cg
     items.append(LayoutItem("isolation_hw", m_isolation_hw,
                             x_start=x_iso, length=0.0))
+
+    # modularity split lines (ADR-0008): the nose module splits just aft of
+    # the payload bay; the battery hatch covers the (trimmed) battery bay.
+    # Joint ring + hatch frame sit at their physical stations; the spar
+    # tube + root fittings ride with the wing (added after the CG solve).
+    payload_bay = bay_item["payload"]
+    x_split_nose = payload_bay.x_start + payload_bay.length + mod.nose_split_margin_m
+    hatch_x_start = battery_item.x_start
+    hatch_length  = battery_item.length
+    x_joint = ((mod.nose_ring_mass_kg * x_split_nose
+                + mod.hatch_frame_mass_kg * battery_item.x_cg)
+               / m_joint_hw) if m_joint_hw > 0 else x_split_nose
+    items.append(LayoutItem("joint_hw", m_joint_hw,
+                            x_start=x_joint, length=0.0))
+
     items.append(LayoutItem("misc",       m_misc_net, x_start=0.40 * L, length=0.0))
 
     # -- 6. CG and wing placement (fixed point on wing position) --------
-    # Ailerons are chordwise co-located with the wing (mounted on it), so
-    # their hardware acts at the same station in this fixed-point solve.
+    # Ailerons and the carry-through spar are chordwise co-located with the
+    # wing (mounted on/in it), so their hardware acts at the same station
+    # in this fixed-point solve.
     m_nonwing = sum(it.mass_kg for it in items)
     mom_nonwing = sum(it.mass_kg * it.x_cg for it in items)
-    m_wing_group = m_wing_kg + m_aileron_hw
+    m_wing_group = m_wing_kg + m_aileron_hw + m_spar_hw
 
     x_cg = mom_nonwing / m_nonwing            # initial guess: no wing
     for _ in range(5):
@@ -589,6 +682,7 @@ def size_fuselage(
 
     items.append(LayoutItem("wing", m_wing_kg, x_start=x_cg, length=0.0))
     items.append(LayoutItem("aileron_hw", m_aileron_hw, x_start=x_cg, length=0.0))
+    items.append(LayoutItem("spar_hw", m_spar_hw, x_start=x_cg, length=0.0))
 
     # -- 7. vane arm cross-check -----------------------------------------
     L_arm  = abs(x_vane - x_cg)
@@ -614,6 +708,12 @@ def size_fuselage(
         x_battery_trim_m=x_battery_trim_m,
         battery_tray_travel_m=p.battery_tray_travel_m,
         sway_pad_m=sway_pad_m, m_isolation_hw_kg=m_isolation_hw,
+        x_split_nose_m=x_split_nose,
+        hatch_x_start_m=hatch_x_start, hatch_length_m=hatch_length,
+        hatch_arc_deg=mod.hatch_arc_deg,
+        spar_od_m=mod.spar_od_m, spar_chord_frac=mod.spar_chord_frac,
+        spar_length_m=mod.spar_length_m(b_wing_m),
+        m_spar_kg=m_spar, m_joint_hw_kg=m_joint_hw, m_spar_hw_kg=m_spar_hw,
         duct_chord=duct_chord,
         D_duct_inner=D_duct_inner, D_duct_outer=D_duct_outer,
     )
@@ -671,6 +771,17 @@ def write_fuselage_yaml(fus: FuselageSizing, p: FuselageParams, path) -> None:
         # vibration-isolation packing cost
         "sway_pad_m":         round(fus.sway_pad_m, 5),
         "m_isolation_hw_kg":  round(fus.m_isolation_hw_kg, 5),
+        # modularity split lines + joint hardware (ADR-0008)
+        "x_split_nose_m":  round(fus.x_split_nose_m, 5),
+        "hatch_x_start_m": round(fus.hatch_x_start_m, 5),
+        "hatch_length_m":  round(fus.hatch_length_m, 5),
+        "hatch_arc_deg":   fus.hatch_arc_deg,
+        "spar_od_m":       fus.spar_od_m,
+        "spar_chord_frac": fus.spar_chord_frac,
+        "spar_length_m":   round(fus.spar_length_m, 5),
+        "m_spar_kg":       round(fus.m_spar_kg, 5),
+        "m_joint_hw_kg":   round(fus.m_joint_hw_kg, 5),
+        "m_spar_hw_kg":    round(fus.m_spar_hw_kg, 5),
         # duct
         "duct_chord_m":   round(fus.duct_chord, 5),
         "D_duct_inner_m": round(fus.D_duct_inner, 5),

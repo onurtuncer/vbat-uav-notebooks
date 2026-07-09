@@ -1,19 +1,23 @@
 part_no,item,qty,material_spec,unit_mass_kg,x_cg_mm,total_mass_kg
-VBT-STR-001,Fuselage monocoque shell,1,"CFRP 2-ply, 0.8 mm + frames (k_struct)",0.4525,219.7,0.4525
-VBT-STR-002,"Wing, constant chord",1,"CFRP skin/foam core, NACA 2412",0.1262,241.2,0.1262
-VBT-PRP-001,EDF motor + fan rotor,1,"D = 195 mm EDF, BLDC outrunner",0.2252,451.7,0.2252
-VBT-PRP-002,Duct / shroud annulus,1,"CFRP wound annulus, 8 mm wall",0.0563,464.8,0.0563
-VBT-PWR-001,Battery pack,1,"LiPo, 140 Wh/kg pack-level",0.6258,266.9,0.6258
-VBT-PWR-002,ESC,1,sized to hover power,0.0938,244.1,0.0938
-VBT-AVI-001,Avionics stack,1,FC + GPS + RX + telemetry,0.1121,195.2,0.1121
-VBT-PLD-001,Payload (EO sensor + mount),1,"requirement, 0.5 kg",0.5,99.1,0.5
-VBT-CTL-001,Jet control vane,4,"CFRP flat plate 2 mm, c=19.9 mm, h=49.7 mm",0.0031648967999999993,513.2,0.012659587199999997
-VBT-CTL-002,"Vane servo, 9g-class",4,"~1800 g-cm >= req 461 g-cm, recessed in hub, shaft on hinge line",0.012,508.2,0.048
-VBT-CTL-003,Hinge + pushrod set,4,pin hinge + wire pushrod per vane,0.003,508.2,0.012
-VBT-CTL-004,"Aileron servo, 9g-class",2,">= req 86 g-cm, on wing at y_arm=514 mm",0.012,241.2,0.024
-VBT-CTL-005,Aileron hinge + pushrod set,2,pin hinge + wire pushrod per aileron,0.003,241.2,0.006
-VBT-STR-092,Vibration isolators,8,"FC/IMU + payload soft mounts, f_n=58 Hz, 90% 1/rev cut, 0.7 mm sway",0.004,147.1,0.032
-VBT-STR-091,"Battery tray, adjustable rail",1,"sliding rail, +/-25 mm travel, trimmed -0.1 mm",0.015,266.9,0.015
-VBT-STR-090,"Misc: harness, fasteners, bonding, margin",1,allocation (remainder),0.1601,195.3,0.1601
-VBT-STR-010,Duct support strut,4,"flat plate, min 2 mm (in k_struct)",,464.8,
-VBT-GEA-001,Landing leg / skid,4,"on duct, tail-sitter stance (in k_struct)",,513.2,
+VBT-STR-001,Fuselage monocoque shell,1,"CFRP 2-ply, 0.8 mm + frames (k_struct)",0.5662,230.6,0.5662
+VBT-STR-002,"Wing, constant chord",1,"CFRP skin/foam core, NACA 2412",0.1621,252.6,0.1621
+VBT-PRP-001,EDF motor + fan rotor,1,"D = 195 mm EDF, BLDC outrunner",0.2751,473.9,0.2751
+VBT-PRP-002,Duct / shroud annulus,1,"CFRP wound annulus, 8 mm wall",0.0688,487.1,0.0688
+VBT-PWR-001,Battery pack,1,"LiPo, 140 Wh/kg pack-level",0.799,274.8,0.799
+VBT-PWR-002,ESC,1,sized to hover power,0.1146,256.2,0.1146
+VBT-AVI-001,Avionics stack,1,FC + GPS + RX + telemetry,0.1565,189.3,0.1565
+VBT-PLD-001,Payload (EO sensor + mount),1,"requirement, 0.5 kg",0.5,93.7,0.5
+VBT-CTL-001,Jet control vane,4,"CFRP flat plate 2 mm, c=19.9 mm, h=49.7 mm",0.0031648967999999993,537.3,0.012659587199999997
+VBT-CTL-002,"Vane servo, 9g-class",4,"~1800 g-cm >= req 563 g-cm, recessed in hub, shaft on hinge line",0.012,532.3,0.048
+VBT-CTL-003,Hinge + pushrod set,4,pin hinge + wire pushrod per vane,0.003,532.3,0.012
+VBT-CTL-004,"Aileron servo, 9g-class",2,">= req 116 g-cm, on wing at y_arm=568 mm",0.012,252.6,0.024
+VBT-CTL-005,Aileron hinge + pushrod set,2,pin hinge + wire pushrod per aileron,0.003,252.6,0.006
+VBT-STR-092,Vibration isolators,8,"FC/IMU + payload soft mounts, f_n=58 Hz, 90% 1/rev cut, 0.7 mm sway",0.004,141.5,0.032
+VBT-STR-093,Nose joint ring + pins,1,printed flange pair + quarter-turn fasteners at 174 mm,0.018,174.3,0.018
+VBT-STR-094,Battery hatch frame,1,"printed lip + 2x M2, 90 deg x 111 mm",0.01,274.9,0.01
+VBT-STR-095,Wing carry-through spar,1,CFRP tube d8 x 725 mm (computed geometry),0.0255,252.6,0.0255
+VBT-STR-096,Wing root fitting,2,printed socket + retention screw per side,0.006,252.6,0.012
+VBT-STR-091,"Battery tray, adjustable rail",1,"sliding rail, +/-25 mm travel, trimmed -0.1 mm",0.015,274.8,0.015
+VBT-STR-090,"Misc: harness, fasteners, bonding, margin",1,allocation (remainder),0.1989,204.9,0.1989
+VBT-STR-010,Duct support strut,4,"flat plate, min 2 mm (in k_struct)",,487.1,
+VBT-GEA-001,Landing leg / skid,4,"on duct, tail-sitter stance (in k_struct)",,537.3,
