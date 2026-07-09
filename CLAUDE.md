@@ -63,6 +63,8 @@ also runs in the local 3.14 venv.
 - **Units:** YAML handoffs and module APIs are SI (metres); CAD solids
   are built in **millimetres** (STEP/STL convention). `Allrun.mesh`
   scales mm→m — the geometry tests guard this.
+- **Architectural design records** Keep ADR records for architectural design decisions in a folder named adr under project root folder.
+- **Change Logs** When a version is tagged write a changelog.
 
 ## Design decisions (2026-07 review)
 
