@@ -233,6 +233,9 @@ class FuselageSizing:
     # battery CG trim
     x_battery_trim_m:      float   # applied trim offset       [m, +aft]
     battery_tray_travel_m: float   # available +/- rail travel [m]
+    # vibration-isolation packing cost
+    sway_pad_m:            float   # rattle space added to the bay stack [m]
+    m_isolation_hw_kg:     float   # total isolator hardware (both bays) [kg]
     # duct geometry (for CAD)
     duct_chord:   float   # duct axial length           [m]
     D_duct_inner: float   # duct inner diameter         [m]
@@ -305,11 +308,16 @@ def component_volumes(m_battery_kg: float, m_payload_kg: float,
     }
 
 
-def _stack_length(volumes: Dict[str, float], D: float, p: FuselageParams) -> float:
-    """Total bay stack length needed at internal diameter of D."""
+def _stack_length(volumes: Dict[str, float], D: float, p: FuselageParams,
+                  sway_pad_m: float = 0.0) -> float:
+    """Total bay stack length needed at internal diameter of D.
+
+    `sway_pad_m` is fixed extra length (independent of D) reserved as
+    rattle space around the soft-mounted bays (vibration isolation).
+    """
     r_int = D / 2.0 - p.t_shell_m
     A_int = math.pi * r_int * r_int
-    return sum(v / (p.packing_factor * A_int) for v in volumes.values())
+    return sum(v / (p.packing_factor * A_int) for v in volumes.values()) + sway_pad_m
 
 
 # ---------------------------------------------
@@ -317,12 +325,12 @@ def _stack_length(volumes: Dict[str, float], D: float, p: FuselageParams) -> flo
 # ---------------------------------------------
 
 def solve_diameter(volumes: Dict[str, float], r_hub: float,
-                   p: FuselageParams) -> Tuple[float, str]:
+                   p: FuselageParams, sway_pad_m: float = 0.0) -> Tuple[float, str]:
     """
     Smallest D that satisfies BOTH constraints at L = fineness * D:
 
       hub      : D >= d_hub_margin * 2 r_hub
-      packaging: stack length <= L_mid + 0.5 L_nose
+      packaging: stack length (incl. isolator sway pad) <= L_mid + 0.5 L_nose
 
     Returns (D, active_constraint).
     """
@@ -331,7 +339,7 @@ def solve_diameter(volumes: Dict[str, float], r_hub: float,
     def packaging_ok(D: float) -> bool:
         L = p.fineness_ratio * D
         L_avail = p.f_mid * L + 0.5 * p.f_nose * L
-        return _stack_length(volumes, D, p) <= L_avail
+        return _stack_length(volumes, D, p, sway_pad_m) <= L_avail
 
     # bisection for the packaging-limited diameter
     lo, hi = 0.02, 1.0
@@ -391,6 +399,10 @@ def size_fuselage(
     chord_mean_m:   float,   # wing MAC [m]
     m_aileron_servo_kg:   float,  # total aileron servo mass (both) [kg]
     m_aileron_linkage_kg: float,  # total aileron linkage mass (both) [kg]
+    # vibration isolation (out/vibration.yaml)
+    m_isolation_avionics_kg: float,  # FC/IMU-tray isolator hardware [kg]
+    m_isolation_struct_kg:   float,  # payload-mount isolator hardware [kg]
+    sway_pad_m:              float,  # total extra bay length for isolator sway [m]
     # flight condition
     V_cruise:       float,
     rho:            float,
@@ -425,29 +437,33 @@ def size_fuselage(
     m_vanelink_total = n_vanes * (m_vane_each + p.linkage_mass_kg)
     m_ctl_total   = m_servo_total + m_vanelink_total
 
+    # Vibration-isolation hardware (out/vibration.yaml) is booked the same
+    # way: the FC/IMU-tray isolators sit with the avionics, the payload-mount
+    # isolators with the structure.
     m_avionics_budget = m_avionics_kg
-    m_avionics_carved = m_servo_total + m_aileron_servo_kg
+    m_avionics_carved = m_servo_total + m_aileron_servo_kg + m_isolation_avionics_kg
     m_avionics_net    = m_avionics_budget - m_avionics_carved
     assert 0.0 < m_avionics_carved < MAX_HARDWARE_CARVE_FRACTION * m_avionics_budget, (
-        f"vane + aileron servos ({m_avionics_carved*1e3:.1f} g) take more "
-        f"than {MAX_HARDWARE_CARVE_FRACTION*100:.0f}% of the avionics "
+        f"vane + aileron servos + FC isolators ({m_avionics_carved*1e3:.1f} g) "
+        f"take more than {MAX_HARDWARE_CARVE_FRACTION*100:.0f}% of the avionics "
         f"budget ({m_avionics_budget*1e3:.1f} g) -- the avionics "
         f"mass-fraction assumption in "
         f"config/initial_weight_fraction_estimation.yaml needs revisiting, "
         f"not a silent net-down"
     )
 
-    m_aileron_hw = m_aileron_servo_kg + m_aileron_linkage_kg
+    m_aileron_hw   = m_aileron_servo_kg + m_aileron_linkage_kg
+    m_isolation_hw = m_isolation_avionics_kg + m_isolation_struct_kg
 
     m_struct_pool   = m_structure_kg - m_wing_kg
-    m_struct_carved = m_vanelink_total + m_aileron_linkage_kg
+    m_struct_carved = m_vanelink_total + m_aileron_linkage_kg + m_isolation_struct_kg
     assert 0.0 < m_struct_carved < MAX_HARDWARE_CARVE_FRACTION * m_struct_pool, (
-        f"vanes + linkages + aileron linkages ({m_struct_carved*1e3:.1f} g) "
-        f"take more than {MAX_HARDWARE_CARVE_FRACTION*100:.0f}% of the "
-        f"non-wing structural pool ({m_struct_pool*1e3:.1f} g) -- the "
-        f"structural mass-fraction assumption in "
-        f"config/initial_weight_fraction_estimation.yaml needs revisiting, "
-        f"not a silent net-down"
+        f"vanes + linkages + aileron linkages + payload isolators "
+        f"({m_struct_carved*1e3:.1f} g) take more than "
+        f"{MAX_HARDWARE_CARVE_FRACTION*100:.0f}% of the non-wing structural "
+        f"pool ({m_struct_pool*1e3:.1f} g) -- the structural mass-fraction "
+        f"assumption in config/initial_weight_fraction_estimation.yaml needs "
+        f"revisiting, not a silent net-down"
     )
 
     # m_misc_kg is the top-down mass-closure fraction assumption (fasteners,
@@ -469,8 +485,10 @@ def size_fuselage(
     )
 
     # -- 1. volumes and diameter ---------------------------------------
+    # sway_pad_m is rattle space reserved around the two soft-mounted bays
+    # (payload + FC/IMU); it enlarges the required bay stack.
     vols = component_volumes(m_battery_kg, m_payload_kg, m_avionics_net, p)
-    D, active = solve_diameter(vols, R_hub_m, p)
+    D, active = solve_diameter(vols, R_hub_m, p, sway_pad_m)
     L = p.fineness_ratio * D
 
     L_nose = p.f_nose * L
@@ -479,7 +497,7 @@ def size_fuselage(
 
     # -- 2. volume / wetted area ---------------------------------------
     V_tot, S_wet = _integrate_profile(D, L, p.f_nose, p.f_tail, R_hub_m)
-    L_stack = _stack_length(vols, D, p)
+    L_stack = _stack_length(vols, D, p, sway_pad_m)
     L_avail = L_mid + 0.5 * L_nose
 
     # -- 3. drag ---------------------------------------------------------
@@ -497,15 +515,22 @@ def size_fuselage(
     def bay_len(v: float) -> float:
         return v / (p.packing_factor * A_int)
 
+    # sway rattle space is split evenly between the two soft-mounted bays
+    # (payload + FC/IMU avionics); it lengthens those bays without adding
+    # packed component volume.
+    bay_pad = {"payload": 0.5 * sway_pad_m, "avionics": 0.5 * sway_pad_m}
+
     x = 0.5 * L_nose * 0.5   # first usable station: quarter of the nose
     items: List[LayoutItem] = []
     battery_item: LayoutItem = None
+    bay_item: Dict[str, LayoutItem] = {}
     for name in ("payload", "avionics", "battery"):   # nose-to-tail order
         li = LayoutItem(name, {"payload": m_payload_kg,
                                "avionics": m_avionics_net,
                                "battery": m_battery_kg}[name],
-                        x_start=x, length=bay_len(vols[name]))
+                        x_start=x, length=bay_len(vols[name]) + bay_pad.get(name, 0.0))
         items.append(li)
+        bay_item[name] = li
         x = li.x_start + li.length
         if name == "battery":
             battery_item = li
@@ -538,6 +563,13 @@ def size_fuselage(
                             x_start=battery_item.x_cg, length=0.0))
     items.append(LayoutItem("control_hw", m_ctl_total,
                             x_start=x_hinge, length=0.0))
+    # vibration isolators: FC-tray set at the avionics bay, payload set at
+    # the payload bay -- placed at the mass-weighted station of the two.
+    x_iso = ((m_isolation_avionics_kg * bay_item["avionics"].x_cg
+              + m_isolation_struct_kg * bay_item["payload"].x_cg)
+             / m_isolation_hw) if m_isolation_hw > 0 else bay_item["avionics"].x_cg
+    items.append(LayoutItem("isolation_hw", m_isolation_hw,
+                            x_start=x_iso, length=0.0))
     items.append(LayoutItem("misc",       m_misc_net, x_start=0.40 * L, length=0.0))
 
     # -- 6. CG and wing placement (fixed point on wing position) --------
@@ -581,6 +613,7 @@ def size_fuselage(
         x_vane=x_vane, L_vane_arm=L_arm,
         x_battery_trim_m=x_battery_trim_m,
         battery_tray_travel_m=p.battery_tray_travel_m,
+        sway_pad_m=sway_pad_m, m_isolation_hw_kg=m_isolation_hw,
         duct_chord=duct_chord,
         D_duct_inner=D_duct_inner, D_duct_outer=D_duct_outer,
     )
@@ -635,6 +668,9 @@ def write_fuselage_yaml(fus: FuselageSizing, p: FuselageParams, path) -> None:
         # battery CG trim
         "x_battery_trim_m":      round(fus.x_battery_trim_m, 5),
         "battery_tray_travel_m": p.battery_tray_travel_m,
+        # vibration-isolation packing cost
+        "sway_pad_m":         round(fus.sway_pad_m, 5),
+        "m_isolation_hw_kg":  round(fus.m_isolation_hw_kg, 5),
         # duct
         "duct_chord_m":   round(fus.duct_chord, 5),
         "D_duct_inner_m": round(fus.D_duct_inner, 5),

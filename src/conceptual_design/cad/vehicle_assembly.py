@@ -250,6 +250,81 @@ def _radial_plate(
     return plate.rotate((0, 0, 0), (1, 0, 0), angle_deg)
 
 
+# ---------------------------------------------
+#  Soft-mounted internal modules (vibration isolation)
+# ---------------------------------------------
+# These are INTERNAL parts (assembly / exploded-view only); they are NOT
+# fused into the external-aero STL. Both hang off the shell on isolator
+# standoffs with a visible rattle gap -- the conceptual picture of the
+# soft mount sized in vibration_isolation.py.
+
+def isolated_fc_tray(
+    x_station_m: float,   # avionics bay station [m, +aft]
+    r_int_m:     float,   # internal shell radius at the bay [m]
+    n_iso:       int = 4,
+    plate_l_mm:  float = 42.0,   # tray footprint (fore-aft x cross)
+    plate_w_mm:  float = 32.0,
+    plate_t_mm:  float = 3.0,
+    iso_d_mm:    float = 6.0,     # isolator grommet diameter
+    iso_h_mm:    float = 8.0,     # isolator standoff height
+    rattle_mm:   float = 1.5,     # gap between tray and shell floor
+) -> cq.Workplane:
+    """FC/IMU tray on n grommet isolators standing off the lower shell wall."""
+    x0 = -(x_station_m * MM)
+    r_int = r_int_m * MM
+    z_floor = r_int - rattle_mm                 # shell "floor" (down = +z)
+    z_iso_top = z_floor - iso_h_mm
+    z_plate_c = z_iso_top - plate_t_mm / 2.0
+
+    tray = (
+        cq.Workplane("XY", origin=(x0, 0, z_plate_c))
+        .box(plate_l_mm, plate_w_mm, plate_t_mm, centered=(True, True, True))
+    )
+    ox = 0.35 * plate_l_mm
+    oy = 0.35 * plate_w_mm
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            tray = tray.union(
+                cq.Workplane("XY", origin=(x0 + sx * ox, sy * oy, z_iso_top))
+                .circle(iso_d_mm / 2.0).extrude(iso_h_mm)   # +z: down to the floor
+            )
+    return tray
+
+
+def soft_mounted_nose(
+    x_cg_m:    float,   # payload bay CG station [m, +aft]
+    length_m:  float,   # payload bay length [m]
+    r_int_m:   float,   # internal shell radius [m]
+    n_iso:     int = 4,
+    rattle_mm: float = 1.5,   # radial gap payload -> shell
+    iso_d_mm:  float = 6.0,
+) -> cq.Workplane:
+    """Soft-mounted nose payload module: a block held off the shell by a
+    ring of isolators, with a radial rattle gap."""
+    x0 = -(x_cg_m * MM)
+    r_int = r_int_m * MM
+    r_pl = r_int - rattle_mm - iso_d_mm          # payload radius inside the gap
+    L = length_m * MM
+
+    body = (
+        cq.Workplane("YZ", origin=(x0 - L / 2.0, 0, 0))
+        .circle(r_pl).extrude(L)
+    )
+    # a ring of isolator studs on the aft face, extruding aft toward the
+    # avionics bay; placed inside the OD so they union into one solid
+    import math as _m
+    x_aft = x0 - L / 2.0                 # aft face (toward +station)
+    for i in range(n_iso):
+        a = 2.0 * _m.pi * i / n_iso
+        yc = 0.6 * r_pl * _m.cos(a)
+        zc = 0.6 * r_pl * _m.sin(a)
+        body = body.union(
+            cq.Workplane("YZ", origin=(x_aft, yc, zc))
+            .circle(iso_d_mm / 2.0).extrude(-0.3 * L)   # -x: aft
+        )
+    return body
+
+
 def build_vehicle(
     fus:    Dict,            # out/fuselage.yaml
     vanes:  Dict,            # out/control_vanes.yaml

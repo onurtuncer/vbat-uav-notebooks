@@ -45,6 +45,11 @@ def aileron() -> dict:
     return yaml.safe_load((OUT / "aileron.yaml").read_text(encoding="utf-8"))
 
 
+@pytest.fixture(scope="module")
+def vibration() -> dict:
+    return yaml.safe_load((OUT / "vibration.yaml").read_text(encoding="utf-8"))
+
+
 class TestAirfoil:
     def test_design_point(self, airfoil):
         assert airfoil["designation"] == "NACA 2412"
@@ -57,9 +62,9 @@ class TestAirfoil:
 class TestFuselage:
     def test_design_point(self, fuselage):
         # 195 mm COTS EDF design point (2026-07 design review)
-        assert fuselage["D_fus_m"] == pytest.approx(0.09823, rel=1e-2)
-        assert fuselage["L_fus_m"] == pytest.approx(0.49116, rel=1e-2)
-        assert fuselage["x_CG_m"] == pytest.approx(0.24323, rel=1e-2)
+        assert fuselage["D_fus_m"] == pytest.approx(0.09766, rel=1e-2)
+        assert fuselage["L_fus_m"] == pytest.approx(0.48828, rel=1e-2)
+        assert fuselage["x_CG_m"] == pytest.approx(0.24115, rel=1e-2)
         assert fuselage["static_margin"] == pytest.approx(0.05, rel=1e-2)
 
     def test_internal_consistency(self, fuselage):
@@ -112,6 +117,28 @@ class TestAileron:
         # Jet-vane authority alone is thin in cruise -- confirm the
         # aileron is doing real work, not just riding on vane margin.
         assert aileron["ddot_roll_aileron_deg_s2"] > aileron["ddot_min_deg_s2"]
+
+
+class TestVibration:
+    def test_forcing_and_corner(self, vibration):
+        # 1/rev forcing derived from rotor RPM; corner freq must sit in the
+        # valid window (above control bandwidth, below isolation threshold).
+        assert vibration["f_shaft_hz"] == pytest.approx(211.3, rel=2e-2)
+        lo, hi = vibration["f_n_window_hz"]
+        assert lo < vibration["f_n_hz"] < hi
+        assert vibration["window_ok"] is True
+
+    def test_meets_transmissibility_target(self, vibration):
+        # every isolated module must meet the configured attenuation target
+        # at the forcing frequency.
+        target = vibration["target_transmissibility"]
+        for mod in vibration["modules"].values():
+            assert mod["transmissibility"] <= target * (1.0 + 1e-3)
+
+    def test_sway_is_small(self, vibration):
+        # high forcing frequency -> small static deflection -> small sway;
+        # guard that the packing cost stays a few mm, not centimetres.
+        assert 0.0 < vibration["sway_mm"] < 5.0
 
 
 class TestCrossFileConsistency:

@@ -1,0 +1,66 @@
+# Vibration isolation parameters for the V-BAT tail-sitter conceptual design.
+# Used by vibration_isolation.py.
+#
+# The single EDF is a high-RPM rotating machine bolted to a stiff CFRP
+# monocoque. Its dominant forcing is the 1-per-rev shaft imbalance
+# (~211 Hz at the hover design point, DERIVED from rotor RPM via
+# rpm_from_diameter -- not configured here); blade-pass (x n_blades) is far
+# higher. That 1/rev line corrupts the IMU attitude estimate and blurs the
+# EO payload, so the flight controller / IMU and the payload are each soft-
+# mounted on isolators. This models each as a 1-DOF base-excitation isolator
+# and sizes its corner frequency, transmissibility, static sag, sway space,
+# and hardware mass.
+#
+# --- Isolation target ------------------------------------------------
+# target_transmissibility : desired force/motion transmitted at the 1/rev
+#                    forcing frequency [-]. 0.10 = 90% attenuation. The
+#                    isolator corner frequency f_n is sized so the achieved
+#                    transmissibility meets this at the forcing frequency.
+#
+# damping_ratio    : isolator damping ratio zeta [-]. Elastomeric / wire-
+#                    rope isolators sit around 0.05-0.15; higher zeta tames
+#                    resonance on spin-up but worsens high-frequency
+#                    attenuation. 0.10 is a representative compromise.
+#
+# --- Corner-frequency window -----------------------------------------
+# fc_bandwidth_hz  : flight-control loop bandwidth [Hz]. The isolator
+#                    corner frequency must sit ABOVE this (a mount softer
+#                    than the control bandwidth would let the FC chase its
+#                    own isolator sway) and BELOW forcing/sqrt(2) (the
+#                    isolation threshold). 25 Hz is typical for a small
+#                    multirotor-class inner loop.
+#
+# --- Sway / rattle space ---------------------------------------------
+# shock_load_g     : maneuver/landing shock the isolators must stroke
+#                    against without bottoming [g]. Sway clearance is sized
+#                    as shock_load_g x static_deflection (linear spring:
+#                    deflection scales with applied g). Drives the packing-
+#                    volume cost fed into the fuselage bay stack.
+#
+# --- Isolated FC/IMU electronics -------------------------------------
+# m_fc_imu_kg      : mass of the isolated flight-controller + IMU cluster
+#                    [kg]. This is the vibration-sensitive SUBSET of the
+#                    avionics fraction; GPS/RX/telemetry/wiring stay rigidly
+#                    mounted. Carved from the avionics mass-closure fraction.
+#                    (The payload isolated mass is the mission payload,
+#                    0.5 kg, and is not re-declared here.)
+#
+# --- Isolator hardware -----------------------------------------------
+# n_isolators_fc       : isolators under the FC/IMU tray [-] (4 corners)
+# n_isolators_payload  : isolators under the payload nose module [-]
+# isolator_mass_kg_each: mass of one isolator (grommet/standoff/wire-rope)
+#                    [kg]. FC-tray isolators carve from avionics, payload
+#                    isolators from the structural fraction.
+
+target_transmissibility: 0.10
+damping_ratio: 0.10
+
+fc_bandwidth_hz: 25.0
+
+shock_load_g: 10.0
+
+m_fc_imu_kg: 0.06
+
+n_isolators_fc: 4
+n_isolators_payload: 4
+isolator_mass_kg_each: 0.004

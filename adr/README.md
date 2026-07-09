@@ -17,3 +17,4 @@ Format: one file per decision, `NNNN-kebab-title.md`, each with
 | [0004](0004-dual-roll-control-vanes-and-ailerons.md) | Dual roll control: jet vanes (hover) + ailerons (cruise) | Accepted |
 | [0005](0005-mass-fraction-carve-out-with-traceability.md) | Mass-fraction carve-out with traceability and a guard | Accepted |
 | [0006](0006-tag-driven-versioning-and-ci-tiers.md) | Tag-driven versioning and tiered CI | Accepted |
+| [0007](0007-vibration-isolation.md) | Soft-mount the FC/IMU and payload against EDF imbalance | Accepted |

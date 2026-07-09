@@ -7,6 +7,30 @@ Versions are derived from git tags via `setuptools-scm`; never edit a version
 by hand. Per project policy, a changelog entry is written whenever a version
 is tagged.
 
+## [Unreleased]
+
+### Added
+
+- **Vibration isolation** (new pipeline stage `vibration_isolation`, NB5):
+  soft-mounts the FC/IMU cluster and the payload against the EDF 1-per-rev
+  imbalance (~211 Hz forcing, derived from rotor RPM). Sizes each as a 1-DOF
+  base-excitation isolator — corner frequency, transmissibility, static sag,
+  sway space, stiffness, and hardware mass — with a valid-window check
+  (above the control bandwidth, below the isolation threshold). Achieves
+  ~90% attenuation of the 1/rev at f_n ≈ 58 Hz with a few mm of sway.
+  See ADR-0007.
+- Isolator hardware is carved from the avionics/structural fractions and the
+  sway/rattle space is fed into the fuselage bay stack; the fuselage,
+  mass-properties, and CAD notebooks consume `out/vibration.yaml`.
+- CAD: soft-mounted FC/IMU tray and payload nose module added to the assembly
+  (isolator standoffs + rattle gap), assembly-only — the fused external-aero
+  STL is unchanged.
+
+### Changed
+
+- Pipeline is now nine notebooks (was eight); `fuselage_design` →NB6,
+  `vehicle_solid_model` →NB7, `mass_properties` →NB8, `wiring_diagram` →NB9.
+
 ## [0.1.0] — 2026-07-09
 
 First tagged design snapshot of the electric tail-sitter VTOL UAV
