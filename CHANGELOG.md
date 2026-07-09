@@ -9,6 +9,14 @@ is tagged.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-07-10
+
+Second design snapshot. Adds the mechanical-design layer the v0.1.0
+airframe was hand-waving: vibration isolation, segmented-FDM
+construction as the baseline (re-converging the whole design point to
+~3.06 kg), and the modularity split lines (removable nose, battery
+hatch, two-piece wing) needed to actually build and iterate it.
+
 ### Added
 
 - **Segmented-FDM construction as the baseline airframe** (ADR-0008):
@@ -52,6 +60,11 @@ is tagged.
   updated for the 3.06 kg segmented-FDM vehicle.
 - Pipeline is now nine notebooks (was eight); `fuselage_design` →NB6,
   `vehicle_solid_model` →NB7, `mass_properties` →NB8, `wiring_diagram` →NB9.
+- CFD smoke-run mesh gate now checks mesh *usability* (single region,
+  closed boundary, positive cell volumes, solver-safe non-orthogonality,
+  skewness ≤ 8) rather than demanding checkMesh's perfect "Mesh OK"
+  verdict — the coarsened smoke mesh can trip the skewness heuristic on a
+  couple of faces without being unusable.
 
 ## [0.1.0] — 2026-07-09
 
@@ -127,4 +140,5 @@ converged conceptual design point.
   design point and cross-check `cfd/vehicle/Allrun.case`; `tests/test_geometry.py`
   guards the exported STL (watertight, mm units, span).
 
+[0.2.0]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.2.0
 [0.1.0]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.1.0
