@@ -358,7 +358,8 @@ def build_vehicle(
     accent = cq.Color(0.84, 0.15, 0.16)
     green  = cq.Color(0.10, 0.59, 0.25)
 
-    aileron_color = cq.Color(0.13, 0.45, 0.20)   # darker green: distinguish from fixed wing
+    aileron_color = cq.Color(0.95, 0.55, 0.10)   # amber: a distinct hue, not a darker green,
+    #                                              so ailerons read clearly against the wing
 
     asm = cq.Assembly(name="vbat_tailsitter")
     asm.add(fuselage,   name="fuselage",   color=grey)
