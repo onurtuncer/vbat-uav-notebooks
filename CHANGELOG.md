@@ -9,6 +9,21 @@ is tagged.
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-07-10
+
+### Fixed
+
+- **Stale CAD part files no longer accumulate.** `export_vehicle` only
+  wrote the current per-part STEP/STL and never removed old ones, so
+  splitting `fuselage` → `fuselage_nose` + `fuselage_main` (and `wing` →
+  `wing_L` + `wing_R`) orphaned the old monolithic `fuselage.*`/`wing.*`
+  files in `out/cad/*/parts/`. The Pages 3D viewer globs
+  `stl/parts/*.stl`, so the old whole fuselage rendered on top of the two
+  split pieces. `export_vehicle` now wipes the per-part directories before
+  writing (on-disk parts always equal the current assembly); the 4 orphan
+  files are removed. No effect on the mass model — CAD is not an input to
+  it.
+
 ## [0.2.0] — 2026-07-10
 
 Second design snapshot. Adds the mechanical-design layer the v0.1.0
@@ -140,5 +155,6 @@ converged conceptual design point.
   design point and cross-check `cfd/vehicle/Allrun.case`; `tests/test_geometry.py`
   guards the exported STL (watertight, mm units, span).
 
+[0.2.1]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.2.1
 [0.2.0]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.2.0
 [0.1.0]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.1.0
