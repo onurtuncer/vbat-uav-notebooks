@@ -1,0 +1,33 @@
+# AUTO-GENERATED -- do not edit by hand.
+# Source : src/conceptual_design/thermal_design.py
+# Input  : config/thermal.yaml + hover power + fuselage layout
+# Regen  : re-run notebooks/thermal_design.ipynb
+
+T_ambient_C: 40.0
+v_h_ms: 20.2396
+esc:
+  Q_W: 51.43
+  V_cool_ms: 10.1198
+  A_req_cm2: 346.564
+  plate_side_mm: 186.16
+  plate_thickness_mm: 2.0
+  plate_material: Al 6061
+  plate_mass_g: 187.14
+  A_avail_cm2: 389.667
+  area_headroom: 1.124
+  T_esc_max_C: 90.0
+  T_at_avail_C: 85.79
+  temp_margin_C: 4.21
+  mass_within_alloc: false
+  ok: false
+battery:
+  Q_W: 31.813
+  V_vent_ms: 6.0719
+  A_req_cm2: 2.128
+  A_avail_cm2: 88.009
+  area_headroom: 41.36
+  T_batt_max_C: 60.0
+  T_at_avail_C: 40.48
+  temp_margin_C: 19.52
+  ok: true
+all_ok: false

@@ -1,0 +1,262 @@
+"""
+thermal_design.py  --  Thermal-Path Sizing (ESC cold-plate + vented bay)
+=========================================================================
+
+Sizes the two heat-rejection paths of the tail-sitter, both realized as
+STRUCTURE that also does thermal management (ADR-0009):
+
+  1. ESC cold-plate  -- the ESC bonds to a conductive plate on the inner
+     shell wall where the EDF inflow washes it; forced convection off the
+     plate carries the ESC switching loss away.
+  2. Vented battery bay -- inlet/outlet vents admit a through-flow that
+     carries the battery discharge (I^2 R) loss out of the bay.
+
+MOTIVATION
+----------
+The airframe had no thermal model.  These paths are nearly free to plan in
+the current geometry (the ESC is already mid-body in the inflow field, the
+battery bay wall is available to vent) and painful to retrofit once the
+shell is frozen.  This module puts a first-order number on both.
+
+HEAT LOADS  (derived, not configured)
+-------------------------------------
+    Q_esc  = P_hover * (1 - eta_esc)          switching/conduction loss
+    Q_batt = P_hover * (1/eta_bat - 1)        pack IR loss in hover
+
+COOLING AIRFLOW
+---------------
+The fan draws its induced velocity in hover (actuator disk):
+    v_h = sqrt(W / (2 rho A_disk))
+Neither path sees the full v_h -- the ESC sits mid-body, vent flow is a
+throttled bleed -- so each uses a configured fraction of it.
+
+ESC COLD-PLATE  (flat-plate forced convection)
+----------------------------------------------
+Laminar Nusselt  Nu = 0.664 Re^0.5 Pr^(1/3),  h = Nu k / L.  For a square
+plate (flow length L = side = sqrt(A)) this closes in one step:
+    h(A) = C_h A^(-1/4),   C_h = 0.664 k_air Pr^(1/3) sqrt(V_cool / nu)
+    T_plate(A) = T_ambient + Q_esc / (C_h A^(3/4))
+The area to hold the ESC at its limit, and the temperature it actually
+reaches on the available wall, both follow in closed form.
+
+VENTED BATTERY BAY  (through-flow energy balance)
+-------------------------------------------------
+    Q_batt = mdot cp dT_air,   mdot = rho V_vent A_vent
+The exit air (hence the pack) rises dT_air above ambient; size the vent
+area for the pack to stay under its limit.
+
+References
+----------
+  Incropera & DeWitt, "Fundamentals of Heat and Mass Transfer",
+  ch. 7 (external forced convection, flat plate).
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+
+import yaml
+
+
+# --- Air properties at ISA sea level (film ~ 300 K) [documented constants] --
+MU_AIR = 1.789e-5   # dynamic viscosity [Pa s]
+K_AIR  = 0.0263     # thermal conductivity [W/(m K)]
+CP_AIR = 1005.0     # specific heat at constant pressure [J/(kg K)]
+G0     = 9.80665    # standard gravity [m/s^2]
+
+
+def _prandtl() -> float:
+    return MU_AIR * CP_AIR / K_AIR
+
+
+# ---------------------------------------------
+#  Input parameters (config/thermal.yaml)
+# ---------------------------------------------
+@dataclass
+class ThermalParams:
+    T_ambient_C:           float
+    T_esc_max_C:           float
+    T_batt_max_C:          float
+    esc_inflow_frac:       float   # V over ESC plate / v_h [-]
+    vent_inflow_frac:      float   # through-vent V / v_h [-]
+    plate_thickness_m:     float
+    rho_plate:             float
+    plate_material:        str
+    esc_wall_usable_frac:  float
+    vent_wall_usable_frac: float
+
+    @classmethod
+    def from_yaml(cls, path) -> "ThermalParams":
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        return cls(
+            T_ambient_C           = float(data["T_ambient_C"]),
+            T_esc_max_C           = float(data["T_esc_max_C"]),
+            T_batt_max_C          = float(data["T_batt_max_C"]),
+            esc_inflow_frac       = float(data["esc_inflow_frac"]),
+            vent_inflow_frac      = float(data["vent_inflow_frac"]),
+            plate_thickness_m     = float(data["plate_thickness_m"]),
+            rho_plate             = float(data["rho_plate"]),
+            plate_material        = str(data["plate_material"]),
+            esc_wall_usable_frac  = float(data["esc_wall_usable_frac"]),
+            vent_wall_usable_frac = float(data["vent_wall_usable_frac"]),
+        )
+
+
+# ---------------------------------------------
+#  Per-path sizing outputs
+# ---------------------------------------------
+@dataclass
+class EscPlateResult:
+    Q_W:              float   # ESC heat load
+    V_cool_ms:        float   # airflow over the plate
+    A_req_m2:         float   # plate area to hold T_esc_max
+    plate_side_mm:    float   # sqrt(A_req)
+    plate_mass_kg:    float   # A_req * t * rho_plate
+    A_avail_m2:       float   # usable inflow-washed wall
+    area_headroom:    float   # A_avail / A_req  (>= 1 fits)
+    T_at_avail_C:     float   # ESC temp if plate uses the full wall
+    temp_margin_C:    float   # T_esc_max - T_at_avail
+    mass_within_alloc: bool   # plate mass < ESC allocation
+    ok:               bool
+
+
+@dataclass
+class BatteryVentResult:
+    Q_W:            float   # battery heat load
+    V_vent_ms:      float   # through-vent air velocity
+    A_req_m2:       float   # vent area to hold T_batt_max
+    A_avail_m2:     float   # usable battery-bay wall
+    area_headroom:  float   # A_avail / A_req
+    T_at_avail_C:   float   # pack temp at the full available vent area
+    temp_margin_C:  float   # T_batt_max - T_at_avail
+    ok:             bool
+
+
+# ---------------------------------------------
+#  Main sizing routine
+# ---------------------------------------------
+
+def size_thermal(
+    P_hover_W:        float,
+    eta_esc:          float,
+    eta_bat:          float,
+    MTOW_kg:          float,
+    D_rotor_m:        float,
+    rho:              float,   # ambient air density [kg/m^3]
+    D_int_m:          float,   # fuselage internal diameter [m]
+    L_mid_m:          float,   # mid-body cylinder length (ESC plate zone) [m]
+    L_battery_bay_m:  float,   # battery bay axial length [m]
+    m_esc_alloc_kg:   float,   # ESC/propulsion mounts allocation [kg]
+    p:                ThermalParams = None,
+    g:                float = G0,
+) -> dict:
+    """Size both thermal paths.  See module docstring for the model."""
+    if p is None:
+        raise ValueError("ThermalParams required (config/thermal.yaml)")
+
+    nu = MU_AIR / rho
+    Pr = _prandtl()
+    dT_esc  = p.T_esc_max_C - p.T_ambient_C
+    dT_batt = p.T_batt_max_C - p.T_ambient_C
+    if dT_esc <= 0 or dT_batt <= 0:
+        raise ValueError("T_*_max must exceed T_ambient")
+
+    # induced (inflow) velocity, actuator disk in hover
+    A_disk = math.pi * (D_rotor_m / 2.0) ** 2
+    v_h = math.sqrt(MTOW_kg * g / (2.0 * rho * A_disk))
+
+    # ---- ESC cold-plate -------------------------------------------------
+    Q_esc = P_hover_W * (1.0 - eta_esc)
+    V_cool = p.esc_inflow_frac * v_h
+    C_h = 0.664 * K_AIR * Pr ** (1.0 / 3.0) * math.sqrt(V_cool / nu)
+    A_req_esc = (Q_esc / (C_h * dT_esc)) ** (4.0 / 3.0)
+    plate_mass = A_req_esc * p.plate_thickness_m * p.rho_plate
+
+    A_avail_esc = math.pi * D_int_m * L_mid_m * p.esc_wall_usable_frac
+    T_at_avail_esc = p.T_ambient_C + Q_esc / (C_h * A_avail_esc ** 0.75)
+    esc = EscPlateResult(
+        Q_W=Q_esc, V_cool_ms=V_cool, A_req_m2=A_req_esc,
+        plate_side_mm=math.sqrt(A_req_esc) * 1e3, plate_mass_kg=plate_mass,
+        A_avail_m2=A_avail_esc, area_headroom=A_avail_esc / A_req_esc,
+        T_at_avail_C=T_at_avail_esc, temp_margin_C=p.T_esc_max_C - T_at_avail_esc,
+        mass_within_alloc=plate_mass < m_esc_alloc_kg,
+        ok=(A_req_esc <= A_avail_esc) and (plate_mass < m_esc_alloc_kg),
+    )
+
+    # ---- vented battery bay --------------------------------------------
+    Q_batt = P_hover_W * (1.0 / eta_bat - 1.0)
+    V_vent = p.vent_inflow_frac * v_h
+    mdot_req = Q_batt / (CP_AIR * dT_batt)
+    A_req_vent = mdot_req / (rho * V_vent)
+
+    A_avail_vent = math.pi * D_int_m * L_battery_bay_m * p.vent_wall_usable_frac
+    mdot_avail = rho * V_vent * A_avail_vent
+    dT_at_avail = Q_batt / (mdot_avail * CP_AIR)
+    T_at_avail_batt = p.T_ambient_C + dT_at_avail
+    batt = BatteryVentResult(
+        Q_W=Q_batt, V_vent_ms=V_vent, A_req_m2=A_req_vent,
+        A_avail_m2=A_avail_vent, area_headroom=A_avail_vent / A_req_vent,
+        T_at_avail_C=T_at_avail_batt, temp_margin_C=p.T_batt_max_C - T_at_avail_batt,
+        ok=A_req_vent <= A_avail_vent,
+    )
+
+    return {
+        "v_h_ms": v_h,
+        "Pr": Pr,
+        "esc": esc,
+        "battery": batt,
+        "all_ok": esc.ok and batt.ok,
+    }
+
+
+# ---------------------------------------------
+#  Handoff writer
+# ---------------------------------------------
+
+def write_thermal_yaml(res: dict, p: ThermalParams, path) -> None:
+    """Write out/thermal.yaml -- consumed by the CAD notebook (cold-plate
+    + vent geometry) and read for reference downstream."""
+    esc: EscPlateResult = res["esc"]
+    batt: BatteryVentResult = res["battery"]
+    data = {
+        "T_ambient_C":  p.T_ambient_C,
+        "v_h_ms":       round(res["v_h_ms"], 4),
+        # ESC cold-plate
+        "esc": {
+            "Q_W":             round(esc.Q_W, 3),
+            "V_cool_ms":       round(esc.V_cool_ms, 4),
+            "A_req_cm2":       round(esc.A_req_m2 * 1e4, 3),
+            "plate_side_mm":   round(esc.plate_side_mm, 2),
+            "plate_thickness_mm": round(p.plate_thickness_m * 1e3, 3),
+            "plate_material":  p.plate_material,
+            "plate_mass_g":    round(esc.plate_mass_kg * 1e3, 2),
+            "A_avail_cm2":     round(esc.A_avail_m2 * 1e4, 3),
+            "area_headroom":   round(esc.area_headroom, 3),
+            "T_esc_max_C":     p.T_esc_max_C,
+            "T_at_avail_C":    round(esc.T_at_avail_C, 2),
+            "temp_margin_C":   round(esc.temp_margin_C, 2),
+            "mass_within_alloc": bool(esc.mass_within_alloc),
+            "ok":              bool(esc.ok),
+        },
+        # vented battery bay
+        "battery": {
+            "Q_W":            round(batt.Q_W, 3),
+            "V_vent_ms":      round(batt.V_vent_ms, 4),
+            "A_req_cm2":      round(batt.A_req_m2 * 1e4, 3),
+            "A_avail_cm2":    round(batt.A_avail_m2 * 1e4, 3),
+            "area_headroom":  round(batt.area_headroom, 3),
+            "T_batt_max_C":   p.T_batt_max_C,
+            "T_at_avail_C":   round(batt.T_at_avail_C, 2),
+            "temp_margin_C":  round(batt.temp_margin_C, 2),
+            "ok":             bool(batt.ok),
+        },
+        "all_ok": bool(res["all_ok"]),
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("# AUTO-GENERATED -- do not edit by hand.\n")
+        f.write("# Source : src/conceptual_design/thermal_design.py\n")
+        f.write("# Input  : config/thermal.yaml + hover power + fuselage layout\n")
+        f.write("# Regen  : re-run notebooks/thermal_design.ipynb\n\n")
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)

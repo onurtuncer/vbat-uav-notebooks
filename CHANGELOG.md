@@ -9,6 +9,30 @@ is tagged.
 
 ## [Unreleased]
 
+### Added
+
+- **Thermal paths as structure** (new pipeline stage `thermal_design`,
+  NB7; ADR-0009): first-order sizing of the two hover heat-rejection paths
+  as structure — an ESC cold-plate on the inflow-washed inner wall (flat-
+  plate forced convection) and a vented battery bay (through-flow). Heat
+  loads are derived from the propulsion/battery efficiencies and hover
+  power; `config/thermal.yaml` holds only the limits and cooling-airflow
+  fractions. Writes `out/thermal.yaml`; two assembly-only CAD parts
+  (`esc_cold_plate`, `battery_vents`) excluded from the fused external-aero
+  STL. **No mass re-baseline** — the cold-plate is absorbed into the ESC/
+  propulsion allocation and no geometry pins move.
+- **Finding:** the battery bay vents comfortably (~40x area headroom,
+  ~20 C margin), but the ESC cold-plate is **marginal** at the 3.06 kg /
+  ~1 kW-hover point — its ~50 W load needs a plate heavier than the ESC
+  allocation with only a few C margin. Surfaced honestly (`ok: false` in
+  `out/thermal.yaml`, printed in NB7) rather than tuned to a false pass.
+
+### Changed
+
+- Pipeline is now ten notebooks (was nine); `thermal_design` inserts as
+  NB7, shifting `vehicle_solid_model` →NB8, `mass_properties` →NB9,
+  `wiring_diagram` →NB10.
+
 ## [0.2.1] — 2026-07-10
 
 ### Fixed

@@ -50,6 +50,11 @@ def vibration() -> dict:
     return yaml.safe_load((OUT / "vibration.yaml").read_text(encoding="utf-8"))
 
 
+@pytest.fixture(scope="module")
+def thermal() -> dict:
+    return yaml.safe_load((OUT / "thermal.yaml").read_text(encoding="utf-8"))
+
+
 class TestAirfoil:
     def test_design_point(self, airfoil):
         assert airfoil["designation"] == "NACA 2412"
@@ -139,6 +144,30 @@ class TestVibration:
         # high forcing frequency -> small static deflection -> small sway;
         # guard that the packing cost stays a few mm, not centimetres.
         assert 0.0 < vibration["sway_mm"] < 5.0
+
+
+class TestThermal:
+    def test_heat_loads_derived_and_sane(self, thermal):
+        # Heat loads follow from hover power and the efficiencies; pin the
+        # order of magnitude (ESC ~50 W, battery ~30 W at the 3.06 kg point).
+        assert thermal["esc"]["Q_W"] == pytest.approx(51.4, rel=5e-2)
+        assert thermal["battery"]["Q_W"] == pytest.approx(31.8, rel=5e-2)
+
+    def test_battery_bay_vents_comfortably(self, thermal):
+        b = thermal["battery"]
+        assert b["ok"] is True
+        assert b["area_headroom"] > 5.0          # lots of wall to spare
+        assert b["temp_margin_C"] > 5.0
+
+    def test_esc_path_is_marginal_finding(self, thermal):
+        # KNOWN finding (ADR-0009): the ESC cold-plate is marginal at the
+        # current design point -- pin that state so a change either way is
+        # caught. This is a documented finding, not a passing design.
+        e = thermal["esc"]
+        assert e["ok"] is False
+        assert e["mass_within_alloc"] is False    # plate heavier than ESC alloc
+        assert 0.0 < e["temp_margin_C"] < 10.0     # positive but tight
+        assert e["A_req_cm2"] == pytest.approx(346.6, rel=5e-2)
 
 
 class TestCrossFileConsistency:
