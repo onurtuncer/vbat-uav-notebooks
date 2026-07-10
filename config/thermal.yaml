@@ -1,0 +1,62 @@
+# Thermal-path parameters for the V-BAT tail-sitter (ADR-0009).
+# Used by thermal_design.py.
+#
+# Two heat-rejection paths, both realized as structure:
+#   1. ESC cold-plate  -- the ESC bonds to a conductive plate on the
+#      inner shell wall where the EDF inflow washes it (forced convection).
+#   2. Vented battery bay -- inlet/outlet vents admit through-flow that
+#      carries battery discharge heat out of the bay.
+#
+# The heat LOADS are derived, not configured: ESC loss = P_hover*(1-eta_esc)
+# and battery loss = P_hover*(1/eta_bat - 1), from the propulsion/battery
+# efficiencies and the hover power. Only the limits and the cooling-airflow
+# assumptions live here.
+#
+# --- Temperatures ----------------------------------------------------
+# T_ambient_C   : design ambient air temperature [degC]. 40 C is a hot-day
+#                 worst case (the sizing must hold at the worst ambient,
+#                 not a nominal 15 C ISA day).
+# T_esc_max_C   : ESC case/junction continuous limit [degC]. 90 C is a
+#                 conservative FET-case ceiling for hobby/UAV ESCs (many
+#                 derate above ~100 C).
+# T_batt_max_C  : LiPo cell surface continuous limit [degC]. 60 C protects
+#                 cycle life and avoids thermal-runaway margin erosion.
+#
+# --- Cooling airflow (fractions of the fan induced velocity v_h) ------
+# The fan induced velocity v_h = sqrt(W/(2*rho*A_disk)) is the airflow the
+# rotor draws in hover. Neither the ESC plate nor the battery vents see
+# the full v_h -- the ESC sits mid-body (not at the inlet) and vent flow
+# is throttled by inlet/outlet losses. These fractions capture that.
+#
+# esc_inflow_frac  : V over the ESC plate / v_h [-]. 0.5 -- the mid-body
+#                    station sees roughly half the disk-plane induced
+#                    velocity (conservative; a plate nearer the inlet
+#                    would see more).
+# vent_inflow_frac : through-vent air velocity / v_h [-]. 0.3 -- vent
+#                    flow is a modest bleed of the inlet stream.
+#
+# --- Cold-plate material ---------------------------------------------
+# plate_thickness_m : cold-plate thickness [m] (2 mm aluminum spreads the
+#                     ESC footprint heat without excessive mass).
+# rho_plate         : plate density [kg/m^3] (6061 aluminum ~2700).
+# plate_material    : label for the BOM / CAD.
+#
+# --- Fits-in-geometry usable wall fractions --------------------------
+# esc_wall_usable_frac  : fraction of the ESC-bay inner-wall area available
+#                         to bond the cold-plate to [-].
+# vent_wall_usable_frac : fraction of the battery-bay wall area that can be
+#                         opened as vents without compromising the shell [-].
+
+T_ambient_C: 40.0
+T_esc_max_C: 90.0
+T_batt_max_C: 60.0
+
+esc_inflow_frac: 0.5
+vent_inflow_frac: 0.3
+
+plate_thickness_m: 0.002
+rho_plate: 2700.0
+plate_material: "Al 6061"
+
+esc_wall_usable_frac: 0.5
+vent_wall_usable_frac: 0.25

@@ -22,12 +22,13 @@ that the next one reads:
 4. `aileron_design` — cruise-phase roll backup → `out/aileron.yaml`
 5. `vibration_isolation` — FC/IMU + payload soft mounts → `out/vibration.yaml`
 6. `fuselage_design` — layout, CG, drag → `out/fuselage.yaml`
-7. `vehicle_solid_model` — CadQuery CAD → `out/cad/` (STEP/STL, per-part + fused + prop rotor)
-8. `mass_properties` — inertia tensor, BOM → `out/mass_properties.yaml`, `out/bom.csv`
-9. `wiring_diagram` — electrical block diagram → `out/wiring_diagram.svg`, `out/electrical.yaml`
+7. `thermal_design` — ESC cold-plate + vented battery bay → `out/thermal.yaml`
+8. `vehicle_solid_model` — CadQuery CAD → `out/cad/` (STEP/STL, per-part + fused + prop rotor)
+9. `mass_properties` — inertia tensor, BOM → `out/mass_properties.yaml`, `out/bom.csv`
+10. `wiring_diagram` — electrical block diagram → `out/wiring_diagram.svg`, `out/electrical.yaml`
 
-NB2–NB9 re-run `run_sizing_loop` from `config/` to reconstruct the same
-design point — if you change the sizing API, update **all nine** call sites.
+NB2–NB10 re-run `run_sizing_loop` from `config/` to reconstruct the same
+design point — if you change the sizing API, update **all ten** call sites.
 
 `aileron_design` exists because jet-vane control authority is sized from
 **hover** thrust and collapses in cruise (`q_jet` scales linearly with
@@ -45,6 +46,17 @@ avionics/structural fractions) and the sway/rattle space added to the bay
 stack. Because the forcing is far above any practical isolator corner
 frequency, the sway cost is a few mm — small, but real on a
 packaging-constrained fuselage.
+
+`thermal_design` sizes the two hover heat paths as structure (ADR-0009):
+an ESC cold-plate on the inflow-washed inner wall (forced convection) and
+a vented battery bay. Heat loads are derived (`P_hover·(1−eta_esc)` and
+`P_hover·(1/eta_bat−1)`), not configured. It does **not** change the mass
+model — the cold-plate is absorbed into the ESC/propulsion "mounts"
+allocation and its two CAD parts are assembly-only (excluded from the
+fused STL). It reports margins honestly: at the current 3.06 kg / ~1 kW-
+hover point the battery bay vents comfortably, but the ESC cold-plate is
+**marginal** (its ~50 W load needs a plate heavier than the ESC allocation
+with only a few °C margin) — a standing finding, not a hard failure.
 
 `wiring_diagram` is generated, not hand-drawn: box positions/wiring
 topology are a fixed layout in `electrical_diagram.py`, but every label
@@ -104,7 +116,7 @@ also runs in the local 3.14 venv.
 ## CI (GitHub Actions)
 
 - `ci.yml` — ruff, pytest (3.10/3.12/3.14), ShellCheck on `cfd/**/Allrun*`.
-- `design-pipeline.yml` — executes all nine notebooks on every PR, runs
+- `design-pipeline.yml` — executes all ten notebooks on every PR, runs
   design-regression + geometry tests, uploads `out/` artifacts; on main
   additionally: coarse OpenFOAM smoke run and GitHub Pages deploy
   (rendered notebooks, 3D viewer with exploded view, BOM page).
@@ -129,10 +141,10 @@ YAMLs). A span failure usually means `out/cad/` is stale, not wrong.
 ## Local environment gotchas
 
 - The local venv is Python 3.14: **CadQuery does not install there**,
-  so NB7 (`vehicle_solid_model`, and thus `out/cad/`) can only be
-  regenerated in CI (Python 3.12) or a separate 3.12 env. NB8
+  so NB8 (`vehicle_solid_model`, and thus `out/cad/`) can only be
+  regenerated in CI (Python 3.12) or a separate 3.12 env. NB9
   (`mass_properties`) has no CadQuery dependency of its own and *can*
-  run locally, but its BOM/CAD cross-check still lags until NB7 has
+  run locally, but its BOM/CAD cross-check still lags until NB8 has
   regenerated in CI. After a design change, the committed copies of
   CadQuery-dependent outputs are stale until regenerated — CI validates
   against fresh ones.

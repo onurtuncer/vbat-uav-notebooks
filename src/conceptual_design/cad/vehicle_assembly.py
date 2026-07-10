@@ -9,6 +9,8 @@ Assembles the sized components into one parametric vehicle:
                   at zero deflection (cruise trim)  (out/aileron.yaml)
     ail. servos   2x 9g-class servos as lower-surface pods on the fixed
                   wing forward of the aileron hinge (thin wing -> pod)
+    esc cold-plate ESC heatsink on the inflow-washed inner wall, and
+    batt. vents   battery-bay vent louvres (assembly-only)  (out/thermal.yaml)
     duct          annular EDF shroud        (out/fuselage.yaml)
     duct struts   4x flat plates fuselage->duct
     vanes         4x jet control vanes      (out/control_vanes.yaml)
@@ -136,6 +138,79 @@ def wing_split_parts(
     wing_L = wing.intersect(half_box)
     wing_R = wing.cut(half_box)
     return {"wing_L": wing_L, "wing_R": wing_R}
+
+
+def esc_cold_plate_solid(
+    x_esc_m:      float,   # ESC station [m, +aft]
+    r_int_m:      float,   # internal shell radius [m]
+    plate_area_m2: float,  # cold-plate area (out/thermal.yaml) [m^2]
+    t_plate_m:    float,   # plate thickness [m]
+    arc_deg:      float = 200.0,   # how far the plate wraps the wall
+) -> cq.Workplane:
+    """
+    ESC cold-plate hugging the inner shell wall at the ESC station, where
+    the EDF inflow washes it (ADR-0009).  Modeled as a thin curved shell
+    segment (wedge x annular band), its area matching out/thermal.yaml.
+    ASSEMBLY-ONLY -- internal structure, excluded from the fused STL.
+
+    The plate is large relative to the bay (thermal_design flags this),
+    so it wraps ~arc_deg of the wall over the axial length its area needs.
+    """
+    r_out = r_int_m * MM
+    r_in  = r_out - max(t_plate_m * MM, 1.0)
+    arc_len_m = math.radians(arc_deg) * r_int_m
+    axial_len = plate_area_m2 / arc_len_m * MM        # length to make up the area
+    x_aft = -(x_esc_m * MM) - axial_len / 2.0
+
+    half = math.radians(arc_deg / 2.0)
+    n_arc = 32
+    # sector centered on +z (belly), local (u, v) -> global (y, z)
+    pts = [(0.0, 0.0)] + [
+        (r_out * math.sin(-half + 2 * half * i / n_arc),
+         r_out * math.cos(-half + 2 * half * i / n_arc))
+        for i in range(n_arc + 1)
+    ]
+    wedge = (
+        cq.Workplane("YZ", origin=(x_aft, 0, 0))
+        .polyline(pts).close().extrude(axial_len)
+    )
+    band = (
+        cq.Workplane("YZ", origin=(x_aft, 0, 0))
+        .circle(r_out).circle(r_in).extrude(axial_len)
+    )
+    return wedge.intersect(band)
+
+
+def battery_vents_solid(
+    x_bay_start_m: float,   # battery bay start [m, +aft]
+    bay_len_m:     float,   # battery bay length [m]
+    r_out_m:       float,   # outer shell radius at the bay [m]
+    n_louvres:     int = 4,
+    arc_deg:       float = 24.0,   # circumferential span of the louvre bank
+) -> cq.Workplane:
+    """
+    Battery-bay vent louvres on the outer wall over the battery bay
+    (ADR-0009).  A bank of thin axial slots that admit through-flow.
+    ASSEMBLY-ONLY / visual: the external-aero STL treats the skin as
+    closed (same convention as the actuator-disk fan), so the vents are
+    not cut into the fused solid.
+    """
+    r = r_out_m * MM
+    slot_w = 3.0                       # louvre bar width [mm]
+    slot_l = 0.7 * bay_len_m * MM      # axial length of the bank
+    x_aft = -((x_bay_start_m + 0.85 * bay_len_m) * MM)
+    louvres = None
+    for k in range(n_louvres):
+        ang = math.radians(-arc_deg / 2.0 + arc_deg * k / max(1, n_louvres - 1))
+        # small radial bar just proud of the wall, on the -z (top) side
+        yc = (r + 1.0) * math.sin(ang)
+        zc = -(r + 1.0) * math.cos(ang)
+        bar = (
+            cq.Workplane("XY", origin=(x_aft, yc, zc))
+            .box(slot_l, slot_w, 2.5, centered=(False, True, True))
+        )
+        louvres = bar if louvres is None else louvres.union(bar)
+    return louvres
 
 
 def spar_tube_solid(
@@ -459,6 +534,7 @@ def build_vehicle(
     b_wing_m:     float,     # wing span (mass closure)
     chord_wing_m: float,     # wing chord (mass closure)
     wing_designation: str,   # e.g. "NACA 2412" (out/airfoil.yaml)
+    thermal: Dict = None,    # out/thermal.yaml (ESC cold-plate + vents, ADR-0009)
 ) -> Tuple[cq.Assembly, cq.Workplane]:
     """
     Build the complete vehicle.
@@ -507,6 +583,24 @@ def build_vehicle(
         "servo_aileron_R": _aileron_servo_pod(
             wing_designation, chord_wing_m, fus["x_wing_LE_m"], -y_arm_m),
     }
+
+    # -- thermal paths as structure (ADR-0009): ESC cold-plate on the
+    #    inflow-washed inner wall + battery-bay vent louvres.  Both
+    #    assembly-only (excluded from the fused external-aero STL).
+    thermal_parts: Dict[str, cq.Workplane] = {}
+    if thermal is not None:
+        r_int_m = D / 2.0 - fus["t_shell_m"]
+        esc_it = next(it for it in fus["layout"] if it["name"] == "esc")
+        thermal_parts["esc_cold_plate"] = esc_cold_plate_solid(
+            esc_it["x_cg_m"], r_int_m,
+            thermal["esc"]["A_req_cm2"] / 1e4,
+            thermal["esc"]["plate_thickness_mm"] / 1e3,
+        )
+        batt_it = next(it for it in fus["layout"] if it["name"] == "battery")
+        r_out_batt = fuselage_radius(batt_it["x_cg_m"], D, L,
+                                     fus["f_nose"], fus["f_tail"], fus["r_hub_m"])
+        thermal_parts["battery_vents"] = battery_vents_solid(
+            batt_it["x_start_m"], batt_it["length_m"], r_out_batt)
 
     # -- duct ----------------------------------------------------------
     x_duct_c = next(it["x_cg_m"] for it in fus["layout"] if it["name"] == "duct")
@@ -603,6 +697,9 @@ def build_vehicle(
         asm.add(sv, name=f"servo_{name}", color=blue)
     for name, asv in aileron_servo_parts.items():
         asm.add(asv, name=name, color=blue)
+    copper = cq.Color(0.80, 0.45, 0.20)   # ESC cold-plate reads as metal
+    for name, tpart in thermal_parts.items():
+        asm.add(tpart, name=name, color=copper)
     for i, leg in enumerate(legs):
         asm.add(leg, name=f"leg_{i+1}", color=dark)
 

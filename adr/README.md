@@ -19,3 +19,4 @@ Format: one file per decision, `NNNN-kebab-title.md`, each with
 | [0006](0006-tag-driven-versioning-and-ci-tiers.md) | Tag-driven versioning and tiered CI | Accepted |
 | [0007](0007-vibration-isolation.md) | Soft-mount the FC/IMU and payload against EDF imbalance | Accepted |
 | [0008](0008-segmented-fdm-construction.md) | Segmented-FDM construction as the baseline airframe | Accepted |
+| [0009](0009-thermal-paths-as-structure.md) | Thermal paths as structure (ESC cold-plate + vented battery bay) | Accepted |

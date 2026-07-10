@@ -4,7 +4,7 @@ VBT-STR-002,"Wing, constant chord",1,"CFRP skin/foam core, NACA 2412",0.1621,252
 VBT-PRP-001,EDF motor + fan rotor,1,"D = 195 mm EDF, BLDC outrunner",0.2751,473.9,0.2751
 VBT-PRP-002,Duct / shroud annulus,1,"CFRP wound annulus, 8 mm wall",0.0688,487.1,0.0688
 VBT-PWR-001,Battery pack,1,"LiPo, 140 Wh/kg pack-level",0.799,274.8,0.799
-VBT-PWR-002,ESC,1,sized to hover power,0.1146,256.2,0.1146
+VBT-PWR-002,ESC,1,sized to hover power; incl. inflow-washed cold-plate (NB7),0.1146,256.2,0.1146
 VBT-AVI-001,Avionics stack,1,FC + GPS + RX + telemetry,0.1565,189.3,0.1565
 VBT-PLD-001,Payload (EO sensor + mount),1,"requirement, 0.5 kg",0.5,93.7,0.5
 VBT-CTL-001,Jet control vane,4,"CFRP flat plate 2 mm, c=19.9 mm, h=49.7 mm",0.0031648967999999993,537.3,0.012659587199999997
