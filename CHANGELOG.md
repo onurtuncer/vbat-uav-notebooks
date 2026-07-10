@@ -9,6 +9,15 @@ is tagged.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-07-10
+
+Third design snapshot. Adds the first thermal model — the two hover
+heat-rejection paths (ESC cold-plate, vented battery bay) sized as
+structure — completing the mechanical-design layer (vibration, modularity,
+construction, thermal) on top of the 3.06 kg segmented-FDM airframe. The
+ESC cold-plate comes out marginal at this power level and is reported as a
+standing finding, not tuned away.
+
 ### Added
 
 - **Thermal paths as structure** (new pipeline stage `thermal_design`,
@@ -179,6 +188,7 @@ converged conceptual design point.
   design point and cross-check `cfd/vehicle/Allrun.case`; `tests/test_geometry.py`
   guards the exported STL (watertight, mm units, span).
 
+[0.3.0]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.3.0
 [0.2.1]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.2.1
 [0.2.0]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.2.0
 [0.1.0]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.1.0
