@@ -1,0 +1,333 @@
+<?xml version="1.0"?>
+<!--
+  V-BAT-like single-EDF jet-vane tailsitter — Gazebo (gz) model.
+  DRAFT (ADR-0011).
+
+  Frame: Gazebo FLU (x forward, y left, z up), model origin at the NOSE
+  TIP; the body FRD station s from the nose maps to x = -s (and FRD
+  y/z flip sign vs FLU).
+
+  Provenance (2.376 kg design point):
+    mass/inertia/CG . out/mass_properties.yaml
+    fuselage/layout . out/fuselage.yaml
+    vanes ........... out/control_vanes.yaml
+    ailerons/wing ... out/aileron.yaml (chord/span derived from
+                      chord_frac 0.12 -> c_wing 0.1776 m, b 1.066 m)
+    rotor ........... config/rotor.yaml (T_max 50 N),
+                      out/vibration.yaml (hover 211.3 Hz shaft)
+
+  KNOWN LIMITATION: the four jet vanes sit in the EDF jet
+  (V_jet ~ 35.7 m/s at hover) but the LiftDrag plugin only sees the
+  freestream, so in hover the model has ~zero vane authority. The
+  LiftDrag blocks on the vanes are PLACEHOLDERS pending a custom gz
+  system plugin that feeds them the jet velocity (the main SITL work
+  item, see px4/README.md). Wing/aileron aero is valid in cruise.
+-->
+<sdf version="1.9">
+  <model name="vbat_tailsitter">
+
+    <link name="base_link">
+      <!-- total vehicle 2.37626 kg minus the separately-linked rotor
+           (0.060), vanes (4 x 0.00316) and aileron surfaces (2 x 0.005);
+           inertia kept at the whole-vehicle tensor (small links are
+           negligible against it) -->
+      <inertial>
+        <pose>-0.23841 0 0 0 0 0</pose>
+        <mass>2.2936</mass>
+        <inertia>
+          <ixx>0.022453</ixx>
+          <iyy>0.041776</iyy>
+          <izz>0.054148</izz>
+          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+        </inertia>
+      </inertial>
+
+      <!-- fuselage: D 0.09653, L 0.48264 (out/fuselage.yaml) -->
+      <collision name="fuselage_collision">
+        <pose>-0.24132 0 0 0 1.5708 0</pose>
+        <geometry><cylinder><radius>0.0483</radius><length>0.48264</length></cylinder></geometry>
+      </collision>
+      <visual name="fuselage_visual">
+        <pose>-0.24132 0 0 0 1.5708 0</pose>
+        <geometry><cylinder><radius>0.0483</radius><length>0.48264</length></cylinder></geometry>
+      </visual>
+      <!-- wing: LE station 0.20289, chord 0.1776, span 1.066 -->
+      <visual name="wing_visual">
+        <pose>-0.29169 0 0 0 0 0</pose>
+        <geometry><box><size>0.1776 1.066 0.008</size></box></geometry>
+      </visual>
+      <!-- duct ring: D_outer 0.217, chord 0.08775 at station 0.4596 -->
+      <visual name="duct_visual">
+        <pose>-0.4596 0 0 0 1.5708 0</pose>
+        <geometry><cylinder><radius>0.1085</radius><length>0.08775</length></cylinder></geometry>
+      </visual>
+
+      <sensor name="imu_sensor" type="imu">
+        <always_on>1</always_on><update_rate>250</update_rate>
+      </sensor>
+      <sensor name="air_pressure_sensor" type="air_pressure">
+        <always_on>1</always_on><update_rate>50</update_rate>
+      </sensor>
+      <sensor name="magnetometer_sensor" type="magnetometer">
+        <always_on>1</always_on><update_rate>100</update_rate>
+      </sensor>
+      <sensor name="navsat_sensor" type="navsat">
+        <always_on>1</always_on><update_rate>30</update_rate>
+      </sensor>
+      <sensor name="air_speed_sensor" type="air_speed">
+        <always_on>1</always_on><update_rate>50</update_rate>
+      </sensor>
+    </link>
+
+    <!-- ============ rotor (EDF fan disk, station 0.44644) ============ -->
+    <link name="rotor_link">
+      <pose>-0.44644 0 0 0 0 0</pose>
+      <inertial>
+        <mass>0.060</mass>
+        <inertia><ixx>1.5e-4</ixx><iyy>8e-5</iyy><izz>8e-5</izz>
+          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+      </inertial>
+      <visual name="rotor_visual">
+        <pose>0 0 0 0 1.5708 0</pose>
+        <geometry><cylinder><radius>0.0975</radius><length>0.01</length></cylinder></geometry>
+      </visual>
+    </link>
+    <joint name="rotor_joint" type="revolute">
+      <parent>base_link</parent><child>rotor_link</child>
+      <axis><xyz>1 0 0</xyz>
+        <limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+    </joint>
+
+    <!-- ====== jet vanes: hinge station 0.50261, R_mid 0.06825, ======
+         ====== span 0.0497 x chord 0.0199, hinge at 0.25c        ====== -->
+    <!-- vane T (FRD top = FLU +z); hinge axis radial (z) -->
+    <link name="vane_t_link">
+      <pose>-0.50261 0 0.06825 0 0 0</pose>
+      <inertial><mass>0.00316</mass>
+        <inertia><ixx>1e-7</ixx><iyy>1e-7</iyy><izz>1e-7</izz>
+          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <visual name="vane_t_visual">
+        <geometry><box><size>0.0199 0.002 0.0497</size></box></geometry>
+      </visual>
+    </link>
+    <joint name="vane_t_joint" type="revolute">
+      <parent>base_link</parent><child>vane_t_link</child>
+      <axis><xyz>0 0 1</xyz>
+        <limit><lower>-0.349</lower><upper>0.349</upper></limit></axis>
+      <!-- +/-20 deg hard stop (delta_max_deg); usable range to the
+           15 deg stall limit is enforced in PX4 output scaling -->
+    </joint>
+
+    <!-- vane B (FRD bottom = FLU -z) -->
+    <link name="vane_b_link">
+      <pose>-0.50261 0 -0.06825 0 0 0</pose>
+      <inertial><mass>0.00316</mass>
+        <inertia><ixx>1e-7</ixx><iyy>1e-7</iyy><izz>1e-7</izz>
+          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <visual name="vane_b_visual">
+        <geometry><box><size>0.0199 0.002 0.0497</size></box></geometry>
+      </visual>
+    </link>
+    <joint name="vane_b_joint" type="revolute">
+      <parent>base_link</parent><child>vane_b_link</child>
+      <axis><xyz>0 0 1</xyz>
+        <limit><lower>-0.349</lower><upper>0.349</upper></limit></axis>
+    </joint>
+
+    <!-- vane L (FRD left = FLU +y); hinge axis radial (y) -->
+    <link name="vane_l_link">
+      <pose>-0.50261 0.06825 0 0 0 0</pose>
+      <inertial><mass>0.00316</mass>
+        <inertia><ixx>1e-7</ixx><iyy>1e-7</iyy><izz>1e-7</izz>
+          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <visual name="vane_l_visual">
+        <geometry><box><size>0.0199 0.0497 0.002</size></box></geometry>
+      </visual>
+    </link>
+    <joint name="vane_l_joint" type="revolute">
+      <parent>base_link</parent><child>vane_l_link</child>
+      <axis><xyz>0 1 0</xyz>
+        <limit><lower>-0.349</lower><upper>0.349</upper></limit></axis>
+    </joint>
+
+    <!-- vane R (FRD right = FLU -y) -->
+    <link name="vane_r_link">
+      <pose>-0.50261 -0.06825 0 0 0 0</pose>
+      <inertial><mass>0.00316</mass>
+        <inertia><ixx>1e-7</ixx><iyy>1e-7</iyy><izz>1e-7</izz>
+          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <visual name="vane_r_visual">
+        <geometry><box><size>0.0199 0.0497 0.002</size></box></geometry>
+      </visual>
+    </link>
+    <joint name="vane_r_joint" type="revolute">
+      <parent>base_link</parent><child>vane_r_link</child>
+      <axis><xyz>0 1 0</xyz>
+        <limit><lower>-0.349</lower><upper>0.349</upper></limit></axis>
+    </joint>
+
+    <!-- ====== ailerons: hinge station ~0.3592 (TE - c_ail), ======
+         ====== y +/- 0.5008, span 0.0639 x chord 0.0213       ====== -->
+    <link name="aileron_left_link">
+      <pose>-0.3592 0.5008 0 0 0 0</pose>
+      <inertial><mass>0.005</mass>
+        <inertia><ixx>1e-7</ixx><iyy>1e-7</iyy><izz>1e-7</izz>
+          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <visual name="aileron_left_visual">
+        <geometry><box><size>0.0213 0.0639 0.004</size></box></geometry>
+      </visual>
+    </link>
+    <joint name="aileron_left_joint" type="revolute">
+      <parent>base_link</parent><child>aileron_left_link</child>
+      <axis><xyz>0 1 0</xyz>
+        <limit><lower>-0.349</lower><upper>0.349</upper></limit></axis>
+    </joint>
+
+    <link name="aileron_right_link">
+      <pose>-0.3592 -0.5008 0 0 0 0</pose>
+      <inertial><mass>0.005</mass>
+        <inertia><ixx>1e-7</ixx><iyy>1e-7</iyy><izz>1e-7</izz>
+          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
+      <visual name="aileron_right_visual">
+        <geometry><box><size>0.0213 0.0639 0.004</size></box></geometry>
+      </visual>
+    </link>
+    <joint name="aileron_right_joint" type="revolute">
+      <parent>base_link</parent><child>aileron_right_link</child>
+      <axis><xyz>0 1 0</xyz>
+        <limit><lower>-0.349</lower><upper>0.349</upper></limit></axis>
+    </joint>
+
+    <!-- ==================== motor model ==================== -->
+    <!-- motorConstant: T = Cm*w^2 with hover 30.3 N at
+         w = 2*pi*211.3 Hz = 1327.6 rad/s (out/vibration.yaml)
+         -> Cm = 1.72e-5; T_max 50 N -> w_max = 1705 rad/s -->
+    <plugin filename="gz-sim-multicopter-motor-model-system"
+            name="gz::sim::systems::MulticopterMotorModel">
+      <jointName>rotor_joint</jointName>
+      <linkName>rotor_link</linkName>
+      <turningDirection>ccw</turningDirection>
+      <motorConstant>1.72e-5</motorConstant>
+      <momentConstant>0.001</momentConstant> <!-- stator cancels swirl;
+                                                  token residual -->
+      <maxRotVelocity>1705</maxRotVelocity>
+      <timeConstantUp>0.05</timeConstantUp>
+      <timeConstantDown>0.08</timeConstantDown>
+      <commandSubTopic>command/motor_speed</commandSubTopic>
+      <motorNumber>0</motorNumber>
+      <motorType>velocity</motorType>
+    </plugin>
+
+    <!-- ============ servo position controllers ============ -->
+    <plugin filename="gz-sim-joint-position-controller-system"
+            name="gz::sim::systems::JointPositionController">
+      <joint_name>vane_t_joint</joint_name><sub_topic>servo_0</sub_topic>
+      <p_gain>2.0</p_gain><i_gain>0.1</i_gain>
+    </plugin>
+    <plugin filename="gz-sim-joint-position-controller-system"
+            name="gz::sim::systems::JointPositionController">
+      <joint_name>vane_b_joint</joint_name><sub_topic>servo_1</sub_topic>
+      <p_gain>2.0</p_gain><i_gain>0.1</i_gain>
+    </plugin>
+    <plugin filename="gz-sim-joint-position-controller-system"
+            name="gz::sim::systems::JointPositionController">
+      <joint_name>vane_l_joint</joint_name><sub_topic>servo_2</sub_topic>
+      <p_gain>2.0</p_gain><i_gain>0.1</i_gain>
+    </plugin>
+    <plugin filename="gz-sim-joint-position-controller-system"
+            name="gz::sim::systems::JointPositionController">
+      <joint_name>vane_r_joint</joint_name><sub_topic>servo_3</sub_topic>
+      <p_gain>2.0</p_gain><i_gain>0.1</i_gain>
+    </plugin>
+    <plugin filename="gz-sim-joint-position-controller-system"
+            name="gz::sim::systems::JointPositionController">
+      <joint_name>aileron_left_joint</joint_name><sub_topic>servo_4</sub_topic>
+      <p_gain>2.0</p_gain><i_gain>0.1</i_gain>
+    </plugin>
+    <plugin filename="gz-sim-joint-position-controller-system"
+            name="gz::sim::systems::JointPositionController">
+      <joint_name>aileron_right_joint</joint_name><sub_topic>servo_5</sub_topic>
+      <p_gain>2.0</p_gain><i_gain>0.1</i_gain>
+    </plugin>
+
+    <!-- ============ wing aero (two halves, valid in cruise) ============
+         cla ~4.9 /rad (AR 6 finite-wing from 2D 2*pi class section),
+         a0 = -alpha_L0 = 0.024 rad, stall from CL_max_3D 1.2186
+         (out/airfoil.yaml); control_joint_rad_to_cl = Cl_delta_per_rad
+         2.09 (out/aileron.yaml) -->
+    <plugin filename="gz-sim-lift-drag-system" name="gz::sim::systems::LiftDrag">
+      <link_name>base_link</link_name>
+      <air_density>1.225</air_density>
+      <cla>4.9</cla><cla_stall>-3.85</cla_stall>
+      <cda>0.0126</cda><cda_stall>-0.9</cda_stall>
+      <alpha_stall>0.22</alpha_stall><a0>0.024</a0>
+      <area>0.0946</area>
+      <cp>-0.2473 0.2665 0</cp>
+      <forward>1 0 0</forward><upward>0 0 1</upward>
+      <control_joint_name>aileron_left_joint</control_joint_name>
+      <control_joint_rad_to_cl>2.09</control_joint_rad_to_cl>
+    </plugin>
+    <plugin filename="gz-sim-lift-drag-system" name="gz::sim::systems::LiftDrag">
+      <link_name>base_link</link_name>
+      <air_density>1.225</air_density>
+      <cla>4.9</cla><cla_stall>-3.85</cla_stall>
+      <cda>0.0126</cda><cda_stall>-0.9</cda_stall>
+      <alpha_stall>0.22</alpha_stall><a0>0.024</a0>
+      <area>0.0946</area>
+      <cp>-0.2473 -0.2665 0</cp>
+      <forward>1 0 0</forward><upward>0 0 1</upward>
+      <control_joint_name>aileron_right_joint</control_joint_name>
+      <control_joint_rad_to_cl>2.09</control_joint_rad_to_cl>
+    </plugin>
+
+    <!-- ============ vane aero: PLACEHOLDER ============
+         LiftDrag sees only the freestream, so these give ~zero force in
+         hover where the vanes actually operate (V_jet ~35.7 m/s,
+         out/control_vanes.yaml). Replace with a custom system plugin
+         that adds the jet velocity at the vane cp — until then, SITL
+         hover attitude control does not work from vane aero alone.
+         cla 5.34 /rad and S 9.89e-4 m^2 per vane from
+         out/control_vanes.yaml. -->
+    <plugin filename="gz-sim-lift-drag-system" name="gz::sim::systems::LiftDrag">
+      <link_name>vane_t_link</link_name>
+      <air_density>1.225</air_density>
+      <cla>5.34</cla><cla_stall>-4.0</cla_stall>
+      <cda>0.02</cda><cda_stall>-0.5</cda_stall>
+      <alpha_stall>0.262</alpha_stall><a0>0</a0>
+      <area>9.89e-4</area>
+      <cp>0 0 0</cp>
+      <forward>1 0 0</forward><upward>0 1 0</upward>
+    </plugin>
+    <plugin filename="gz-sim-lift-drag-system" name="gz::sim::systems::LiftDrag">
+      <link_name>vane_b_link</link_name>
+      <air_density>1.225</air_density>
+      <cla>5.34</cla><cla_stall>-4.0</cla_stall>
+      <cda>0.02</cda><cda_stall>-0.5</cda_stall>
+      <alpha_stall>0.262</alpha_stall><a0>0</a0>
+      <area>9.89e-4</area>
+      <cp>0 0 0</cp>
+      <forward>1 0 0</forward><upward>0 1 0</upward>
+    </plugin>
+    <plugin filename="gz-sim-lift-drag-system" name="gz::sim::systems::LiftDrag">
+      <link_name>vane_l_link</link_name>
+      <air_density>1.225</air_density>
+      <cla>5.34</cla><cla_stall>-4.0</cla_stall>
+      <cda>0.02</cda><cda_stall>-0.5</cda_stall>
+      <alpha_stall>0.262</alpha_stall><a0>0</a0>
+      <area>9.89e-4</area>
+      <cp>0 0 0</cp>
+      <forward>1 0 0</forward><upward>0 0 1</upward>
+    </plugin>
+    <plugin filename="gz-sim-lift-drag-system" name="gz::sim::systems::LiftDrag">
+      <link_name>vane_r_link</link_name>
+      <air_density>1.225</air_density>
+      <cla>5.34</cla><cla_stall>-4.0</cla_stall>
+      <cda>0.02</cda><cda_stall>-0.5</cda_stall>
+      <alpha_stall>0.262</alpha_stall><a0>0</a0>
+      <area>9.89e-4</area>
+      <cp>0 0 0</cp>
+      <forward>1 0 0</forward><upward>0 0 1</upward>
+    </plugin>
+
+  </model>
+</sdf>

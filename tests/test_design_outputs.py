@@ -67,9 +67,9 @@ class TestAirfoil:
 class TestFuselage:
     def test_design_point(self, fuselage):
         # 195 mm COTS EDF design point (2026-07 design review)
-        assert fuselage["D_fus_m"] == pytest.approx(0.10247, rel=1e-2)
-        assert fuselage["L_fus_m"] == pytest.approx(0.51235, rel=1e-2)
-        assert fuselage["x_CG_m"] == pytest.approx(0.25239, rel=1e-2)
+        assert fuselage["D_fus_m"] == pytest.approx(0.09653, rel=1e-2)
+        assert fuselage["L_fus_m"] == pytest.approx(0.48264, rel=1e-2)
+        assert fuselage["x_CG_m"] == pytest.approx(0.23841, rel=1e-2)
         assert fuselage["static_margin"] == pytest.approx(0.05, rel=1e-2)
 
     def test_internal_consistency(self, fuselage):
@@ -87,14 +87,14 @@ class TestFuselage:
         # Rectangular wing: x_AC - x_LE = MAC/4. This MAC feeds the CFD
         # force-coefficient setup, so pin it explicitly.
         mac = 4.0 * (fuselage["x_wing_AC_m"] - fuselage["x_wing_LE_m"])
-        assert mac == pytest.approx(0.2014, rel=1e-2)
+        assert mac == pytest.approx(0.1776, rel=1e-2)
 
 
 class TestControlVanes:
     def test_design_point(self, vanes):
         assert vanes["n_vanes"] == 4
         assert vanes["AR_vane"] == pytest.approx(2.5, rel=1e-3)
-        assert vanes["servo_torque_req_gcm"] == pytest.approx(563.0, rel=2e-2)
+        assert vanes["servo_torque_req_gcm"] == pytest.approx(437.7, rel=2e-2)
 
     def test_deflection_ordering(self, vanes):
         assert vanes["delta_design_deg"] < vanes["delta_stall_deg"] <= vanes["delta_max_deg"]
@@ -143,7 +143,7 @@ class TestAileron:
         assert aileron["n_ailerons"] == 2
         assert aileron["span_frac_wing"] == pytest.approx(0.12, rel=1e-3)
         assert aileron["chord_frac"] == pytest.approx(0.12, rel=1e-3)
-        assert aileron["servo_torque_req_gcm"] == pytest.approx(115.8, rel=2e-2)
+        assert aileron["servo_torque_req_gcm"] == pytest.approx(79.4, rel=2e-2)
 
     def test_cruise_roll_authority(self, aileron):
         # The whole point of NB4: combined (aileron + residual jet-vane)
@@ -182,8 +182,8 @@ class TestThermal:
     def test_heat_loads_derived_and_sane(self, thermal):
         # Heat loads follow from hover power and the efficiencies; pin the
         # order of magnitude (ESC ~50 W, battery ~30 W at the 3.06 kg point).
-        assert thermal["esc"]["Q_W"] == pytest.approx(51.4, rel=5e-2)
-        assert thermal["battery"]["Q_W"] == pytest.approx(31.8, rel=5e-2)
+        assert thermal["esc"]["Q_W"] == pytest.approx(35.5, rel=5e-2)
+        assert thermal["battery"]["Q_W"] == pytest.approx(22.0, rel=5e-2)
 
     def test_battery_bay_vents_comfortably(self, thermal):
         b = thermal["battery"]
@@ -198,8 +198,8 @@ class TestThermal:
         e = thermal["esc"]
         assert e["ok"] is False
         assert e["mass_within_alloc"] is False    # plate heavier than ESC alloc
-        assert 0.0 < e["temp_margin_C"] < 10.0     # positive but tight
-        assert e["A_req_cm2"] == pytest.approx(346.6, rel=5e-2)
+        assert 0.0 < e["temp_margin_C"] < 20.0     # positive but modest
+        assert e["A_req_cm2"] == pytest.approx(229.9, rel=5e-2)
 
 
 class TestCrossFileConsistency:
