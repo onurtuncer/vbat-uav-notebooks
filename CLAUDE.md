@@ -53,9 +53,9 @@ a vented battery bay. Heat loads are derived (`P_hover·(1−eta_esc)` and
 `P_hover·(1/eta_bat−1)`), not configured. It does **not** change the mass
 model — the cold-plate is absorbed into the ESC/propulsion "mounts"
 allocation and its two CAD parts are assembly-only (excluded from the
-fused STL). It reports margins honestly: at the current 3.06 kg / ~1 kW-
+fused STL). It reports margins honestly: at the current 2.38 kg / ~0.7 kW-
 hover point the battery bay vents comfortably, but the ESC cold-plate is
-**marginal** (its ~50 W load needs a plate heavier than the ESC allocation
+**marginal** (its ~35 W load needs a plate heavier than the ESC allocation
 with only a few °C margin) — a standing finding, not a hard failure.
 
 `wiring_diagram` is generated, not hand-drawn: box positions/wiring
@@ -114,8 +114,11 @@ also runs in the local 3.14 venv.
   the configured method AND both skin options (FDM ~352 g now,
   2-ply CFRP ~242 g later) on every run. `t_shell_m` remains ONLY the
   packaging wall — decoupled from the structural skin.
-- Design point ≈ 3.06 kg MTOW, ~1.03 kW hover electrical, ~9.2C peak
-  (segmented-FDM, k=1.1; the monocoque equivalent is ≈ 2.5 kg / 770 W).
+- Design point ≈ 2.38 kg MTOW, ~710 W hover electrical, ~8.6C peak
+  (segmented-FDM, k=1.1, fs_base re-baselined 0.25→0.22 to the
+  ADR-0010 semi-monocoque member model — lighter than the original
+  2.5 kg monocoque baseline; the FDM print penalty is more than paid
+  back by the architecture).
 - The external-aero STL (`vbat_fused.stl`) deliberately excludes the
   fan blades: vehicle CFD uses an actuator disk. The parametric rotor
   (`out/cad/step/prop_rotor.step`) is for visualisation and

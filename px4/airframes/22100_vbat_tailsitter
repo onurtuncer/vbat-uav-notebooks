@@ -1,0 +1,112 @@
+#!/bin/sh
+#
+# @name V-BAT-like single-EDF jet-vane tailsitter
+# @type VTOL Tailsitter
+# @class VTOL
+#
+# @output Motor1 EDF (195 mm, single)
+# @output Servo1 jet vane T (top)
+# @output Servo2 jet vane B (bottom)
+# @output Servo3 jet vane L (left)
+# @output Servo4 jet vane R (right)
+# @output Servo5 left aileron
+# @output Servo6 right aileron
+#
+# DRAFT (ADR-0011). Param names written against PX4 v1.15 docs and NOT
+# yet validated against a pinned release -- validate in SITL before any
+# hardware use. Every numeric value cites its source in config/ or out/;
+# a design change must update this file in the same commit (the
+# Allrun.case discipline). Axis convention: body FRD, x out the nose,
+# positions relative to CG.
+#
+# Design point (2026-07 re-baseline): MTOW 2.376 kg, hover 30.3 N /
+# ~710 W, 6S 3.71 Ah, cruise 20 m/s.
+
+. ${R}etc/init.d/rc.vtol_defaults
+
+# --- airframe / allocation ------------------------------------------
+param set-default CA_AIRFRAME 4          # VTOL Tailsitter
+param set-default VT_TYPE 0              # tailsitter
+
+# Single EDF, thrust along body +x (out the nose).
+# Position: fan station 0.44644 m, CG station 0.23841 m
+# (out/fuselage.yaml, out/mass_properties.yaml) -> x_body = -(0.44644-0.23841)
+param set-default CA_ROTOR_COUNT 1
+param set-default CA_ROTOR0_PX -0.208
+param set-default CA_ROTOR0_PY 0.0
+param set-default CA_ROTOR0_PZ 0.0
+param set-default CA_ROTOR0_AX 1.0       # verify tailsitter CA frame in SITL
+param set-default CA_ROTOR0_AY 0.0
+param set-default CA_ROTOR0_AZ 0.0
+param set-default CA_ROTOR0_KM 0.0       # EDF stator cancels swirl torque
+                                         # to first order; measure residual
+                                         # on the thrust stand
+
+# --- jet vanes: 4 custom control surfaces ---------------------------
+# TRQ entries transcribe the mixing matrix of out/control_vanes.yaml
+# (rows T,B,L,R x cols pitch,yaw,roll), unit-normalised: the allocator
+# renormalises per axis, and true authority scales with q_jet (thrust),
+# which PX4 does not model -- see ADR-0011. Relative signs fixed here;
+# absolute servo directions are verified on the bench.
+# Deflection limits (delta_stall 15 deg usable, 20 deg hard stop,
+# out/control_vanes.yaml) are enforced at the servo output scaling.
+param set-default CA_SV_CS_COUNT 6
+
+param set-default CA_SV_CS0_TYPE 12      # Custom (verify enum) -- vane T
+param set-default CA_SV_CS0_TRQ_R 1.0
+param set-default CA_SV_CS0_TRQ_P 1.0
+param set-default CA_SV_CS0_TRQ_Y 0.0
+
+param set-default CA_SV_CS1_TYPE 12      # Custom -- vane B
+param set-default CA_SV_CS1_TRQ_R -1.0
+param set-default CA_SV_CS1_TRQ_P 1.0
+param set-default CA_SV_CS1_TRQ_Y 0.0
+
+param set-default CA_SV_CS2_TYPE 12      # Custom -- vane L
+param set-default CA_SV_CS2_TRQ_R -1.0
+param set-default CA_SV_CS2_TRQ_P 0.0
+param set-default CA_SV_CS2_TRQ_Y 1.0
+
+param set-default CA_SV_CS3_TYPE 12      # Custom -- vane R
+param set-default CA_SV_CS3_TRQ_R 1.0
+param set-default CA_SV_CS3_TRQ_P 0.0
+param set-default CA_SV_CS3_TRQ_Y 1.0
+
+# --- ailerons: cruise-phase roll (ADR-0004) --------------------------
+param set-default CA_SV_CS4_TYPE 1       # left aileron
+param set-default CA_SV_CS5_TYPE 2       # right aileron
+
+# --- output mapping (adjust to the carrier board actually used) ------
+param set-default PWM_MAIN_FUNC1 101     # Motor 1 (EDF) -- prefer DShot:
+                                         # RPM telemetry drives the
+                                         # dynamic notch filter below
+param set-default PWM_MAIN_FUNC2 201     # Servo 1 vane T
+param set-default PWM_MAIN_FUNC3 202     # Servo 2 vane B
+param set-default PWM_MAIN_FUNC4 203     # Servo 3 vane L
+param set-default PWM_MAIN_FUNC5 204     # Servo 4 vane R
+param set-default PWM_MAIN_FUNC6 205     # Servo 5 left aileron
+param set-default PWM_MAIN_FUNC7 206     # Servo 6 right aileron
+
+# --- hover / transition / cruise -------------------------------------
+param set-default MPC_THR_HOVER 0.61     # T_hover/T_max = 30.3/50 N
+                                         # (CHANGELOG re-baseline /
+                                         # config/rotor.yaml); refine on
+                                         # first tether hover
+param set-default VT_ARSP_TRANS 16.0     # > 1.2*V_stall; V_stall ~12.9 m/s
+                                         # from CL_max_3D 1.2186
+                                         # (out/airfoil.yaml) at W/S
+                                         # ~123 N/m^2
+param set-default FW_AIRSPD_MIN 14.0
+param set-default FW_AIRSPD_TRIM 20.0    # q_cruise 245 Pa (out/aileron.yaml)
+                                         # -> 20 m/s at rho 1.225
+param set-default FW_AIRSPD_MAX 26.0     # placeholder until flight test
+
+# --- battery (config/electrical.yaml, out/electrical.yaml) -----------
+param set-default BAT1_N_CELLS 6
+param set-default BAT1_CAPACITY 3710     # mAh; pack_capacity_ah 3.71
+
+# --- IMU filtering vs EDF forcing (out/vibration.yaml) ----------------
+# Hover 1/rev f_shaft = 211.3 Hz, blade-pass 2324 Hz (11 blades); both
+# scale with RPM, so the ESC-RPM-fed dynamic notch is the primary tool.
+# Bench vibration survey (ADR-0011 stage a) sets the final values.
+param set-default IMU_GYRO_DNF_EN 1      # requires ESC RPM feedback (DShot)

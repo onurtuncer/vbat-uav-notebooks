@@ -4,28 +4,28 @@
 # Regen  : re-run notebooks/thermal_design.ipynb
 
 T_ambient_C: 40.0
-v_h_ms: 20.2396
+v_h_ms: 17.8463
 esc:
-  Q_W: 51.43
-  V_cool_ms: 10.1198
-  A_req_cm2: 346.564
-  plate_side_mm: 186.16
+  Q_W: 35.494
+  V_cool_ms: 8.9231
+  A_req_cm2: 229.861
+  plate_side_mm: 151.61
   plate_thickness_mm: 2.0
   plate_material: Al 6061
-  plate_mass_g: 187.14
-  A_avail_cm2: 389.667
-  area_headroom: 1.124
+  plate_mass_g: 124.12
+  A_avail_cm2: 345.456
+  area_headroom: 1.503
   T_esc_max_C: 90.0
-  T_at_avail_C: 85.79
-  temp_margin_C: 4.21
+  T_at_avail_C: 76.84
+  temp_margin_C: 13.16
   mass_within_alloc: false
   ok: false
 battery:
-  Q_W: 31.813
-  V_vent_ms: 6.0719
-  A_req_cm2: 2.128
-  A_avail_cm2: 88.009
-  area_headroom: 41.36
+  Q_W: 21.955
+  V_vent_ms: 5.3539
+  A_req_cm2: 1.665
+  A_avail_cm2: 68.869
+  area_headroom: 41.352
   T_batt_max_C: 60.0
   T_at_avail_C: 40.48
   temp_margin_C: 19.52

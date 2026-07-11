@@ -4,11 +4,11 @@
 
 battery_series_cells: 6
 pack_voltage_v: 22.2
-pack_capacity_ah: 5.039
-hover_current_a: 46.33
-cruise_current_a: 5.61
-esc_rating_a: 74.1
-main_gauge_awg: 10
+pack_capacity_ah: 3.71
+hover_current_a: 31.98
+cruise_current_a: 4.51
+esc_rating_a: 51.2
+main_gauge_awg: 12
 main_connector: XT90
 bec1_gauge_awg: 22
 bec2_gauge_awg: 20

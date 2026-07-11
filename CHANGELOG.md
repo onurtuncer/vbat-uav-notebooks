@@ -9,8 +9,31 @@ is tagged.
 
 ## [Unreleased]
 
+### Changed
+
+- **Design point re-baselined to the semi-monocoque budget** (ADR-0010
+  follow-through): `structual_weight_fraction` fitted 0.25 → 0.22 by
+  bisection so the structural budget lands at ~110% of the explicit FDM
+  member-model estimate after full re-convergence. **MTOW 3.06 →
+  2.376 kg** (hover 710 W / 30.3 N, 8.6C peak) — lighter than the
+  original 2.5 kg monocoque baseline: the semi-monocoque architecture
+  more than pays back the FDM print penalty. All regression pins,
+  `cfd/vehicle/Allrun.case` references, and committed `out/` artifacts
+  updated. The feasible floor (~0.19) is set by the ADR-0005 guards
+  (fixed servo/isolator hardware vs. the shrinking avionics budget).
+
 ### Added
 
+- **PX4 flight-validation plan before the custom flight controller**
+  (ADR-0011): new `px4/` pipeline consumer (downstream of `out/`, like
+  `cfd/`) holding a draft custom tailsitter airframe/actuator
+  configuration — single EDF + four jet vanes via dynamic control
+  allocation, ailerons as the cruise roll effector — plus a Gazebo SITL
+  model built from the `out/` handoffs (inertia, vane geometry, motor
+  constants). Vane jet-wash aerodynamics in SITL are explicitly
+  placeholder pending a custom gz plugin; param names await validation
+  against a pinned PX4 release. The custom FC card will be specified
+  from flight logs, not estimates.
 - **Semi-monocoque clamshell fuselage** (ADR-0010, from Çağlar Uçler's
   external design review): the fuselage becomes a longitudinal clamshell —
   structural lower half + full-length hinged upper lid — with a rectangular

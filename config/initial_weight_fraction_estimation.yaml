@@ -14,9 +14,29 @@
 # The correct values below sum to 0.55, leaving 0.45 for battery + payload.
 #
 # structual_weight_fraction    : wing + fuselage + booms + landing legs
-#                                (BASE value, for a CFRP monocoque airframe;
-#                                the effective fraction used by the closure
-#                                is fs_base * k_construction[method] below)
+#                                (BASE value; the effective fraction used
+#                                by the closure is fs_base *
+#                                k_construction[method] below).
+#
+#                                RE-BASELINED (ADR-0010 follow-through):
+#                                0.25 was calibrated for a monocoque with
+#                                frames hidden in a knock-up factor. The
+#                                explicit semi-monocoque member model
+#                                showed only ~61% of that budget is used,
+#                                so fs_base is fitted such that the
+#                                structural budget lands at ~110% of the
+#                                FDM member-model estimate after full
+#                                re-convergence (bisected: 0.22 ->
+#                                budget/member = 1.109, MTOW 2.376 kg).
+#                                The 10% headroom covers the landing
+#                                legs, duct struts, and local
+#                                reinforcements not in the member model.
+#                                The infeasible floor is set by the
+#                                ADR-0005 guards: below ~0.19 the shrunk
+#                                avionics budget can no longer carry the
+#                                fixed servo/isolator hardware. Revisit
+#                                when the first printed parts are
+#                                weighed.
 # propulsive_weight_fraction   : motor + ESC + EDF fan + mounts
 # avionics_weight_fraction     : FC + GPS + IMU + RC + comms + servos + wiring
 # miscellaneous_weight_fraction: fasteners, paint, connectors, margin
@@ -25,8 +45,8 @@
 # construction_method : which airframe construction the closure sizes for.
 #   monocoque     : CFRP monocoque shell (the fraction basis above).
 #   segmented_fdm : segmented 3D-printed airframe on a CFRP spar backbone,
-#                   with split lines (removable nose, battery hatch,
-#                   two-piece wing) realized by printprep/step2print.
+#                   clamshell lower half + hinged lid (ADR-0010) and a
+#                   two-piece wing, realized by printprep/step2print.
 #                   Cheaper iteration, worse mass.
 #
 # k_construction : structural-fraction multiplier per method [-].
@@ -49,7 +69,7 @@
 #   nearly doubles and hover thrust (58 N) exceeds what a DS-215-class
 #   EDF comfortably delivers, straining ADR-0003's COTS choice.
 
-structual_weight_fraction: 0.25
+structual_weight_fraction: 0.22
 propulsive_weight_fraction: 0.15
 avionics_weight_fraction: 0.08
 miscellaneous_weight_fraction: 0.07

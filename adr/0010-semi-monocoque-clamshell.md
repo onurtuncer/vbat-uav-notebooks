@@ -85,6 +85,13 @@ properties switch.
   (lower `fs_base` and/or `k_construction` with the explicit model as
   justification), which would shrink MTOW. Deliberately deferred to its
   own decision with these numbers on the table.
+  **Executed (2026-07-11):** `fs_base` fitted 0.25 → 0.22 so the budget
+  lands at ~110% of the FDM member estimate after full re-convergence;
+  MTOW **3.06 → 2.376 kg** — lighter than the original 2.5 kg monocoque
+  baseline, i.e. the semi-monocoque architecture more than pays back the
+  FDM print penalty at the whole-vehicle level. The feasible floor
+  (~0.19) is set by the ADR-0005 guards: the shrunk avionics budget must
+  still carry the fixed servo/isolator hardware.
 - CAD: `fuselage_lid`/`fuselage_lower` replace nose/main/hatch; the
   frame (longerons, crossbeams, half-rings, battery rail) is modeled as
   assembly-only display parts; the fused external-aero STL is unchanged
