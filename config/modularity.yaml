@@ -1,65 +1,103 @@
-# Modularity & access: split lines and joint hardware for the
-# segmented-FDM airframe (ADR-0008).  Used by fuselage_design.py and the
-# CAD assembly.
+# Modularity & structure: clamshell split, semi-monocoque frame, and
+# joint hardware (ADR-0010, superseding ADR-0008's transverse splits).
+# Used by fuselage_design.py and the CAD assembly.
 #
-# The airframe has three split lines, each buying a specific access or
-# assembly need:
-#   1. Removable NOSE module  -- payload access/swap (the payload bay is
-#      the first bay in the stack, so the nose cone comes off with it).
-#   2. Battery HATCH          -- battery swap between flights without
-#      breaking the nose joint; panel over the battery bay.
-#   3. Two-piece WING         -- transport/print-bed size; each half slides
-#      onto a CFRP carry-through spar tube.
+# Architecture (external review, C. Ucler 2026-07-09): the fuselage is a
+# LONGITUDINAL clamshell -- a structural lower half and a full-length
+# hinged upper lid (hinge one side, latch the other) for interior access.
+# A rectangular Alu/CFRP profile runs around the joint line and works as
+# the LONGERONS (a "picture frame" in plan view); crossbeams between the
+# longerons are universal equipment mounts (camera bolts to the frame --
+# no separate nose module); the battery rail sits on the lower centerline
+# and is tied to the frame by 2 half-rings that double as longeron<->
+# frame connections and vibration paths. The skin is a thin covering
+# (semi-monocoque), NOT the primary load path -- lighter than the
+# load-bearing monocoque cylinder it replaces.
 #
-# The construction-method mass penalty (k_construction, see
-# initial_weight_fraction_estimation.yaml) covers the distributed cost of
-# printing (thicker walls); the DISCRETE joint hardware below is carved
-# from the structural fraction as named hardware, same discipline as the
-# vane/aileron/isolator carve-outs (ADR-0005).
+# Split lines that remain: the clamshell (below) and the two-piece WING
+# on the CFRP carry-through spar (unchanged from ADR-0008).
 #
-# --- Nose split -------------------------------------------------------
-# nose_split_margin_m : axial gap between the payload bay's aft edge and
-#                       the split plane [m]. Leaves room for the joint
-#                       ring and the payload isolator sway space (NB5).
+# Frame/skin member masses are COMPUTED from the geometry below (profile
+# section area x length x rho; skin t x S_wet x rho), never configured.
+# Discrete joint hardware (hinge/latch) is carved from the structural
+# fraction as named hardware (ADR-0005 discipline).
 #
-# nose_ring_mass_kg   : printed joint flange pair + alignment pins +
-#                       3x M3 quarter-turn fasteners. Estimate from a
-#                       ~100 mm dia x 8 mm tall printed ring pair at
-#                       ~1 g/cm^3 effective + hardware.
+# --- Clamshell --------------------------------------------------------
+# clam_aft_frac       : clamshell region runs from the nose tip to
+#                       clam_aft_frac * L_fus [-]. 0.70 = the start of
+#                       the tail cone (f_tail = 0.30): the boattail is
+#                       the fan centerbody and stays one piece with the
+#                       lower half.
 #
-# --- Battery hatch ----------------------------------------------------
-# hatch_arc_deg       : angular extent of the hatch panel around the
-#                       body [deg]. 90 deg clears the battery bay width
-#                       without cutting into the wing root region.
+# lid_hinge_mass_kg   : piano-hinge strip along one longeron, full lid
+#                       length (~0.36 m of light Alu/printed hinge).
 #
-# hatch_frame_mass_kg : printed lip/frame bonded around the opening +
-#                       2x M2 screws + captive nuts. The panel itself is
-#                       shell material already counted in the fraction.
+# lid_latch_mass_kg   : 2x quarter-turn latches on the opposite longeron
+#                       + local reinforcement.
 #
-# --- Wing spar / two-piece wing --------------------------------------
-# spar_od_m           : CFRP tube outer diameter [m]. 8 mm matches the
-#                       printprep default (wing_lighten --spar-hole 8.0),
-#                       so the design and the print tooling agree.
-# spar_wall_m         : tube wall [m] (1 mm typical pultruded CFRP).
-# spar_span_frac      : spar length / wing span [-]. 0.6 carries the
-#                       bending through the root region and well past
-#                       the lift centroid of each half-wing.
-# spar_chord_frac     : spar chordwise station / wing chord [-].
-#                       0.30 matches the printprep web default
-#                       (wing_lighten --webs 0.30 ...), near max t/c
-#                       where the section is deepest.
-# rho_spar            : CFRP tube density [kg/m^3].
-#                       Spar tube MASS is computed from this geometry
-#                       (pi/4*(OD^2-ID^2)*L*rho), never configured.
+# --- Longeron frame (semi-monocoque) ----------------------------------
+# frame_profile_side_m : square box-profile outer side [m]. 8 mm suits
+#                       the ~102 mm body and matches common stock.
+# frame_profile_wall_m : profile wall [m] (1 mm stock Alu / pultruded).
+#                       Linear density = section area x rho, COMPUTED.
 #
-# wing_root_fitting_mass_kg : per-side printed root socket + retention
-#                       screw that clamps the half-wing onto the spar.
+# frame_material      : which rho_frame entry sizes the frame.
+#   alu            : 6061-class extrusion -- cheap, bondable, first
+#                    iterations with the FDM skin.
+#   cfrp_pultruded : pultruded carbon box -- the "2-ply carbon" endpoint.
+#
+# n_crossbeams        : transverse beams between the side longerons
+#                       (equipment mounts). 3 covers payload / avionics /
+#                       battery stations.
+#
+# n_half_rings        : half-rings tying the battery rail to the frame
+#                       in the lower shell; they stabilize the shell
+#                       (classic semi-monocoque frames) and carry the
+#                       longeron<->rail vibration path.
+#
+# --- Skin (per construction method) -----------------------------------
+# skin                : thickness + density per construction method.
+#   segmented_fdm : printed shell halves, ~1.2 mm walls at PETG-class
+#                   density -- buildable NOW; heavier than carbon.
+#   cfrp_2ply     : 2 cured plies (~0.25 mm each) at laminate density --
+#                   the mass-target endpoint ("2 kat karbonla biter"),
+#                   laid over a printed mold.
+#
+# k_skin              : bonding/overlap allowance on the skin only [-].
+#                       1.05 replaces the old monocoque k_struct = 1.30:
+#                       that factor hid the frames -- they are explicit
+#                       members now, so only seams/overlap remain.
+#
+# --- Wing spar / two-piece wing (unchanged, ADR-0008) -----------------
+# spar_od_m           : CFRP tube OD [m] (= wing_lighten --spar-hole).
+# spar_wall_m         : tube wall [m].
+# spar_span_frac      : spar length / wing span [-].
+# spar_chord_frac     : spar chordwise station / wing chord [-]
+#                       (= wing_lighten --webs first entry).
+# rho_spar            : CFRP tube density [kg/m^3]. Spar mass computed.
+# wing_root_fitting_mass_kg : per-side printed root socket + screw.
 
-nose_split_margin_m: 0.015
-nose_ring_mass_kg: 0.018
+clam_aft_frac: 0.70
+lid_hinge_mass_kg: 0.012
+lid_latch_mass_kg: 0.008
 
-hatch_arc_deg: 90.0
-hatch_frame_mass_kg: 0.010
+frame_profile_side_m: 0.008
+frame_profile_wall_m: 0.001
+frame_material: alu
+rho_frame:
+  alu: 2700.0
+  cfrp_pultruded: 1600.0
+n_crossbeams: 3
+n_half_rings: 2
+
+skin:
+  segmented_fdm:
+    t_skin_m: 0.0012
+    rho_skin: 1240.0
+  cfrp_2ply:
+    t_skin_m: 0.0005
+    rho_skin: 1600.0
+k_skin: 1.05
 
 spar_od_m: 0.008
 spar_wall_m: 0.001

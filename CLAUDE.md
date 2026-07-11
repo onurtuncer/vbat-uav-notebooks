@@ -98,14 +98,22 @@ also runs in the local 3.14 venv.
   hover is expensive at this disk loading, so the mission is
   deliberately short-hover.
 - **Segmented-FDM construction is the baseline** (ADR-0008): 3D-printed
-  airframe segments on an 8 mm CFRP wing spar, with split lines
-  (removable nose, battery hatch, two-piece wing) in
-  `config/modularity.yaml`. `construction_method`/`k_construction` in
-  `config/initial_weight_fraction_estimation.yaml` scale the structural
-  fraction INSIDE the mass closure — k is the most sensitive mass
-  parameter in the project (its config comment carries the sweep table;
-  MTOW nearly doubles between k=1.1 and 1.2). NB1 shows the
-  monocoque-vs-FDM trade every run.
+  airframe on an 8 mm CFRP wing spar. `construction_method`/
+  `k_construction` in `config/initial_weight_fraction_estimation.yaml`
+  scale the structural fraction INSIDE the mass closure — k is the most
+  sensitive mass parameter in the project (its config comment carries
+  the sweep table; MTOW nearly doubles between k=1.1 and 1.2). NB1 shows
+  the monocoque-vs-FDM trade every run.
+- **Semi-monocoque clamshell fuselage** (ADR-0010, external review):
+  structural lower half + full-length hinged upper lid; a rectangular
+  profile around the joint line works as the longerons, with crossbeam
+  equipment mounts and half-rings tying the lower-centerline battery
+  rail to the frame. `config/modularity.yaml` holds the clamshell/frame/
+  skin geometry; structure mass is an explicit member model (skin +
+  longerons + crossbeams + rings — no k_struct knock-up), evaluated for
+  the configured method AND both skin options (FDM ~352 g now,
+  2-ply CFRP ~242 g later) on every run. `t_shell_m` remains ONLY the
+  packaging wall — decoupled from the structural skin.
 - Design point ≈ 3.06 kg MTOW, ~1.03 kW hover electrical, ~9.2C peak
   (segmented-FDM, k=1.1; the monocoque equivalent is ≈ 2.5 kg / 770 W).
 - The external-aero STL (`vbat_fused.stl`) deliberately excludes the

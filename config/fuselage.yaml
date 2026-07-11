@@ -41,13 +41,16 @@
 #                    max diameter is floored slightly above the hub.
 #
 # --- Shell structure -------------------------------------------------
-# t_shell_m        : equivalent monocoque shell thickness [m]
-#                    0.8 mm CFRP (2 plies + local reinforcement).
+# t_shell_m        : PACKAGING wall thickness for the internal bay
+#                    radius (r_int = D/2 - t_shell). Since ADR-0010 the
+#                    structural skin is sized separately in
+#                    config/modularity.yaml (semi-monocoque member
+#                    model); this stays as the conservative packaging
+#                    allowance so bay geometry is stable across skin
+#                    material choices.
 #
 # rho_shell        : shell laminate density [kg/m^3] (CFRP ~1600)
 #
-# k_struct         : mass knock-up for frames, bulkheads, wing carry-
-#                    through, and bonding [-]
 #
 # --- Aerodynamics ----------------------------------------------------
 # Q_interference   : fuselage interference factor [-] (Raymer: 1.0-1.1
@@ -108,7 +111,6 @@ d_hub_margin: 1.15
 
 t_shell_m: 0.0008
 rho_shell: 1600.0
-k_struct: 1.30
 
 Q_interference: 1.05
 

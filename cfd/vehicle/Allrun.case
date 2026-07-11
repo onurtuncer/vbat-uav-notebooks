@@ -18,7 +18,7 @@
 #                            out/fuselage.yaml (0.26262 - 0.21227)
 #   span     = 1.2084 m                    = AR * MAC (rectangular, AR = 6.0)
 #   S_ref    = 0.24337 m^2 = span * MAC
-#   CG       = (-0.25255 0 0) m           x_CG_m, station -> body x = -station
+#   CG       = (-0.25239 0 0) m           x_CG_m, station -> body x = -station
 #   Re_MAC   = 2.4e5 at 20 m/s
 #
 # Axis convention (body FRD): x fwd, y right, z DOWN.
@@ -183,7 +183,7 @@ functions
         liftDir         ($LX 0 $LZ);
         dragDir         ($DX 0 $DZ);
         pitchAxis       (0 1 0);
-        CofR            (-0.25255 0 0);   // x_CG from out/fuselage.yaml
+        CofR            (-0.25239 0 0);   // x_CG from out/fuselage.yaml
         magUInf         $VMAG;
         lRef            0.20140;          // MAC
         Aref            0.24337;          // S_wing = span x MAC

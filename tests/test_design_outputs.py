@@ -69,7 +69,7 @@ class TestFuselage:
         # 195 mm COTS EDF design point (2026-07 design review)
         assert fuselage["D_fus_m"] == pytest.approx(0.10247, rel=1e-2)
         assert fuselage["L_fus_m"] == pytest.approx(0.51235, rel=1e-2)
-        assert fuselage["x_CG_m"] == pytest.approx(0.25255, rel=1e-2)
+        assert fuselage["x_CG_m"] == pytest.approx(0.25239, rel=1e-2)
         assert fuselage["static_margin"] == pytest.approx(0.05, rel=1e-2)
 
     def test_internal_consistency(self, fuselage):
@@ -104,6 +104,38 @@ class TestControlVanes:
         assert vanes["M_roll_design_Nm"] > 0
         # X-configuration: pitch and yaw authority identical by symmetry
         assert vanes["M_pitch_design_Nm"] == pytest.approx(vanes["M_yaw_design_Nm"])
+
+
+class TestStructure:
+    """Semi-monocoque clamshell (ADR-0010): explicit member model."""
+
+    def test_members_positive_and_close(self, fuselage):
+        members = fuselage["semimono_members_kg"]
+        for name in ("skin", "longerons", "crossbeams", "half_rings"):
+            assert members[name] > 0, f"{name} mass must be positive"
+        parts_sum = sum(v for k, v in members.items() if k != "total")
+        assert members["total"] == pytest.approx(parts_sum, rel=1e-3)
+        assert fuselage["m_shell_kg"] == pytest.approx(members["total"], rel=1e-3)
+
+    def test_carbon_realizes_the_mass_gain(self, fuselage):
+        # ADR-0010's claim, pinned: the 2-ply CFRP semi-monocoque is
+        # lighter than the old monocoque estimate (k=1.30 x 0.8 mm CFRP
+        # over the same wetted area), while the printed skin is heavier
+        # (buildable now, carbon later).
+        mono_equiv = 1.30 * 1600.0 * 0.0008 * fuselage["S_wet_m2"]
+        assert fuselage["m_semimono_cfrp_kg"] < mono_equiv
+        assert fuselage["m_semimono_fdm_kg"] > fuselage["m_semimono_cfrp_kg"]
+
+    def test_budget_utilization(self, fuselage):
+        # structure estimate must fit the top-down structural budget
+        budget = fuselage["m_struct_pool_kg"] - fuselage["m_struct_carved_kg"]
+        assert 0.0 < fuselage["m_shell_kg"] < budget
+
+    def test_clamshell_geometry(self, fuselage):
+        # lid spans nose tip -> tail-cone start
+        assert 0.0 < fuselage["x_clam_aft_m"] < fuselage["L_fus_m"]
+        assert fuselage["x_clam_aft_m"] == pytest.approx(
+            fuselage["L_fus_m"] - fuselage["L_tail_m"], rel=1e-3)
 
 
 class TestAileron:

@@ -57,10 +57,14 @@ THEORY
         FF    = 1 + 60/f^3 + f/400                  (Raymer eq. 12.31)
         CD0_f = Cf * FF * Q * S_wet / S_ref
 
-5. SHELL MASS  (area density model)
-        m_shell = k_struct * rho_shell * t_shell * S_wet
+5. STRUCTURE MASS  (semi-monocoque member model, ADR-0010)
+        m_struct = k_skin*rho_skin*t_skin*S_wet          (skin)
+                 + lambda_frame * (2 L_clam + 2 D)       (longerons)
+                 + lambda_frame * n_cross * 0.8 D        (crossbeams)
+                 + lambda_frame * n_rings * pi D / 2     (half-rings)
 
-    Compared against the structural weight fraction budget
+    Explicit members replace the old monocoque area-density estimate;
+    compared against the structural weight fraction budget
     (m_structure - m_wing) from the mass closure.
 
 6. LONGITUDINAL LAYOUT AND CG
@@ -117,9 +121,8 @@ class FuselageParams:
     f_tail:           float   # tail-cone fraction of L [-]
     d_hub_margin:     float   # D_fus >= margin * d_hub [-]
     # shell
-    t_shell_m:        float   # [m]
-    rho_shell:        float   # [kg/m^3]
-    k_struct:         float   # [-]
+    t_shell_m:        float   # packaging wall for r_int [m]
+    rho_shell:        float   # [kg/m^3] (vane plates etc.)
     # aero
     Q_interference:   float   # [-]
     # stability
@@ -155,7 +158,6 @@ class FuselageParams:
             d_hub_margin     = float(data["d_hub_margin"]),
             t_shell_m        = float(data["t_shell_m"]),
             rho_shell        = float(data["rho_shell"]),
-            k_struct         = float(data["k_struct"]),
             Q_interference   = float(data["Q_interference"]),
             static_margin    = float(data["static_margin"]),
             battery_tray_travel_m = float(data["battery_tray_travel_m"]),
@@ -170,22 +172,39 @@ class FuselageParams:
 
 
 # ---------------------------------------------
-#  Modularity parameters (config/modularity.yaml, ADR-0008)
+#  Modularity / structure parameters (config/modularity.yaml, ADR-0010)
 # ---------------------------------------------
 @dataclass
 class ModularityParams:
-    """Split lines and joint hardware for the segmented airframe.
+    """Clamshell split, semi-monocoque frame, and joint hardware.
 
-    Three split lines: removable nose (payload access), battery hatch
-    (swap between flights), two-piece wing on a CFRP carry-through spar.
-    Joint hardware is DISCRETE mass carved from the structural fraction
-    (ADR-0005 discipline); the distributed printing penalty lives in
-    k_construction (initial_weight_fraction_estimation.yaml).
+    Architecture (ADR-0010, external review C. Ucler): longitudinal
+    clamshell -- structural lower half + full-length hinged upper lid; a
+    rectangular profile around the joint line works as the longerons,
+    with crossbeams as equipment mounts and half-rings tying the battery
+    rail to the frame. The skin is a thin covering (semi-monocoque), not
+    the primary load path. Member masses are COMPUTED from geometry;
+    only the discrete hinge/latch hardware is a configured mass, carved
+    from the structural fraction (ADR-0005 discipline).
+
+    The two-piece wing on the CFRP carry-through spar is unchanged from
+    ADR-0008.
     """
-    nose_split_margin_m:       float   # payload bay aft edge -> split plane [m]
-    nose_ring_mass_kg:         float   # joint flange pair + pins + fasteners [kg]
-    hatch_arc_deg:             float   # hatch angular extent [deg]
-    hatch_frame_mass_kg:       float   # printed lip/frame + screws [kg]
+    # clamshell
+    clam_aft_frac:      float   # clamshell region / L_fus [-] (nose tip -> here)
+    lid_hinge_mass_kg:  float   # piano-hinge strip along one longeron [kg]
+    lid_latch_mass_kg:  float   # latches + reinforcement, other longeron [kg]
+    # longeron frame (semi-monocoque)
+    frame_profile_side_m: float   # square box-profile outer side [m]
+    frame_profile_wall_m: float   # profile wall [m]
+    frame_material:       str     # key into rho_frame
+    rho_frame:            dict    # material -> density [kg/m^3]
+    n_crossbeams:         int     # transverse equipment-mount beams [-]
+    n_half_rings:         int     # battery-rail / shell-stabilizing rings [-]
+    # skin, per construction method
+    skin:               dict    # method -> {t_skin_m, rho_skin}
+    k_skin:             float   # bonding/overlap allowance on the skin [-]
+    # wing spar (unchanged, ADR-0008)
     spar_od_m:                 float   # CFRP tube OD [m] (= wing_lighten --spar-hole)
     spar_wall_m:               float   # tube wall [m]
     spar_span_frac:            float   # spar length / wing span [-]
@@ -197,11 +216,19 @@ class ModularityParams:
     def from_yaml(cls, path) -> "ModularityParams":
         with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
-        return cls(
-            nose_split_margin_m       = float(data["nose_split_margin_m"]),
-            nose_ring_mass_kg         = float(data["nose_ring_mass_kg"]),
-            hatch_arc_deg             = float(data["hatch_arc_deg"]),
-            hatch_frame_mass_kg       = float(data["hatch_frame_mass_kg"]),
+        p = cls(
+            clam_aft_frac        = float(data["clam_aft_frac"]),
+            lid_hinge_mass_kg    = float(data["lid_hinge_mass_kg"]),
+            lid_latch_mass_kg    = float(data["lid_latch_mass_kg"]),
+            frame_profile_side_m = float(data["frame_profile_side_m"]),
+            frame_profile_wall_m = float(data["frame_profile_wall_m"]),
+            frame_material       = str(data["frame_material"]),
+            rho_frame            = {k: float(v) for k, v in data["rho_frame"].items()},
+            n_crossbeams         = int(data["n_crossbeams"]),
+            n_half_rings         = int(data["n_half_rings"]),
+            skin                 = {m: {k: float(v) for k, v in s.items()}
+                                    for m, s in data["skin"].items()},
+            k_skin               = float(data["k_skin"]),
             spar_od_m                 = float(data["spar_od_m"]),
             spar_wall_m               = float(data["spar_wall_m"]),
             spar_span_frac            = float(data["spar_span_frac"]),
@@ -209,6 +236,12 @@ class ModularityParams:
             rho_spar                  = float(data["rho_spar"]),
             wing_root_fitting_mass_kg = float(data["wing_root_fitting_mass_kg"]),
         )
+        if p.frame_material not in p.rho_frame:
+            raise ValueError(
+                f"frame_material '{p.frame_material}' has no rho_frame entry "
+                f"(available: {sorted(p.rho_frame)})"
+            )
+        return p
 
     def spar_length_m(self, b_wing_m: float) -> float:
         return self.spar_span_frac * b_wing_m
@@ -219,6 +252,44 @@ class ModularityParams:
         r_i = r_o - self.spar_wall_m
         area = math.pi * (r_o**2 - r_i**2)
         return area * self.spar_length_m(b_wing_m) * self.rho_spar
+
+    def frame_linear_density(self) -> float:
+        """Box-profile linear density [kg/m], computed from the section."""
+        s, w = self.frame_profile_side_m, self.frame_profile_wall_m
+        area = s * s - (s - 2.0 * w) ** 2
+        return area * self.rho_frame[self.frame_material]
+
+    def semi_monocoque_masses(self, S_wet_m2: float, D_fus_m: float,
+                              L_fus_m: float, method: str) -> dict:
+        """
+        Per-member semi-monocoque structure mass [kg] for a construction
+        method key in `skin` (ADR-0010, all computed from geometry):
+
+          skin       : k_skin * rho_skin * t_skin * S_wet
+          longerons  : picture-frame perimeter ~ 2*L_clam + 2*D
+          crossbeams : n * 0.8*D each (transverse, between longerons)
+          half_rings : n * (pi*D/2) each (lower shell)
+        """
+        if method not in self.skin:
+            raise ValueError(
+                f"construction method '{method}' has no skin entry "
+                f"(available: {sorted(self.skin)})"
+            )
+        sk = self.skin[method]
+        lam = self.frame_linear_density()
+        L_clam = self.clam_aft_frac * L_fus_m
+
+        m_skin       = self.k_skin * sk["rho_skin"] * sk["t_skin_m"] * S_wet_m2
+        m_longerons  = (2.0 * L_clam + 2.0 * D_fus_m) * lam
+        m_crossbeams = self.n_crossbeams * 0.8 * D_fus_m * lam
+        m_half_rings = self.n_half_rings * (math.pi * D_fus_m / 2.0) * lam
+        return {
+            "skin": m_skin,
+            "longerons": m_longerons,
+            "crossbeams": m_crossbeams,
+            "half_rings": m_half_rings,
+            "total": m_skin + m_longerons + m_crossbeams + m_half_rings,
+        }
 
 
 # ---------------------------------------------
@@ -288,16 +359,20 @@ class FuselageSizing:
     # vibration-isolation packing cost
     sway_pad_m:            float   # rattle space added to the bay stack [m]
     m_isolation_hw_kg:     float   # total isolator hardware (both bays) [kg]
-    # modularity split lines + joint hardware (ADR-0008)
-    x_split_nose_m:   float   # nose module split plane     [m, +aft]
-    hatch_x_start_m:  float   # battery hatch axial start   [m, +aft]
-    hatch_length_m:   float   # battery hatch axial extent  [m]
-    hatch_arc_deg:    float   # hatch angular extent        [deg]
+    # clamshell + semi-monocoque structure (ADR-0010)
+    x_clam_aft_m:     float   # clamshell aft end (lid length) [m, +aft]
+    frame_profile_side_m: float  # frame box-profile outer side [m]
+    n_crossbeams:     int     # transverse frame beams [-]
+    construction_method: str  # skin/frame method the structure was sized for
+    semimono_members: Dict    # per-member masses for that method [kg]
+    m_semimono_fdm_kg:  float # total, segmented_fdm skin        [kg]
+    m_semimono_cfrp_kg: float # total, cfrp_2ply skin            [kg]
+    # wing spar + joint hardware (ADR-0008 spar unchanged)
     spar_od_m:        float   # wing carry-through spar OD  [m]
     spar_chord_frac:  float   # spar chordwise station / chord [-]
     spar_length_m:    float   # spar tube length            [m]
     m_spar_kg:        float   # spar tube mass (computed)   [kg]
-    m_joint_hw_kg:    float   # nose ring + hatch frame     [kg]
+    m_joint_hw_kg:    float   # lid hinge + latches         [kg]
     m_spar_hw_kg:     float   # spar tube + 2 root fittings [kg]
     # duct geometry (for CAD)
     duct_chord:   float   # duct axial length           [m]
@@ -472,7 +547,10 @@ def size_fuselage(
     S_wing:         float,
     # parameters
     p:              FuselageParams = None,
-    mod:            ModularityParams = None,   # config/modularity.yaml (ADR-0008)
+    mod:            ModularityParams = None,   # config/modularity.yaml (ADR-0010)
+    # skin/frame construction method (WeightFraction.construction_method):
+    # keys the per-method skin table in config/modularity.yaml
+    construction_method: str = "segmented_fdm",
     # battery CG trim (0 = nominal, no trim)
     x_battery_trim_m: float = 0.0,
 ) -> FuselageSizing:
@@ -521,14 +599,14 @@ def size_fuselage(
     m_aileron_hw   = m_aileron_servo_kg + m_aileron_linkage_kg
     m_isolation_hw = m_isolation_avionics_kg + m_isolation_struct_kg
 
-    # Modularity joint hardware (config/modularity.yaml, ADR-0008): nose
-    # joint ring, battery-hatch frame, and the wing carry-through spar tube
-    # + root fittings.  All structural hardware, carved from the structural
-    # pool.  The spar tube mass is computed from geometry (rectangular
-    # wing: span = S_wing / MAC), never configured.
+    # Modularity joint hardware (config/modularity.yaml, ADR-0010): the
+    # clamshell lid's hinge strip + latches, and the wing carry-through
+    # spar tube + root fittings.  All structural hardware, carved from the
+    # structural pool.  The spar tube mass is computed from geometry
+    # (rectangular wing: span = S_wing / MAC), never configured.
     b_wing_m   = S_wing / chord_mean_m
     m_spar     = mod.spar_tube_mass_kg(b_wing_m)
-    m_joint_hw = mod.nose_ring_mass_kg + mod.hatch_frame_mass_kg
+    m_joint_hw = mod.lid_hinge_mass_kg + mod.lid_latch_mass_kg
     m_spar_hw  = m_spar + 2.0 * mod.wing_root_fitting_mass_kg
 
     m_struct_pool   = m_structure_kg - m_wing_kg
@@ -581,8 +659,18 @@ def size_fuselage(
     CD0_fus, Re_L, Cf, FF = fuselage_cd0(
         L, S_wet, S_wing, V_cruise, rho, p.Q_interference)
 
-    # -- 4. shell mass -----------------------------------------------------
-    m_shell = p.k_struct * p.rho_shell * p.t_shell_m * S_wet
+    # -- 4. structure mass (semi-monocoque, ADR-0010) ----------------------
+    # Explicit member model replaces the monocoque area-density estimate
+    # (m_shell = k_struct*rho*t*S_wet): thin skin + longeron frame +
+    # crossbeams + half-rings, each computed from geometry. Evaluated for
+    # the configured construction method AND for both skin options so the
+    # print-first / carbon-later trade stays visible on every run.
+    semimono = mod.semi_monocoque_masses(S_wet, D, L, construction_method)
+    m_shell  = semimono["total"]     # structure estimate (was: monocoque)
+    m_semimono_by_method = {
+        m: mod.semi_monocoque_masses(S_wet, D, L, m)["total"]
+        for m in mod.skin
+    }
     m_struct_budget = m_struct_pool - m_struct_carved
 
     # -- 5. layout -------------------------------------------------------
@@ -648,17 +736,12 @@ def size_fuselage(
     items.append(LayoutItem("isolation_hw", m_isolation_hw,
                             x_start=x_iso, length=0.0))
 
-    # modularity split lines (ADR-0008): the nose module splits just aft of
-    # the payload bay; the battery hatch covers the (trimmed) battery bay.
-    # Joint ring + hatch frame sit at their physical stations; the spar
+    # clamshell (ADR-0010): the lid runs from the nose tip to
+    # clam_aft_frac * L; the hinge strip and latches are distributed along
+    # the two longerons, so the joint hardware acts at mid-lid.  The spar
     # tube + root fittings ride with the wing (added after the CG solve).
-    payload_bay = bay_item["payload"]
-    x_split_nose = payload_bay.x_start + payload_bay.length + mod.nose_split_margin_m
-    hatch_x_start = battery_item.x_start
-    hatch_length  = battery_item.length
-    x_joint = ((mod.nose_ring_mass_kg * x_split_nose
-                + mod.hatch_frame_mass_kg * battery_item.x_cg)
-               / m_joint_hw) if m_joint_hw > 0 else x_split_nose
+    x_clam_aft = mod.clam_aft_frac * L
+    x_joint = 0.5 * x_clam_aft
     items.append(LayoutItem("joint_hw", m_joint_hw,
                             x_start=x_joint, length=0.0))
 
@@ -708,9 +791,13 @@ def size_fuselage(
         x_battery_trim_m=x_battery_trim_m,
         battery_tray_travel_m=p.battery_tray_travel_m,
         sway_pad_m=sway_pad_m, m_isolation_hw_kg=m_isolation_hw,
-        x_split_nose_m=x_split_nose,
-        hatch_x_start_m=hatch_x_start, hatch_length_m=hatch_length,
-        hatch_arc_deg=mod.hatch_arc_deg,
+        x_clam_aft_m=x_clam_aft,
+        frame_profile_side_m=mod.frame_profile_side_m,
+        n_crossbeams=mod.n_crossbeams,
+        construction_method=construction_method,
+        semimono_members=semimono,
+        m_semimono_fdm_kg=m_semimono_by_method.get("segmented_fdm", 0.0),
+        m_semimono_cfrp_kg=m_semimono_by_method.get("cfrp_2ply", 0.0),
         spar_od_m=mod.spar_od_m, spar_chord_frac=mod.spar_chord_frac,
         spar_length_m=mod.spar_length_m(b_wing_m),
         m_spar_kg=m_spar, m_joint_hw_kg=m_joint_hw, m_spar_hw_kg=m_spar_hw,
@@ -744,9 +831,17 @@ def write_fuselage_yaml(fus: FuselageSizing, p: FuselageParams, path) -> None:
         # aero
         "S_wet_m2":       round(fus.S_wet_m2, 5),
         "CD0_fus":        round(fus.CD0_fus, 5),
-        # structure
+        # structure (semi-monocoque, ADR-0010): m_shell_kg is the explicit
+        # member-model total for the configured construction method;
+        # t_shell_m remains the PACKAGING wall (r_int), decoupled from the
+        # structural skin thickness at conceptual stage
         "m_shell_kg":     round(fus.m_shell_kg, 4),
         "t_shell_m":      p.t_shell_m,
+        "construction_method": fus.construction_method,
+        "semimono_members_kg": {k: round(v, 5)
+                                for k, v in fus.semimono_members.items()},
+        "m_semimono_fdm_kg":  round(fus.m_semimono_fdm_kg, 5),
+        "m_semimono_cfrp_kg": round(fus.m_semimono_cfrp_kg, 5),
         # mass-fraction allocation traceability: top-down budget (from
         # config/initial_weight_fraction_estimation.yaml) vs. the named
         # hardware carved out of each, per its documented fraction scope
@@ -771,11 +866,10 @@ def write_fuselage_yaml(fus: FuselageSizing, p: FuselageParams, path) -> None:
         # vibration-isolation packing cost
         "sway_pad_m":         round(fus.sway_pad_m, 5),
         "m_isolation_hw_kg":  round(fus.m_isolation_hw_kg, 5),
-        # modularity split lines + joint hardware (ADR-0008)
-        "x_split_nose_m":  round(fus.x_split_nose_m, 5),
-        "hatch_x_start_m": round(fus.hatch_x_start_m, 5),
-        "hatch_length_m":  round(fus.hatch_length_m, 5),
-        "hatch_arc_deg":   fus.hatch_arc_deg,
+        # clamshell + joint hardware (ADR-0010)
+        "x_clam_aft_m":    round(fus.x_clam_aft_m, 5),
+        "frame_profile_side_m": fus.frame_profile_side_m,
+        "n_crossbeams":    fus.n_crossbeams,
         "spar_od_m":       fus.spar_od_m,
         "spar_chord_frac": fus.spar_chord_frac,
         "spar_length_m":   round(fus.spar_length_m, 5),
