@@ -9,6 +9,39 @@ is tagged.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-07-11
+
+Fourth design snapshot: the semi-monocoque clamshell architecture from
+Çağlar Uçler's external design review, and the budget re-baseline it
+justified — **MTOW 3.06 → 2.376 kg**, lighter than the original 2.5 kg
+monocoque baseline. Also lays the PX4 flight-validation groundwork
+(ADR-0011): fly on a COTS Pixhawk before designing the custom FC card.
+
+### Added
+
+- **Semi-monocoque clamshell fuselage** (ADR-0010, from Çağlar Uçler's
+  external design review): the fuselage becomes a longitudinal clamshell —
+  structural lower half + full-length hinged upper lid — with a rectangular
+  profile around the joint line working as the longerons, crossbeam
+  equipment mounts, and 2 half-rings tying the lower-centerline battery
+  rail to the frame. An explicit member model (skin + longerons +
+  crossbeams + rings, all computed from geometry) replaces the monocoque
+  area-density estimate (`k_struct` removed); the per-method skin table
+  keeps the print-first (FDM ~321 g) vs 2-ply-carbon trade visible on
+  every run.
+- **PX4 flight-validation plan before the custom flight controller**
+  (ADR-0011): new `px4/` pipeline consumer (downstream of `out/`, like
+  `cfd/`) holding a draft custom tailsitter airframe/actuator
+  configuration — single EDF + four jet vanes via dynamic control
+  allocation, ailerons as the cruise roll effector — plus a Gazebo SITL
+  model built from the `out/` handoffs (inertia, vane geometry, motor
+  constants). Vane jet-wash aerodynamics in SITL are explicitly
+  placeholder pending a custom gz plugin; param names await validation
+  against a pinned PX4 release. The custom FC card will be specified
+  from flight logs, not estimates.
+- CAD: `fuselage_lid`/`fuselage_lower` clamshell split plus assembly-only
+  frame display parts (longerons, crossbeams, half-rings, battery rail).
+
 ### Changed
 
 - **Design point re-baselined to the semi-monocoque budget** (ADR-0010
@@ -21,39 +54,12 @@ is tagged.
   `cfd/vehicle/Allrun.case` references, and committed `out/` artifacts
   updated. The feasible floor (~0.19) is set by the ADR-0005 guards
   (fixed servo/isolator hardware vs. the shrinking avionics budget).
-
-### Added
-
-- **PX4 flight-validation plan before the custom flight controller**
-  (ADR-0011): new `px4/` pipeline consumer (downstream of `out/`, like
-  `cfd/`) holding a draft custom tailsitter airframe/actuator
-  configuration — single EDF + four jet vanes via dynamic control
-  allocation, ailerons as the cruise roll effector — plus a Gazebo SITL
-  model built from the `out/` handoffs (inertia, vane geometry, motor
-  constants). Vane jet-wash aerodynamics in SITL are explicitly
-  placeholder pending a custom gz plugin; param names await validation
-  against a pinned PX4 release. The custom FC card will be specified
-  from flight logs, not estimates.
-- **Semi-monocoque clamshell fuselage** (ADR-0010, from Çağlar Uçler's
-  external design review): the fuselage becomes a longitudinal clamshell —
-  structural lower half + full-length hinged upper lid — with a rectangular
-  profile around the joint line working as the longerons, crossbeam
-  equipment mounts, and 2 half-rings tying the lower-centerline battery
-  rail to the frame. An explicit member model (skin + longerons +
-  crossbeams + rings, all computed from geometry) replaces the monocoque
-  area-density estimate (`k_struct` removed); the per-method skin table
-  keeps the print-first (FDM ~352 g) vs 2-ply-carbon (~242 g, lighter than
-  the old 256 g monocoque estimate) trade visible on every run.
-- CAD: `fuselage_lid`/`fuselage_lower` clamshell split plus assembly-only
-  frame display parts (longerons, crossbeams, half-rings, battery rail).
-
-### Changed
-
 - ADR-0008's transverse splits (removable nose module, 90° battery hatch)
   are superseded by the clamshell; the two-piece wing + spar and the
   construction-method mechanism remain.
-- Structural budget utilization drops to ~61% — the fs/k re-baseline
-  decision is deliberately deferred and documented in ADR-0010.
+- The ESC cold-plate thermal finding survives at the lighter point
+  (~35 W load, plate still over the ESC allocation) — reduced, not
+  resolved.
 
 ## [0.3.0] — 2026-07-10
 
@@ -234,6 +240,7 @@ converged conceptual design point.
   design point and cross-check `cfd/vehicle/Allrun.case`; `tests/test_geometry.py`
   guards the exported STL (watertight, mm units, span).
 
+[0.4.0]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.4.0
 [0.3.0]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.3.0
 [0.2.1]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.2.1
 [0.2.0]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.2.0
