@@ -1,3 +1,6 @@
 # OpenFOAM Allrun scripts and case dictionaries run on Linux -- keep LF
 cfd/** text eol=lf
 Allrun.* text eol=lf
+
+# PX4 airframe scripts and Gazebo models run on Linux/NuttX -- keep LF
+px4/** text eol=lf
