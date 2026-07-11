@@ -17,35 +17,43 @@ fineness: 5.0
 active_constraint: packaging
 S_wet_m2: 0.15353
 CD0_fus: 0.00444
-m_shell_kg: 0.2555
+m_shell_kg: 0.3525
 t_shell_m: 0.0008
+construction_method: segmented_fdm
+semimono_members_kg:
+  skin: 0.23988
+  longerons: 0.06972
+  crossbeams: 0.01859
+  half_rings: 0.02434
+  total: 0.35253
+m_semimono_fdm_kg: 0.35253
+m_semimono_cfrp_kg: 0.24161
 m_struct_pool_kg: 0.67842
-m_struct_carved_kg: 0.11217
+m_struct_carved_kg: 0.10417
 m_avionics_budget_kg: 0.24451
 m_avionics_carved_kg: 0.088
 m_avionics_net_kg: 0.15651
 m_misc_budget_kg: 0.21395
 m_misc_carved_kg: 0.015
 m_misc_net_kg: 0.19895
-x_CG_m: 0.25255
-x_wing_LE_m: 0.21227
-x_wing_AC_m: 0.26262
+x_CG_m: 0.25239
+x_wing_LE_m: 0.21211
+x_wing_AC_m: 0.26246
 x_vane_m: 0.53729
-L_vane_arm_m: 0.28474
+L_vane_arm_m: 0.2849
 static_margin: 0.05
 x_battery_trim_m: 0.0
 battery_tray_travel_m: 0.025
 sway_pad_m: 0.00149
 m_isolation_hw_kg: 0.032
-x_split_nose_m: 0.17428
-hatch_x_start_m: 0.21937
-hatch_length_m: 0.11109
-hatch_arc_deg: 90.0
+x_clam_aft_m: 0.35864
+frame_profile_side_m: 0.008
+n_crossbeams: 3
 spar_od_m: 0.008
 spar_chord_frac: 0.3
 spar_length_m: 0.72505
 m_spar_kg: 0.02551
-m_joint_hw_kg: 0.028
+m_joint_hw_kg: 0.02
 m_spar_hw_kg: 0.03751
 duct_chord_m: 0.08775
 D_duct_inner_m: 0.201
@@ -82,7 +90,7 @@ layout:
   length_m: 0.0
   x_cg_m: 0.48708
 - name: shell_struct
-  mass_kg: 0.5662
+  mass_kg: 0.5742
   x_start_m: 0.23056
   length_m: 0.0
   x_cg_m: 0.23056
@@ -102,10 +110,10 @@ layout:
   length_m: 0.0
   x_cg_m: 0.14153
 - name: joint_hw
-  mass_kg: 0.028
-  x_start_m: 0.21022
+  mass_kg: 0.02
+  x_start_m: 0.17932
   length_m: 0.0
-  x_cg_m: 0.21022
+  x_cg_m: 0.17932
 - name: misc
   mass_kg: 0.1989
   x_start_m: 0.20494
@@ -113,16 +121,16 @@ layout:
   x_cg_m: 0.20494
 - name: wing
   mass_kg: 0.1621
-  x_start_m: 0.25255
+  x_start_m: 0.25239
   length_m: 0.0
-  x_cg_m: 0.25255
+  x_cg_m: 0.25239
 - name: aileron_hw
   mass_kg: 0.03
-  x_start_m: 0.25255
+  x_start_m: 0.25239
   length_m: 0.0
-  x_cg_m: 0.25255
+  x_cg_m: 0.25239
 - name: spar_hw
   mass_kg: 0.0375
-  x_start_m: 0.25255
+  x_start_m: 0.25239
   length_m: 0.0
-  x_cg_m: 0.25255
+  x_cg_m: 0.25239

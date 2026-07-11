@@ -3,7 +3,10 @@ vehicle_assembly.py  --  Full tail-sitter solid model (CadQuery / OCCT)
 
 Assembles the sized components into one parametric vehicle:
 
-    fuselage      body of revolution        (out/fuselage.yaml)
+    fuselage      body of revolution        (out/fuselage.yaml), split as a
+                  longitudinal clamshell (ADR-0010): structural lower half
+                  + full-length hinged upper lid, with assembly-only
+                  longeron/crossbeam/half-ring frame display parts
     wing          NACA section, constant chord  (mass closure + out/airfoil.yaml)
     ailerons      2x outboard TE control surfaces, split from the wing
                   at zero deflection (cruise trim)  (out/aileron.yaml)
@@ -50,74 +53,112 @@ LEG_ANGLES  = (45.0, 135.0, 225.0, 315.0)
 #  Components
 # ---------------------------------------------
 
-def fuselage_split_parts(
-    fuselage:        cq.Workplane,   # full fuselage solid
-    x_split_nose_m:  float,          # nose module split plane [m, +aft]
-    hatch_x_start_m: float,          # battery hatch axial start [m, +aft]
-    hatch_length_m:  float,          # battery hatch axial extent [m]
-    hatch_arc_deg:   float,          # hatch angular extent [deg]
-    D_fus_m:         float,          # max fuselage diameter [m]
-    t_shell_m:       float,          # shell thickness [m]
+def fuselage_clamshell_parts(
+    fuselage:      cq.Workplane,   # full fuselage solid
+    x_clam_aft_m:  float,          # clamshell aft end [m, +aft]
 ) -> Dict[str, cq.Workplane]:
     """
-    Split the fuselage along the modularity lines (ADR-0008):
+    Split the fuselage along the longitudinal clamshell line (ADR-0010):
 
-      fuselage_nose : forward of the split plane (removable payload module)
-      battery_hatch : surface panel over the battery bay, centered on -z
-                      (up in cruise), `hatch_arc_deg` wide
-      fuselage_main : everything else
+      fuselage_lid   : upper half (-z, up in cruise) from the nose tip to
+                       the clamshell aft end -- the full-length hinged
+                       access lid (hinge one longeron, latch the other)
+      fuselage_lower : everything else -- the structural lower half,
+                       including the whole boattail (the fan centerbody
+                       stays one piece)
 
-    Same coplanar-cut discipline as the aileron split -- the union of the
-    three parts reproduces the original solid exactly, so the fused
+    Same coplanar-cut discipline as the aileron split: the union of the
+    two parts reproduces the original solid exactly, so the fused
     external-aero STL is unchanged in shape.
     """
     bb = fuselage.val().BoundingBox()
-    x_split = -(x_split_nose_m * MM)          # body x of the split plane
     margin = 5.0                              # mm past the body extents
+    x_aft = -(x_clam_aft_m * MM)              # body x of the lid's aft edge
 
-    nose_box = (
+    # box over the clamshell x-range, upper (-z) side only
+    lid_box = (
         cq.Workplane("XY")
-        .box(bb.xmax - x_split + margin,
+        .box(bb.xmax - x_aft + margin,
              bb.ymax - bb.ymin + 2 * margin,
-             bb.zmax - bb.zmin + 2 * margin,
-             centered=(False, True, True))
-        .translate((x_split, 0, 0))
+             abs(bb.zmin) + margin,
+             centered=(False, True, False))
+        .translate((x_aft, 0, bb.zmin - margin))
     )
-    nose = fuselage.intersect(nose_box)
-    main = fuselage.cut(nose_box)
+    lid   = fuselage.intersect(lid_box)
+    lower = fuselage.cut(lid_box)
 
-    # hatch: wedge sector (about +x, centered on -z) x outer annulus band
-    panel_depth = max(T_PLATE_MIN_MM, t_shell_m * MM)
-    r_outer_big = (D_fus_m * MM)              # comfortably outside the body
-    r_inner     = D_fus_m / 2.0 * MM - panel_depth
-    x_aft       = -((hatch_x_start_m + hatch_length_m) * MM)
-    length      = hatch_length_m * MM
+    return {"fuselage_lid": lid, "fuselage_lower": lower}
 
-    half = math.radians(hatch_arc_deg / 2.0)
-    # sector polygon in the YZ workplane: local (u, v) -> global (y, z);
-    # -z (up in cruise) is local v = -1
-    n_arc = 24
-    pts = [(0.0, 0.0)] + [
-        (r_outer_big * math.sin(-half + 2 * half * i / n_arc),
-         -r_outer_big * math.cos(-half + 2 * half * i / n_arc))
-        for i in range(n_arc + 1)
-    ]
-    wedge = (
-        cq.Workplane("YZ", origin=(x_aft, 0, 0))
-        .polyline(pts).close()
-        .extrude(length)                      # +x: forward over the bay
+
+def frame_parts(
+    x_clam_aft_m: float,   # clamshell aft end [m, +aft] (frame length)
+    D_fus_m:      float,   # max fuselage diameter [m]
+    profile_mm:   float,   # frame box-profile outer side [mm]
+    n_crossbeams: int,     # transverse equipment-mount beams
+    ring_stations_m: Tuple[float, float],   # half-ring stations [m, +aft]
+    rail_x_start_m:  float,   # battery rail axial start [m, +aft]
+    rail_length_m:   float,   # battery rail length [m]
+    r_int_m:         float,   # internal shell radius [m]
+) -> Dict[str, cq.Workplane]:
+    """
+    Semi-monocoque frame display parts (ADR-0010) -- ASSEMBLY-ONLY, like
+    the spar tube: internal structure, excluded from the fused STL.
+
+      frame_longeron_L/R : the two side members of the picture frame,
+                           along the clamshell joint line (z = 0)
+      crossbeam_i        : transverse beams between the longerons
+      half_ring_1/2      : lower-shell half-rings tying the battery rail
+                           to the frame (and stabilizing the shell)
+      battery_rail       : rail on the lower centerline (180 deg), the
+                           battery tray slides on it
+
+    Display simplification: longerons drawn straight at y = +/-0.35 D
+    (the real profile follows the hull width); rings drawn as half-annuli.
+    """
+    s = profile_mm
+    L_clam = x_clam_aft_m * MM
+    y_lon = 0.35 * D_fus_m * MM
+    parts: Dict[str, cq.Workplane] = {}
+
+    for name, sy in (("frame_longeron_L", +1), ("frame_longeron_R", -1)):
+        parts[name] = (
+            cq.Workplane("XY")
+            .box(L_clam, s, s, centered=(False, True, True))
+            .translate((-L_clam, sy * y_lon, 0))
+        )
+
+    for i in range(n_crossbeams):
+        # evenly spaced along the clamshell region
+        x_c = -(x_clam_aft_m * (i + 1) / (n_crossbeams + 1)) * MM
+        parts[f"crossbeam_{i+1}"] = (
+            cq.Workplane("XY")
+            .box(s, 2 * y_lon + s, s, centered=(True, True, True))
+            .translate((x_c, 0, 0))
+        )
+
+    r_ring = r_int_m * MM - 0.5 * s
+    for i, x_ring_m in enumerate(ring_stations_m, start=1):
+        # lower-shell half-annulus (z >= 0 is down/FRD): ring plane YZ
+        ring = (
+            cq.Workplane("YZ", origin=(-(x_ring_m * MM) - 0.5 * s, 0, 0))
+            .circle(r_ring + 0.5 * s).circle(r_ring - 0.5 * s)
+            .extrude(s)
+        )
+        keep_lower = (
+            cq.Workplane("XY")
+            .box(4 * s, 3 * r_ring, 2 * r_ring, centered=(True, True, False))
+            .translate((-(x_ring_m * MM), 0, 0))
+        )
+        parts[f"half_ring_{i}"] = ring.intersect(keep_lower)
+
+    # battery rail: lower centerline (180 deg), battery-bay length
+    z_rail = r_int_m * MM - 0.5 * s
+    parts["battery_rail"] = (
+        cq.Workplane("XY")
+        .box(rail_length_m * MM, 2 * s, s, centered=(False, True, True))
+        .translate((-((rail_x_start_m + rail_length_m) * MM), 0, z_rail))
     )
-    band = (
-        cq.Workplane("YZ", origin=(x_aft, 0, 0))
-        .circle(r_outer_big).circle(r_inner)
-        .extrude(length)
-    )
-    hatch_region = wedge.intersect(band)
-    hatch = main.intersect(hatch_region)
-    main  = main.cut(hatch_region)
-
-    return {"fuselage_nose": nose, "fuselage_main": main,
-            "battery_hatch": hatch}
+    return parts
 
 
 def wing_split_parts(
@@ -546,14 +587,25 @@ def build_vehicle(
     L   = fus["L_fus_m"]
     D   = fus["D_fus_m"]
 
-    # -- fuselage, split along the modularity lines (ADR-0008): removable
-    #    nose module + battery hatch panel + main body.  Union of the three
-    #    reproduces the original body of revolution exactly.
+    # -- fuselage, split along the longitudinal clamshell line (ADR-0010):
+    #    structural lower half + full-length hinged upper lid.  Union of
+    #    the two reproduces the original body of revolution exactly.
     fuselage = fuselage_solid(D, L, fus["f_nose"], fus["f_tail"], fus["r_hub_m"])
-    fus_parts = fuselage_split_parts(
-        fuselage, fus["x_split_nose_m"],
-        fus["hatch_x_start_m"], fus["hatch_length_m"], fus["hatch_arc_deg"],
-        D, fus["t_shell_m"],
+    fus_parts = fuselage_clamshell_parts(fuselage, fus["x_clam_aft_m"])
+
+    # -- semi-monocoque frame display parts (assembly-only): longerons on
+    #    the joint line, crossbeam equipment mounts, half-rings at the
+    #    battery bay edges, battery rail on the lower centerline
+    battery_it = next(it for it in fus["layout"] if it["name"] == "battery")
+    frame_disp = frame_parts(
+        x_clam_aft_m=fus["x_clam_aft_m"], D_fus_m=D,
+        profile_mm=fus["frame_profile_side_m"] * MM,
+        n_crossbeams=fus["n_crossbeams"],
+        ring_stations_m=(battery_it["x_start_m"],
+                         battery_it["x_start_m"] + battery_it["length_m"]),
+        rail_x_start_m=battery_it["x_start_m"],
+        rail_length_m=battery_it["length_m"],
+        r_int_m=D / 2.0 - fus["t_shell_m"],
     )
 
     # -- wing (split into fixed wing + 2 ailerons, at zero deflection),
@@ -674,13 +726,15 @@ def build_vehicle(
     aileron_color = cq.Color(0.95, 0.55, 0.10)   # amber: a distinct hue, not a darker green,
     #                                              so ailerons read clearly against the wing
 
-    hatch_color = cq.Color(0.55, 0.35, 0.75)   # violet: access panel reads
-    #                                            against the grey body
+    lid_color = cq.Color(0.55, 0.35, 0.75)   # violet: hinged access lid
+    #                                          reads against the grey body
+    frame_color = cq.Color(0.45, 0.47, 0.52)   # frame members: darker metal
 
     asm = cq.Assembly(name="vbat_tailsitter")
-    asm.add(fus_parts["fuselage_nose"], name="fuselage_nose", color=grey)
-    asm.add(fus_parts["fuselage_main"], name="fuselage_main", color=grey)
-    asm.add(fus_parts["battery_hatch"], name="battery_hatch", color=hatch_color)
+    asm.add(fus_parts["fuselage_lower"], name="fuselage_lower", color=grey)
+    asm.add(fus_parts["fuselage_lid"],   name="fuselage_lid",   color=lid_color)
+    for name, fp in frame_disp.items():
+        asm.add(fp, name=name, color=frame_color)   # assembly-only
     for name, wp_half in wing_parts.items():
         asm.add(wp_half, name=name, color=green)
     for name, ap in aileron_parts_dict.items():

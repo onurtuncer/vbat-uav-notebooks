@@ -9,6 +9,29 @@ is tagged.
 
 ## [Unreleased]
 
+### Added
+
+- **Semi-monocoque clamshell fuselage** (ADR-0010, from Çağlar Uçler's
+  external design review): the fuselage becomes a longitudinal clamshell —
+  structural lower half + full-length hinged upper lid — with a rectangular
+  profile around the joint line working as the longerons, crossbeam
+  equipment mounts, and 2 half-rings tying the lower-centerline battery
+  rail to the frame. An explicit member model (skin + longerons +
+  crossbeams + rings, all computed from geometry) replaces the monocoque
+  area-density estimate (`k_struct` removed); the per-method skin table
+  keeps the print-first (FDM ~352 g) vs 2-ply-carbon (~242 g, lighter than
+  the old 256 g monocoque estimate) trade visible on every run.
+- CAD: `fuselage_lid`/`fuselage_lower` clamshell split plus assembly-only
+  frame display parts (longerons, crossbeams, half-rings, battery rail).
+
+### Changed
+
+- ADR-0008's transverse splits (removable nose module, 90° battery hatch)
+  are superseded by the clamshell; the two-piece wing + spar and the
+  construction-method mechanism remain.
+- Structural budget utilization drops to ~61% — the fs/k re-baseline
+  decision is deliberately deferred and documented in ADR-0010.
+
 ## [0.3.0] — 2026-07-10
 
 Third design snapshot. Adds the first thermal model — the two hover

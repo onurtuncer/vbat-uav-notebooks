@@ -1,6 +1,9 @@
 # 8. Segmented-FDM construction as the baseline airframe
 
-Status: Accepted
+Status: Accepted (split-line architecture amended by ADR-0010:
+the transverse splits -- removable nose, battery hatch -- are
+superseded by the longitudinal clamshell; the construction-method
+mechanism and the two-piece wing/spar remain in force)
 
 ## Context
 
