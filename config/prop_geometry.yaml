@@ -1,33 +1,41 @@
-# Parametric EDF fan-rotor geometry (src/conceptual_design/cad/prop_rotor.py).
+# Parametric rotor geometry (src/conceptual_design/cad/prop_rotor.py).
+# COTS 3-blade prop in the airframe duct (ADR-0003 as amended
+# 2026-07-12; 8x6-class, see config/components/propellers.yaml).
 #
 # Blade tip radius is D_rotor_m/2 from config/rotor.yaml; the duct bore
 # already carries the tip clearance (fuselage design), so the blade is
-# built to the full fan radius.
+# built to the full rotor radius.
 #
 # The rotor is a constant-geometric-pitch blade: local twist follows
 # beta(r) = atan(pitch / (2*pi*r)), the classic propeller pitch law.
 # Sections are NACA 4-digit, thickness tapering root -> tip.
 #
-# n_blades         : blade count (EDF-style; DS-215 class runs 10-12)
-# hub_radius_ratio : hub radius / tip radius (large hub typical for EDF)
+# n_blades         : blade count (3 = the COTS prop class)
+# hub_radius_ratio : hub radius / tip radius -- kept at the exhaust
+#                    centerbody radius (0.42): the centerbody houses the
+#                    vane servos and is airframe, not prop; the prop
+#                    mounts to the motor via an adapter inside it
 # hub_length_ratio : hub length / fan diameter
 # spinner_ratio    : spinner (nose cone) length / hub radius
-# pitch_ratio      : geometric pitch / diameter
+# pitch_ratio      : geometric pitch / diameter (8x6 -> 6/8 = 0.75)
 # c_root_ratio     : blade chord at root / tip radius
 # c_tip_ratio      : blade chord at tip  / tip radius
+#                    (0.18/0.10 gives the ~15 mm mean chord of the
+#                    8x6-class blade, consistent with rotor_solidity
+#                    0.077 in config/propulsive_system_parameters.yaml)
 # camber_M         : NACA 4-digit max camber (e.g. 0.04 = 4%)
 # camber_P         : NACA 4-digit camber position (0.4 = 40% chord)
 # tc_root          : thickness/chord at blade root
 # tc_tip           : thickness/chord at blade tip
 # n_sections       : radial loft stations per blade
 
-n_blades: 11
+n_blades: 3
 hub_radius_ratio: 0.42
 hub_length_ratio: 0.35
 spinner_ratio: 1.0
-pitch_ratio: 1.0
-c_root_ratio: 0.30
-c_tip_ratio: 0.18
+pitch_ratio: 0.75
+c_root_ratio: 0.18
+c_tip_ratio: 0.10
 camber_M: 0.04
 camber_P: 0.4
 tc_root: 0.12

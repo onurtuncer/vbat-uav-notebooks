@@ -3,10 +3,11 @@ cots_selection.py  --  COTS component selection & freeze
 =========================================================
 
 Selects the COTS hardware the conceptual design leaves open -- flight
-controller, ESC, EDF drive motor, propeller (the fan unit itself), and
-the (single-type) vane/aileron servo -- from the per-category database
-files in config/components/, and freezes the winners (with their mass
-and own-CG inertia tensors) into out/components.yaml.
+controller, ESC, EDF drive motor, propeller (the fan unit itself), the
+(single-type) vane/aileron servo, and the battery pack -- from the
+per-category database files in config/components/, and freezes the
+winners (with their mass and own-CG inertia tensors) into
+out/components.yaml.
 
 MOTIVATION
 ----------
@@ -36,6 +37,13 @@ inputs):
     servo             : stall torque at the 5 V BEC rail
                         >= servo_torque_margin * worst hinge moment
                         (jet vane vs aileron, whichever is larger)
+    battery           : cell count == the configured series bus
+                        (config/electrical.yaml), capacity >= the sized
+                        mission capacity (the wiring module's
+                        pack_capacity_ah), continuous discharge current
+                        (C_cont * capacity) >= esc_rating_a -- the pack
+                        feeds the ESC, so the same margined hover
+                        current applies
 
 Among the candidates passing every hard requirement the LIGHTEST wins
 (ties broken alphabetically by id).  A `frozen` id in the config pins a
@@ -74,6 +82,7 @@ CATEGORIES = {
     "edf_motor":         "edf_motors",
     "propeller":         "propellers",
     "servo":             "servos",
+    "battery":           "batteries",
 }
 
 # Rotor-diameter match tolerance for the propeller category [m].  A
@@ -90,7 +99,9 @@ D_ROTOR_TOL_M = 1.0e-3
 class ComponentSpec:
     """One catalog candidate.  dims_m: box = (a, b, c) envelope;
     cylinder = (diameter, length).  ratings: category-specific fields
-    (imu_count, i_cont_a, p_max_w, stall_torque_gcm, ...)."""
+    (imu_count, i_cont_a, p_max_w, stall_torque_gcm, ...).  url:
+    procurement link (prefer an in-country retailer), None if the part
+    has no known local source."""
     id:       str
     name:     str
     category: str
@@ -98,6 +109,7 @@ class ComponentSpec:
     shape:    str          # "box" | "cylinder"
     dims_m:   tuple
     ratings:  dict
+    url:      str | None = None
 
     def inertia_cg(self) -> tuple:
         """(I1, I2, I3) about the part's own CG [kg m^2], axes along the
@@ -162,7 +174,7 @@ class ComponentDB:
         for cat, key in CATEGORIES.items():
             specs = []
             for e in _load(f"{key}.yaml")[key]:
-                base = {"id", "name", "mass_g", "dims_mm", "shape"}
+                base = {"id", "name", "mass_g", "dims_mm", "shape", "url"}
                 specs.append(ComponentSpec(
                     id       = str(e["id"]),
                     name     = str(e["name"]),
@@ -171,6 +183,7 @@ class ComponentDB:
                     shape    = str(e["shape"]),
                     dims_m   = tuple(float(d) * 1e-3 for d in e["dims_mm"]),
                     ratings  = {k: v for k, v in e.items() if k not in base},
+                    url      = str(e["url"]) if e.get("url") else None,
                 ))
             ids = [s.id for s in specs]
             if len(ids) != len(set(ids)):
@@ -189,6 +202,7 @@ def derive_requirements(
     D_rotor_m:           float,   # frozen rotor diameter (config/rotor.yaml)
     tau_vane_req_gcm:    float,   # vane servo torque requirement [g cm]
     tau_aileron_req_gcm: float,   # aileron servo torque requirement [g cm]
+    pack_capacity_ah:    float,   # sized mission capacity (wiring module) [Ah]
     policy:              SelectionPolicy,
 ) -> dict:
     """Category -> {requirement name: value}.  All values derived from
@@ -216,6 +230,11 @@ def derive_requirements(
             "stall_torque_min_gcm": policy.servo_torque_margin * tau_worst,
             "tau_vane_req_gcm":     tau_vane_req_gcm,
             "tau_aileron_req_gcm":  tau_aileron_req_gcm,
+        },
+        "battery": {
+            "capacity_min_ah":  pack_capacity_ah,
+            "series_cells":     series_cells,
+            "i_dis_min_a":      esc_rating_a,
         },
     }
 
@@ -257,6 +276,18 @@ def _rejection_reason(spec: ComponentSpec, req: dict) -> str | None:
         if float(r["stall_torque_gcm"]) < req["stall_torque_min_gcm"]:
             return (f"{r['stall_torque_gcm']:.0f} g cm stall < required "
                     f"{req['stall_torque_min_gcm']:.0f} g cm")
+    elif spec.category == "battery":
+        if int(r["s_cells"]) != req["series_cells"]:
+            return (f"{r['s_cells']}S pack != configured "
+                    f"{req['series_cells']}S bus")
+        cap_ah = float(r["capacity_mah"]) * 1e-3
+        if cap_ah < req["capacity_min_ah"]:
+            return (f"{cap_ah:.2f} Ah < required {req['capacity_min_ah']:.2f} "
+                    "Ah mission capacity")
+        i_dis = float(r["c_rate_cont"]) * cap_ah
+        if i_dis < req["i_dis_min_a"]:
+            return (f"{i_dis:.0f} A cont discharge < required "
+                    f"{req['i_dis_min_a']:.1f} A")
     else:
         raise ValueError(f"unknown category '{spec.category}'")
     return None
@@ -329,6 +360,7 @@ def budget_report(
     m_motor_fan_alloc_kg: float,  # motor+fan layout allocation
     servo_alloc_kg:    float,   # per-servo carve-out (config/fuselage.yaml)
     n_servos:          int,     # vanes + ailerons
+    m_batt_sized_kg:   float,   # mass-closure battery mass (sizing result)
 ) -> dict:
     """Compare the frozen hardware against the weight-fraction
     allocations.  `within` flags are findings, not selection filters."""
@@ -340,6 +372,7 @@ def budget_report(
     motor = selections["edf_motor"].selected
     prop = selections["propeller"].selected
     servo = selections["servo"].selected
+    battery = selections["battery"].selected
 
     def entry(actual, alloc, note=""):
         e = {
@@ -362,6 +395,10 @@ def budget_report(
             "EDF motor + fan/prop unit vs the motor_fan layout allocation"),
         "servo_each": entry(servo.mass_kg, servo_alloc_kg,
                             f"per servo, x{n_servos} installed"),
+        "battery": entry(
+            battery.mass_kg, m_batt_sized_kg,
+            "COTS pack vs the mass-closure battery mass (capacity "
+            "quantisation makes a small overshoot expected)"),
     }
     report["all_within"] = all(
         v["within"] for k, v in report.items() if isinstance(v, dict))
@@ -388,6 +425,7 @@ def write_components_yaml(
             "id":         s.id,
             "name":       s.name,
             "frozen":     bool(sel.frozen),
+            **({"url": s.url} if s.url else {}),
             "mass_g":     round(s.mass_kg * 1e3, 2),
             "shape":      s.shape,
             "dims_mm":    [round(d * 1e3, 2) for d in s.dims_m],

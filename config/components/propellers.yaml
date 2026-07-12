@@ -32,6 +32,7 @@ propellers:
     d_rotor_mm: 195.0
     p_max_w: 10000.0
     n_blades: 11
+    # no TR source (2026-07): Schuebeler sells factory-direct (DE) only.
   - id: jetfan_130ez
     name: JetFan 130 EZ (130 mm class, EST)
     mass_g: 320.0           # EST -- documents the diameter rejection path
@@ -56,3 +57,17 @@ propellers:
     d_rotor_mm: 178.0
     p_max_w: 700.0
     n_blades: 3
+    # Master Airscrew has no TR retailer (2026-07) -- import
+    # (masterairscrew.com). The TR-procurable prop in the 203 mm class
+    # is the 2-blade Gemfan below (same diameter caveat).
+  - id: gemfan_apc_8x6
+    name: Gemfan APC-style 8x6 glass-nylon prop (in airframe duct, EST)
+    mass_g: 15.0            # EST -- TR-stocked 203 mm option, 2-blade
+    dims_mm: [203.0, 20.0]
+    shape: cylinder
+    d_rotor_mm: 203.0
+    p_max_w: 900.0          # EST -- same 8-inch sport class as the MA 8x6
+    n_blades: 2             # lower solidity than the 3-blade MA --
+                            # adopting it re-opens the solidity/FoM
+                            # revisit (a further ADR-0003 amendment)
+    url: https://www.robotistan.com/gemfan-fiberglass-apc-8x6-drone-propeller-set-2-pc-ccw

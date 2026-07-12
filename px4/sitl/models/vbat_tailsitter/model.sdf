@@ -7,19 +7,19 @@
   TIP; the body FRD station s from the nose maps to x = -s (and FRD
   y/z flip sign vs FLU).
 
-  Provenance (2.376 kg design point):
+  Provenance (2.302 kg prop-in-duct design point, ADR-0003 amendment):
     mass/inertia/CG . out/mass_properties.yaml
     fuselage/layout . out/fuselage.yaml
     vanes ........... out/control_vanes.yaml
     ailerons/wing ... out/aileron.yaml (chord/span derived from
-                      chord_frac 0.12 -> c_wing 0.1776 m, b 1.066 m)
-    rotor ........... config/rotor.yaml (T_max 50 N),
-                      out/vibration.yaml (hover 211.3 Hz shaft)
+                      chord_frac 0.12 -> c_wing 0.17484 m, b 1.049 m)
+    rotor ........... config/rotor.yaml (203 mm 3-blade prop, T_max 35 N),
+                      out/vibration.yaml (hover 203.5 Hz shaft)
 
   ROLE (ADR-0011): PX4-side integration smoke checks and visualisation
   ONLY — the trusted SITL plant is Aetherion consuming CFD-derived
   DAVE-ML models (px4/sitl/daveml_spec.md). The four jet vanes sit in
-  the EDF jet (V_jet ~ 35.7 m/s at hover) but the LiftDrag plugin only
+  the rotor jet (V_jet ~ 33.8 m/s at hover) but the LiftDrag plugin only
   sees the freestream, so in hover this model has ~zero vane authority:
   the vane aero blocks below are physically meaningless placeholders.
   Draw no flight-dynamics conclusions from this model.
@@ -28,39 +28,39 @@
   <model name="vbat_tailsitter">
 
     <link name="base_link">
-      <!-- total vehicle 2.37626 kg minus the separately-linked rotor
-           (0.060), vanes (4 x 0.00316) and aileron surfaces (2 x 0.005);
-           inertia kept at the whole-vehicle tensor (small links are
-           negligible against it) -->
+      <!-- total vehicle 2.30242 kg minus the separately-linked rotor
+           (0.023, MA 3-blade 8x6), vanes (4 x 0.00343) and aileron
+           surfaces (2 x 0.005); inertia kept at the whole-vehicle tensor
+           (small links are negligible against it) -->
       <inertial>
-        <pose>-0.23841 0 0 0 0 0</pose>
-        <mass>2.2936</mass>
+        <pose>-0.23661 0 0 0 0 0</pose>
+        <mass>2.2557</mass>
         <inertia>
-          <ixx>0.022453</ixx>
-          <iyy>0.041776</iyy>
-          <izz>0.054148</izz>
+          <ixx>0.021369</ixx>
+          <iyy>0.040159</iyy>
+          <izz>0.051713</izz>
           <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
         </inertia>
       </inertial>
 
-      <!-- fuselage: D 0.09653, L 0.48264 (out/fuselage.yaml) -->
+      <!-- fuselage: D 0.09565, L 0.47827 (out/fuselage.yaml) -->
       <collision name="fuselage_collision">
-        <pose>-0.24132 0 0 0 1.5708 0</pose>
-        <geometry><cylinder><radius>0.0483</radius><length>0.48264</length></cylinder></geometry>
+        <pose>-0.23914 0 0 0 1.5708 0</pose>
+        <geometry><cylinder><radius>0.0478</radius><length>0.47827</length></cylinder></geometry>
       </collision>
       <visual name="fuselage_visual">
-        <pose>-0.24132 0 0 0 1.5708 0</pose>
-        <geometry><cylinder><radius>0.0483</radius><length>0.48264</length></cylinder></geometry>
+        <pose>-0.23914 0 0 0 1.5708 0</pose>
+        <geometry><cylinder><radius>0.0478</radius><length>0.47827</length></cylinder></geometry>
       </visual>
-      <!-- wing: LE station 0.20289, chord 0.1776, span 1.066 -->
+      <!-- wing: LE station 0.20164, chord 0.17484, span 1.049 -->
       <visual name="wing_visual">
-        <pose>-0.29169 0 0 0 0 0</pose>
-        <geometry><box><size>0.1776 1.066 0.008</size></box></geometry>
+        <pose>-0.28906 0 0 0 0 0</pose>
+        <geometry><box><size>0.17484 1.049 0.008</size></box></geometry>
       </visual>
-      <!-- duct ring: D_outer 0.217, chord 0.08775 at station 0.4596 -->
+      <!-- duct ring: D_outer 0.225, chord 0.09135 at station 0.4561 -->
       <visual name="duct_visual">
-        <pose>-0.4596 0 0 0 1.5708 0</pose>
-        <geometry><cylinder><radius>0.1085</radius><length>0.08775</length></cylinder></geometry>
+        <pose>-0.4561 0 0 0 1.5708 0</pose>
+        <geometry><cylinder><radius>0.1125</radius><length>0.09135</length></cylinder></geometry>
       </visual>
 
       <sensor name="imu_sensor" type="imu">
@@ -80,17 +80,17 @@
       </sensor>
     </link>
 
-    <!-- ============ rotor (EDF fan disk, station 0.44644) ============ -->
+    <!-- ==== rotor (203 mm 3-blade prop disk, station 0.4424) ==== -->
     <link name="rotor_link">
-      <pose>-0.44644 0 0 0 0 0</pose>
+      <pose>-0.4424 0 0 0 0 0</pose>
       <inertial>
-        <mass>0.060</mass>
-        <inertia><ixx>1.5e-4</ixx><iyy>8e-5</iyy><izz>8e-5</izz>
+        <mass>0.023</mass>
+        <inertia><ixx>6e-5</ixx><iyy>3e-5</iyy><izz>3e-5</izz>
           <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
       </inertial>
       <visual name="rotor_visual">
         <pose>0 0 0 0 1.5708 0</pose>
-        <geometry><cylinder><radius>0.0975</radius><length>0.01</length></cylinder></geometry>
+        <geometry><cylinder><radius>0.1015</radius><length>0.01</length></cylinder></geometry>
       </visual>
     </link>
     <joint name="rotor_joint" type="revolute">
@@ -99,16 +99,16 @@
         <limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
     </joint>
 
-    <!-- ====== jet vanes: hinge station 0.50261, R_mid 0.06825, ======
-         ====== span 0.0497 x chord 0.0199, hinge at 0.25c        ====== -->
+    <!-- ====== jet vanes: hinge station 0.50363, R_mid 0.07105, ======
+         ====== span 0.0518 x chord 0.0207, hinge at 0.25c        ====== -->
     <!-- vane T (FRD top = FLU +z); hinge axis radial (z) -->
     <link name="vane_t_link">
-      <pose>-0.50261 0 0.06825 0 0 0</pose>
-      <inertial><mass>0.00316</mass>
+      <pose>-0.50363 0 0.07105 0 0 0</pose>
+      <inertial><mass>0.00343</mass>
         <inertia><ixx>1e-7</ixx><iyy>1e-7</iyy><izz>1e-7</izz>
           <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
       <visual name="vane_t_visual">
-        <geometry><box><size>0.0199 0.002 0.0497</size></box></geometry>
+        <geometry><box><size>0.0207 0.002 0.0518</size></box></geometry>
       </visual>
     </link>
     <joint name="vane_t_joint" type="revolute">
@@ -121,12 +121,12 @@
 
     <!-- vane B (FRD bottom = FLU -z) -->
     <link name="vane_b_link">
-      <pose>-0.50261 0 -0.06825 0 0 0</pose>
-      <inertial><mass>0.00316</mass>
+      <pose>-0.50363 0 -0.07105 0 0 0</pose>
+      <inertial><mass>0.00343</mass>
         <inertia><ixx>1e-7</ixx><iyy>1e-7</iyy><izz>1e-7</izz>
           <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
       <visual name="vane_b_visual">
-        <geometry><box><size>0.0199 0.002 0.0497</size></box></geometry>
+        <geometry><box><size>0.0207 0.002 0.0518</size></box></geometry>
       </visual>
     </link>
     <joint name="vane_b_joint" type="revolute">
@@ -137,12 +137,12 @@
 
     <!-- vane L (FRD left = FLU +y); hinge axis radial (y) -->
     <link name="vane_l_link">
-      <pose>-0.50261 0.06825 0 0 0 0</pose>
-      <inertial><mass>0.00316</mass>
+      <pose>-0.50363 0.07105 0 0 0 0</pose>
+      <inertial><mass>0.00343</mass>
         <inertia><ixx>1e-7</ixx><iyy>1e-7</iyy><izz>1e-7</izz>
           <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
       <visual name="vane_l_visual">
-        <geometry><box><size>0.0199 0.0497 0.002</size></box></geometry>
+        <geometry><box><size>0.0207 0.0518 0.002</size></box></geometry>
       </visual>
     </link>
     <joint name="vane_l_joint" type="revolute">
@@ -153,12 +153,12 @@
 
     <!-- vane R (FRD right = FLU -y) -->
     <link name="vane_r_link">
-      <pose>-0.50261 -0.06825 0 0 0 0</pose>
-      <inertial><mass>0.00316</mass>
+      <pose>-0.50363 -0.07105 0 0 0 0</pose>
+      <inertial><mass>0.00343</mass>
         <inertia><ixx>1e-7</ixx><iyy>1e-7</iyy><izz>1e-7</izz>
           <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
       <visual name="vane_r_visual">
-        <geometry><box><size>0.0199 0.0497 0.002</size></box></geometry>
+        <geometry><box><size>0.0207 0.0518 0.002</size></box></geometry>
       </visual>
     </link>
     <joint name="vane_r_joint" type="revolute">
@@ -167,15 +167,15 @@
         <limit><lower>-0.349</lower><upper>0.349</upper></limit></axis>
     </joint>
 
-    <!-- ====== ailerons: hinge station ~0.3592 (TE - c_ail), ======
-         ====== y +/- 0.5008, span 0.0639 x chord 0.0213       ====== -->
+    <!-- ====== ailerons: hinge station ~0.3555 (TE - c_ail), ======
+         ====== y +/- 0.4930, span 0.0629 x chord 0.0210       ====== -->
     <link name="aileron_left_link">
-      <pose>-0.3592 0.5008 0 0 0 0</pose>
+      <pose>-0.3555 0.4930 0 0 0 0</pose>
       <inertial><mass>0.005</mass>
         <inertia><ixx>1e-7</ixx><iyy>1e-7</iyy><izz>1e-7</izz>
           <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
       <visual name="aileron_left_visual">
-        <geometry><box><size>0.0213 0.0639 0.004</size></box></geometry>
+        <geometry><box><size>0.0210 0.0629 0.004</size></box></geometry>
       </visual>
     </link>
     <joint name="aileron_left_joint" type="revolute">
@@ -185,12 +185,12 @@
     </joint>
 
     <link name="aileron_right_link">
-      <pose>-0.3592 -0.5008 0 0 0 0</pose>
+      <pose>-0.3555 -0.4930 0 0 0 0</pose>
       <inertial><mass>0.005</mass>
         <inertia><ixx>1e-7</ixx><iyy>1e-7</iyy><izz>1e-7</izz>
           <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia></inertial>
       <visual name="aileron_right_visual">
-        <geometry><box><size>0.0213 0.0639 0.004</size></box></geometry>
+        <geometry><box><size>0.0210 0.0629 0.004</size></box></geometry>
       </visual>
     </link>
     <joint name="aileron_right_joint" type="revolute">
@@ -200,18 +200,18 @@
     </joint>
 
     <!-- ==================== motor model ==================== -->
-    <!-- motorConstant: T = Cm*w^2 with hover 30.3 N at
-         w = 2*pi*211.3 Hz = 1327.6 rad/s (out/vibration.yaml)
-         -> Cm = 1.72e-5; T_max 50 N -> w_max = 1705 rad/s -->
+    <!-- motorConstant: T = Cm*w^2 with hover 29.4 N (1.3 T/W) at
+         w = 2*pi*203.5 Hz = 1278.8 rad/s (out/vibration.yaml)
+         -> Cm = 1.80e-5; T_max 35 N -> w_max = 1394 rad/s -->
     <plugin filename="gz-sim-multicopter-motor-model-system"
             name="gz::sim::systems::MulticopterMotorModel">
       <jointName>rotor_joint</jointName>
       <linkName>rotor_link</linkName>
       <turningDirection>ccw</turningDirection>
-      <motorConstant>1.72e-5</motorConstant>
+      <motorConstant>1.80e-5</motorConstant>
       <momentConstant>0.001</momentConstant> <!-- stator cancels swirl;
                                                   token residual -->
-      <maxRotVelocity>1705</maxRotVelocity>
+      <maxRotVelocity>1394</maxRotVelocity>
       <timeConstantUp>0.05</timeConstantUp>
       <timeConstantDown>0.08</timeConstantDown>
       <commandSubTopic>command/motor_speed</commandSubTopic>
@@ -262,8 +262,8 @@
       <cla>4.9</cla><cla_stall>-3.85</cla_stall>
       <cda>0.0126</cda><cda_stall>-0.9</cda_stall>
       <alpha_stall>0.22</alpha_stall><a0>0.024</a0>
-      <area>0.0946</area>
-      <cp>-0.2473 0.2665 0</cp>
+      <area>0.0917</area>
+      <cp>-0.24535 0.26225 0</cp>
       <forward>1 0 0</forward><upward>0 0 1</upward>
       <control_joint_name>aileron_left_joint</control_joint_name>
       <control_joint_rad_to_cl>2.09</control_joint_rad_to_cl>
@@ -274,8 +274,8 @@
       <cla>4.9</cla><cla_stall>-3.85</cla_stall>
       <cda>0.0126</cda><cda_stall>-0.9</cda_stall>
       <alpha_stall>0.22</alpha_stall><a0>0.024</a0>
-      <area>0.0946</area>
-      <cp>-0.2473 -0.2665 0</cp>
+      <area>0.0917</area>
+      <cp>-0.24535 -0.26225 0</cp>
       <forward>1 0 0</forward><upward>0 0 1</upward>
       <control_joint_name>aileron_right_joint</control_joint_name>
       <control_joint_rad_to_cl>2.09</control_joint_rad_to_cl>
@@ -283,11 +283,11 @@
 
     <!-- ============ vane aero: PLACEHOLDER ============
          LiftDrag sees only the freestream, so these give ~zero force in
-         hover where the vanes actually operate (V_jet ~35.7 m/s,
+         hover where the vanes actually operate (V_jet ~33.8 m/s,
          out/control_vanes.yaml). Replace with a custom system plugin
          that adds the jet velocity at the vane cp — until then, SITL
          hover attitude control does not work from vane aero alone.
-         cla 5.34 /rad and S 9.89e-4 m^2 per vane from
+         cla 5.34 /rad and S 1.072e-3 m^2 per vane from
          out/control_vanes.yaml. -->
     <plugin filename="gz-sim-lift-drag-system" name="gz::sim::systems::LiftDrag">
       <link_name>vane_t_link</link_name>
@@ -295,7 +295,7 @@
       <cla>5.34</cla><cla_stall>-4.0</cla_stall>
       <cda>0.02</cda><cda_stall>-0.5</cda_stall>
       <alpha_stall>0.262</alpha_stall><a0>0</a0>
-      <area>9.89e-4</area>
+      <area>1.072e-3</area>
       <cp>0 0 0</cp>
       <forward>1 0 0</forward><upward>0 1 0</upward>
     </plugin>
@@ -305,7 +305,7 @@
       <cla>5.34</cla><cla_stall>-4.0</cla_stall>
       <cda>0.02</cda><cda_stall>-0.5</cda_stall>
       <alpha_stall>0.262</alpha_stall><a0>0</a0>
-      <area>9.89e-4</area>
+      <area>1.072e-3</area>
       <cp>0 0 0</cp>
       <forward>1 0 0</forward><upward>0 1 0</upward>
     </plugin>
@@ -315,7 +315,7 @@
       <cla>5.34</cla><cla_stall>-4.0</cla_stall>
       <cda>0.02</cda><cda_stall>-0.5</cda_stall>
       <alpha_stall>0.262</alpha_stall><a0>0</a0>
-      <area>9.89e-4</area>
+      <area>1.072e-3</area>
       <cp>0 0 0</cp>
       <forward>1 0 0</forward><upward>0 0 1</upward>
     </plugin>
@@ -325,7 +325,7 @@
       <cla>5.34</cla><cla_stall>-4.0</cla_stall>
       <cda>0.02</cda><cda_stall>-0.5</cda_stall>
       <alpha_stall>0.262</alpha_stall><a0>0</a0>
-      <area>9.89e-4</area>
+      <area>1.072e-3</area>
       <cp>0 0 0</cp>
       <forward>1 0 0</forward><upward>0 0 1</upward>
     </plugin>

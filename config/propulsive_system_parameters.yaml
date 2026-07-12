@@ -1,16 +1,27 @@
 # Propulsive system parameters for the V-BAT tail-sitter sizing study.
 #
-# For a tail-sitter EDF the same motor/fan serves both hover and cruise.
-# These are conservative mid-range values for small brushless motors.
+# For a tail-sitter the same motor/rotor serves both hover and cruise.
+# The rotor is a COTS 3-blade prop in the airframe duct (ADR-0003 as
+# amended 2026-07-12). These are conservative mid-range values for small
+# brushless motors.
 #
-# propeller_efficiency  : EDF / propeller efficiency [-]
+# propeller_efficiency  : ducted-prop propulsive efficiency [-]
 # motor_efficiency      : brushless motor efficiency [-]
 # esc_efficiency        : electronic speed controller efficiency [-]
-# figure_of_merit       : rotor Figure of Merit [-]  (0.65–0.80 typical)
+# figure_of_merit       : rotor Figure of Merit [-]  (0.65–0.80 typical;
+#                         0.70 kept through the prop-in-duct amendment --
+#                         valid for a ducted 3-blade prop, verify on the
+#                         thrust stand, ADR-0011 stage a)
 # blade_drag_coefficient: rotor blade profile drag coeff [-]
 # rotor_solidity        : blade area / disk area [-]
+#                         0.077 matches a 3-blade 8x6-class prop over the
+#                         exposed annulus outside the 0.4 R centerbody
+#                         hub (3 blades x ~15 mm chord); it always
+#                         corresponded to a prop, not an 11-blade fan --
+#                         re-measure from the actual prop at procurement.
 # S_ratio               : S_total / S_wing [-]  (1.3–1.4 for small UAVs)
-# rpm_coefficient       : empirical RPM law coefficient (eq. 2-64)
+# rpm_coefficient       : empirical RPM law coefficient (eq. 2-64; a
+#                         propeller law -- unchanged by the amendment)
 # rpm_exponent          : empirical RPM law exponent (eq. 2-64)
 
 propeller_efficiency: 0.80

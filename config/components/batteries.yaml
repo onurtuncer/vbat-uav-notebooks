@@ -1,0 +1,64 @@
+# Battery-pack candidates (see selection.yaml for policy/format).
+# The sizing loop sizes the battery by ENERGY (mass closure); this
+# category maps that sized point onto real packs: s_cells must equal
+# the configured series bus, capacity_mah >= the sized mission capacity
+# (pack_capacity_ah, ~3.5 Ah at the current design point -- already
+# includes the config/battery.yaml DoD reserve), and the continuous
+# discharge current (c_rate_cont * capacity) must cover the ESC's
+# margined hover current. Capacity is quantised in the COTS catalog, so
+# the winning pack lands slightly HEAVIER than the sized battery mass
+# -- reported against m_battery_kg as a budget line, never filtered on.
+# ratings: capacity_mah [mAh], s_cells [-] (exact match), c_rate_cont
+# [1/h] continuous discharge C-rating. Box primitive: dims_mm = [L,W,H].
+#
+# TR sourcing: 6S packs in the 4-5 Ah class are stock items at Turkish
+# hobby retailers (robotus, oyuncakhobi, robolinkmarket); mind that
+# stock rotates quickly -- re-check the url at procurement.
+
+batteries:
+  - id: gens_ace_6s_4000_30c
+    name: Gens Ace 4000 mAh 6S 30C LiPo
+    mass_g: 613.0           # retailer-listed pack mass (robotus.net)
+    dims_mm: [137.0, 43.0, 40.0]   # EST envelope -- verify at procurement
+    shape: box
+    capacity_mah: 4000.0
+    s_cells: 6
+    c_rate_cont: 30.0
+    url: https://www.robotus.net/gens-ace-4000mah-222v-30c-6s-lipo-batarya-lipo-pil
+  - id: tattu_6s_4500_25c
+    name: Tattu 4500 mAh 6S 25C LiPo (EST)
+    mass_g: 731.0           # EST from vendor class -- verify at procurement
+    dims_mm: [155.0, 47.0, 38.0]   # EST envelope
+    shape: box
+    capacity_mah: 4500.0
+    s_cells: 6
+    c_rate_cont: 25.0
+    url: https://www.oyuncakhobi.com/tattu-6s-4500mah-222v-25c-lityum-polimer-li-po-lipo-batarya-drone-pil
+  - id: leopard_6s_3300_40c
+    name: Leopard Power 3300 mAh 6S 40C LiPo (EST)
+    mass_g: 520.0           # EST -- documents the capacity rejection path
+    dims_mm: [136.0, 42.0, 33.0]   # EST envelope
+    shape: box
+    capacity_mah: 3300.0
+    s_cells: 6
+    c_rate_cont: 40.0
+    url: https://www.oyuncakhobi.com/leopard-power-3300-mah-222v-6s-40c-lipo-batarya
+  - id: leopard_6s_5200_40c
+    name: Leopard Power 5200 mAh 6S 40C LiPo (EST)
+    mass_g: 830.0           # EST -- verify at procurement
+    dims_mm: [158.0, 46.0, 48.0]   # EST envelope
+    shape: box
+    capacity_mah: 5200.0
+    s_cells: 6
+    c_rate_cont: 40.0
+    url: https://www.oyuncakhobi.com/leopard-power-5200-mah-222v-6s-40c-lipo-batarya
+  - id: profuse_6s_8000_65c
+    name: Profuse 8000 mAh 6S 65C LiPo (EST)
+    mass_g: 1230.0          # EST -- TR-brand heavy option, documents the
+                            # mass cost of capacity far beyond the sizing
+    dims_mm: [168.0, 65.0, 55.0]   # EST envelope
+    shape: box
+    capacity_mah: 8000.0
+    s_cells: 6
+    c_rate_cont: 65.0
+    url: https://www.robolinkmarket.com/222v-lipo-batarya-8000mah-65c-6s-lipo-pil

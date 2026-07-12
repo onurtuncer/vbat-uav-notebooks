@@ -9,7 +9,8 @@
 # kv [rpm/V] informational (fan RPM matching is NB1's empirical
 # k_rpm law; a proper kv <-> fan-map check needs the fan curve and
 # is deliberately out of conceptual scope). Cylinder primitive:
-# dims_mm = [diameter, length].
+# dims_mm = [diameter, length]. url: TR retailer where one exists
+# (see selection.yaml PROCUREMENT URLS).
 
 edf_motors:
   - id: sunnysky_x4120_465
@@ -21,6 +22,9 @@ edf_motors:
     s_min: 4
     s_max: 6
     kv: 465.0
+    # no TR source found at catalog review (2026-07) -- US/EU import
+    # (sunnyskyusa, readymaderc). The TR-stocked alternative in this
+    # power class is the AT4130 below.
   - id: cobra_c4120_540
     name: Cobra C-4120/14 KV540 (EST)
     mass_g: 315.0           # EST -- verify at procurement
@@ -48,6 +52,9 @@ edf_motors:
     s_min: 4
     s_max: 8
     kv: 450.0
+    # ihahobi lists KV230/300/450 on one page -- pick KV450; pilottr
+    # stocks the KV230 long-shaft variant only.
+    url: https://www.ihahobi.com/-at4130-long-shaft-kv230
   - id: schuebeler_dsm10066_290
     name: Schuebeler DSM 10066-290 (DS-215 heavy-lift motor)
     mass_g: 2400.0          # EST motor share of the 3.4 kg HST power unit

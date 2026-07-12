@@ -32,8 +32,8 @@ handoffs** and carries a provenance comment naming the source (the
 these values in the same commit. A generator script from `out/*.yaml`
 is the planned follow-up once the file set stabilises.
 
-Design point (2026-07 re-baseline, ADR-0010): MTOW 2.376 kg, hover
-~710 W / 30.3 N, 6S 3.71 Ah, cruise 20 m/s.
+Design point (ADR-0003 prop-in-duct amendment, 2026-07-12): MTOW
+2.302 kg, hover ~652 W / 29.4 N (1.3 T/W), 6S 3.50 Ah, cruise 20 m/s.
 
 ## Layout
 
@@ -52,7 +52,7 @@ parameter set.
 
 - **Airframe type:** VTOL Tailsitter (`CA_AIRFRAME = 4`, `VT_TYPE = 0`),
   dynamic control allocation (PX4 ≥ v1.14).
-- **Motor:** single EDF, `CA_ROTOR_COUNT = 1`, thrust along body +x
+- **Motor:** single ducted 3-blade prop, `CA_ROTOR_COUNT = 1`, thrust along body +x
   (out the nose, FRD).
 - **Jet vanes:** four custom control surfaces (CS0–CS3 = T/B/L/R). Their
   roll/pitch/yaw torque entries transcribe the mixing matrix in
@@ -73,7 +73,7 @@ parameter set.
    models in Aetherion. The Gazebo model remains usable for PX4-side
    plumbing checks (actuator mapping, mode logic, parameter sanity) but
    its vane aero blocks are physically meaningless placeholders — the
-   plugins see the freestream, not the EDF jet — so no flight-dynamics
+   plugins see the freestream, not the rotor jet — so no flight-dynamics
    conclusion may be drawn from it.
 3. **Vane effectiveness ∝ thrust** is not modelled by PX4's allocator —
    expect apparent gain variation through transition; tune with the
