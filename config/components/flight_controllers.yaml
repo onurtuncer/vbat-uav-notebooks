@@ -1,0 +1,33 @@
+# Flight-controller candidates (see selection.yaml for policy/format).
+# ratings: imu_count [-], px4 [bool]. dims_mm are the case envelope
+# (box primitive for the frozen inertia).
+
+flight_controllers:
+  - id: pixhawk_6c
+    name: Holybro Pixhawk 6C (plastic case)
+    mass_g: 34.6            # vendor datasheet (docs.holybro.com)
+    dims_mm: [84.8, 44.0, 12.4]
+    shape: box
+    imu_count: 2            # ICM-42688-P + BMI055
+    px4: true
+  - id: pixhawk_6c_mini
+    name: Holybro Pixhawk 6C Mini (Model A)
+    mass_g: 42.4            # vendor datasheet
+    dims_mm: [53.3, 39.0, 16.2]
+    shape: box
+    imu_count: 2
+    px4: true
+  - id: pixhawk_6x_mini_base
+    name: Holybro Pixhawk 6X + mini baseboard
+    mass_g: 57.8            # 31.3 g module + 26.5 g mini baseboard (vendor)
+    dims_mm: [52.0, 45.0, 24.0]   # EST assembled envelope
+    shape: box
+    imu_count: 3
+    px4: true
+  - id: cube_orange_plus
+    name: CubePilot Cube Orange+ (standard carrier)
+    mass_g: 73.0            # ~33 g cube + carrier board (vendor/retailer)
+    dims_mm: [94.5, 44.3, 17.3]
+    shape: box
+    imu_count: 3
+    px4: true

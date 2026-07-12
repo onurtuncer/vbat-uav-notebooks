@@ -1,0 +1,50 @@
+# ESC candidates (see selection.yaml for policy/format).
+# ratings: i_cont_a [A], s_min/s_max [cells], telemetry [bool] =
+# streams RPM/current (datalog-only does NOT count).
+
+escs:
+  - id: apd_80f3x
+    name: APD 80F3[X] (KISS/serial telemetry)
+    mass_g: 30.0            # EST incl. power leads (~19.5 g board-only per vendor)
+    dims_mm: [58.0, 25.0, 12.0]
+    shape: box
+    i_cont_a: 80.0
+    s_min: 2
+    s_max: 8
+    telemetry: true
+  - id: hobbywing_flyfun_80a_v5
+    name: Hobbywing FlyFun 80A V5
+    mass_g: 92.0            # vendor datasheet
+    dims_mm: [75.0, 32.0, 16.0]
+    shape: box
+    i_cont_a: 80.0
+    s_min: 3
+    s_max: 6
+    telemetry: false        # onboard datalog only, no live stream
+  - id: hobbywing_platinum_60a_v4
+    name: Hobbywing Platinum 60A V4 (7 A BEC)
+    mass_g: 49.0            # vendor datasheet
+    dims_mm: [63.0, 30.0, 14.0]
+    shape: box
+    i_cont_a: 60.0
+    s_min: 3
+    s_max: 6
+    telemetry: false
+  - id: tmotor_alpha_60a_lv
+    name: T-Motor ALPHA 60A LV
+    mass_g: 74.0            # EST (vendor class)
+    dims_mm: [69.0, 33.0, 17.0]
+    shape: box
+    i_cont_a: 60.0
+    s_min: 3
+    s_max: 6
+    telemetry: false
+  - id: holybro_tekko32_65a
+    name: Holybro Tekko32 F4 Metal 65A (DShot telemetry)
+    mass_g: 34.0            # EST incl. leads
+    dims_mm: [42.0, 38.0, 8.0]
+    shape: box
+    i_cont_a: 65.0
+    s_min: 3
+    s_max: 6
+    telemetry: true

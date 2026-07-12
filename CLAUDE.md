@@ -26,9 +26,10 @@ that the next one reads:
 8. `vehicle_solid_model` — CadQuery CAD → `out/cad/` (STEP/STL, per-part + fused + prop rotor)
 9. `mass_properties` — inertia tensor, BOM → `out/mass_properties.yaml`, `out/bom.csv`
 10. `wiring_diagram` — electrical block diagram → `out/wiring_diagram.svg`, `out/electrical.yaml`
+11. `cots_selection` — COTS FC/ESC/EDF-motor/propeller/servo freeze → `out/components.yaml`
 
-NB2–NB10 re-run `run_sizing_loop` from `config/` to reconstruct the same
-design point — if you change the sizing API, update **all ten** call sites.
+NB2–NB11 re-run `run_sizing_loop` from `config/` to reconstruct the same
+design point — if you change the sizing API, update **all eleven** call sites.
 
 `aileron_design` exists because jet-vane control authority is sized from
 **hover** thrust and collapses in cruise (`q_jet` scales linearly with
@@ -66,6 +67,26 @@ servo torque) is computed from `config/electrical.yaml` +
 `battery_series_cells` (cell count) is a free electrical variable — the
 mass-closure loop is voltage-agnostic. Doesn't need CadQuery, so it
 also runs in the local 3.14 venv.
+
+`cots_selection` freezes the open COTS hardware (flight controller, ESC,
+EDF drive motor, propeller/fan unit, vane/aileron servo) from the
+per-category database files in `config/components/` (ADR-0011: PX4 on a
+Pixhawk-class FC, telemetry ESC). Hard requirements are **derived** (ESC
+current from the wiring module's law, motor/fan power from `P_design`,
+rotor diameter from `config/rotor.yaml`, servo torque from the NB3/NB4
+hinge moments) — only the margins are configured; the lightest feasible
+candidate wins, deterministically. Mass-allocation fit is *reported, never
+filtered on*: at the current design point the ESC and servos fit but the
+avionics bay (~-37 g) is over, and the motor + the only COTS 195 mm fan
+(DS-215 class, heavy-lift) land ~6× over the motor_fan allocation — the
+notebook's dominant finding. A COTS 3-blade prop in the airframe duct
+(V-BAT-like) is ~40× lighter but exists at 178/203 mm, not 195 mm, so it
+shows up rejected on diameter: adopting it is a deliberate design change
+(move `D_rotor_m`, re-converge, amend ADR-0003), not a part swap. After
+procurement, weigh the parts, fix the `EST` entries, pin ids via
+`selection.frozen` (still re-validated every run — a design change that
+outgrows frozen hardware fails loudly), and update the pins in the same
+commit.
 
 ## Hard rules
 
@@ -127,7 +148,7 @@ also runs in the local 3.14 venv.
 ## CI (GitHub Actions)
 
 - `ci.yml` — ruff, pytest (3.10/3.12/3.14), ShellCheck on `cfd/**/Allrun*`.
-- `design-pipeline.yml` — executes all ten notebooks on every PR, runs
+- `design-pipeline.yml` — executes all eleven notebooks on every PR, runs
   design-regression + geometry tests, uploads `out/` artifacts; on main
   additionally: coarse OpenFOAM smoke run and GitHub Pages deploy
   (rendered notebooks, 3D viewer with exploded view, BOM page).

@@ -1,0 +1,34 @@
+# Servo candidates -- jet vanes + ailerons, one type for all 6
+# (see selection.yaml for policy/format).
+# ratings: stall_torque_gcm at torque_at_v <= the 5 V BEC2 rail
+# (conservative: the catalog point nearest BELOW the rail voltage).
+
+servos:
+  - id: kst_x08_v6
+    name: KST X08 V6 (metal gear, digital)
+    mass_g: 8.9             # vendor datasheet
+    dims_mm: [23.5, 8.0, 16.8]
+    shape: box
+    stall_torque_gcm: 1400.0   # at 4.2 V (2200 g-cm at 6 V)
+    torque_at_v: 4.2
+  - id: sg90
+    name: TowerPro SG90 (plastic gear, analog)
+    mass_g: 9.0             # vendor datasheet
+    dims_mm: [22.2, 11.8, 31.0]
+    shape: box
+    stall_torque_gcm: 1800.0   # at 4.8 V
+    torque_at_v: 4.8
+  - id: mg90s
+    name: TowerPro MG90S (metal gear)
+    mass_g: 12.2            # vendor datasheet (bare, no horn/lead)
+    dims_mm: [22.8, 12.2, 28.5]
+    shape: box
+    stall_torque_gcm: 2000.0   # at 4.8 V
+    torque_at_v: 4.8
+  - id: emax_es08ma2
+    name: EMAX ES08MA II (metal gear, analog)
+    mass_g: 12.0            # vendor datasheet
+    dims_mm: [23.0, 11.5, 24.0]
+    shape: box
+    stall_torque_gcm: 1600.0   # at 4.8 V
+    torque_at_v: 4.8

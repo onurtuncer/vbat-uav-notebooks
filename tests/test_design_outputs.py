@@ -202,6 +202,61 @@ class TestThermal:
         assert e["A_req_cm2"] == pytest.approx(229.9, rel=5e-2)
 
 
+@pytest.fixture(scope="module")
+def components() -> dict:
+    path = OUT / "components.yaml"
+    if not path.exists():
+        pytest.skip("out/components.yaml not generated -- run cots_selection")
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+class TestCotsSelection:
+    def test_frozen_hardware_ids(self, components):
+        # The frozen COTS stack (lightest feasible per derived requirement).
+        # An intentional database/requirement change must update these ids
+        # in the same commit -- the diff is the procurement record.
+        sel = components["selected"]
+        assert sel["flight_controller"]["id"] == "pixhawk_6c"
+        assert sel["esc"]["id"] == "apd_80f3x"
+        assert sel["edf_motor"]["id"] == "sunnysky_x4120_465"
+        assert sel["propeller"]["id"] == "schuebeler_ds215_dia_hst_fan"
+        assert sel["servo"]["id"] == "kst_x08_v6"
+
+    def test_requirements_derived_from_design_point(self, components):
+        req = components["requirements"]
+        assert req["esc"]["i_cont_min_a"] == pytest.approx(51.2, rel=2e-2)
+        assert req["propeller"]["d_rotor_mm"] == pytest.approx(195.0, rel=1e-3)
+        assert req["servo"]["stall_torque_min_gcm"] == pytest.approx(656.6, rel=2e-2)
+
+    def test_selected_parts_meet_their_requirements(self, components):
+        sel, req = components["selected"], components["requirements"]
+        assert sel["esc"]["ratings"]["i_cont_a"] >= req["esc"]["i_cont_min_a"]
+        assert sel["edf_motor"]["ratings"]["p_max_w"] >= req["edf_motor"]["p_max_min_w"]
+        assert (sel["servo"]["ratings"]["stall_torque_gcm"]
+                >= req["servo"]["stall_torque_min_gcm"])
+
+    def test_budget_findings_pinned(self, components):
+        # KNOWN findings (same discipline as the ADR-0009 thermal pin):
+        # ESC and servos fit; the avionics bay is over; motor + the only
+        # COTS 195 mm fan bust the motor_fan allocation ~6x. Pin the state
+        # so a change either way is caught.
+        b = components["budgets"]
+        assert b["esc"]["within"] is True
+        assert b["servo_each"]["within"] is True
+        assert b["avionics_bay"]["within"] is False
+        assert b["motor_fan"]["within"] is False
+        assert b["motor_fan"]["actual_g"] > 4 * b["motor_fan"]["alloc_g"]
+        assert components["all_within_allocations"] is False
+
+    def test_light_prop_rejected_only_on_diameter(self, components):
+        # The V-BAT-like 3-blade-prop-in-duct option must stay visible as a
+        # diameter-only rejection (adopting it = move D_rotor_m + amend
+        # ADR-0003, a design change -- not a silent part swap).
+        rej = components["selected"]["propeller"]["rejected"]
+        assert "ma_3blade_8x6" in rej
+        assert "diameter" in rej["ma_3blade_8x6"] or "mm rotor" in rej["ma_3blade_8x6"]
+
+
 class TestCrossFileConsistency:
     def test_vane_hub_matches_fuselage_hub(self, fuselage, vanes):
         assert vanes["R_hub_m"] == pytest.approx(fuselage["r_hub_m"], rel=1e-6)

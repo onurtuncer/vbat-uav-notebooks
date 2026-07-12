@@ -43,7 +43,7 @@ C_rate_peak : 8.6
 wing        : S=0.1892 m^2  b=1.066 m
 ```
 
-`pipeline` executes the ten notebooks in dependency order (same order and
+`pipeline` executes the eleven notebooks in dependency order (same order and
 mechanism as CI: `jupyter nbconvert --execute`, `MPLBACKEND=Agg`). Executed
 copies land in `executed/`, design outputs in `out/`, figures in
 `notebooks/figures/`. Takes ~4 min locally; `vehicle_solid_model` is
@@ -112,7 +112,7 @@ above; ruff clean.)
 ## Run (human path)
 
 Open any notebook under `notebooks/` in Jupyter (`.venv` has jupyterlab) and
-run cells top-to-bottom, respecting the ten-notebook order in `CLAUDE.md`.
+run cells top-to-bottom, respecting the eleven-notebook order in `CLAUDE.md`.
 Agents should use the driver instead.
 
 ## Gotchas

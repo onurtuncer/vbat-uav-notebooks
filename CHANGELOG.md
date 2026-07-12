@@ -16,6 +16,41 @@ is tagged.
   STLs by `scripts/render_readme_cad.py` (self-contained numpy/Pillow
   z-buffer renderer — no OpenGL needed); linked to the interactive Pages
   viewer from the top of the README.
+- **COTS component selection & freeze** (new pipeline stage
+  `cots_selection`, NB11): selects the open COTS hardware — flight
+  controller, ESC, EDF drive motor, propeller/fan unit, vane/aileron
+  servo — from a per-category candidate database
+  (`config/components/*.yaml`) against requirements **derived** from the
+  converged design point (ESC current via the wiring-module law, motor/fan
+  power from `P_design`, rotor diameter from `config/rotor.yaml`, servo
+  torque from the NB3/NB4 hinge moments; only the margins are configured).
+  Lightest feasible candidate wins deterministically; a `selection.frozen`
+  id pins a procured part and is re-validated every run, failing loudly if
+  a design change outgrows it. Freezes ids, masses, and own-CG inertia
+  tensors to `out/components.yaml`, pinned by new design-regression tests.
+  Selected stack: Pixhawk 6C, APD 80F3[X] (ADR-0011's telemetry
+  requirement eliminates the Hobbywing/T-Motor field), SunnySky
+  X4120-class motor, DS-215-DIA HST fan, KST X08 servos.
+- **Finding (dominant): the ADR-0003 "COTS 195 mm EDF" class has no
+  light implementation.** The only COTS fan at the frozen diameter is the
+  Schübeler DS-215 heavy-lift family; fan + lightest plausible motor land
+  ~6× over the propulsion allocation (−1069 g). A COTS 3-blade prop in
+  the airframe duct (V-BAT-like) is ~40× lighter but exists at
+  178/203 mm, not 195 mm — kept visible as a diameter-only rejection
+  because adopting it means moving `D_rotor_m`, re-converging, and
+  amending ADR-0003. Second finding: the lightest PX4 stack overruns the
+  avionics bay by ~37 g. Both pinned as standing findings (ADR-0009
+  discipline).
+
+### Changed
+
+- **Trusted SITL plant redirected to Aetherion + CFD-derived DAVE-ML**
+  (amends the v0.4.0 PX4 plan): the trusted plant is **Aetherion**
+  (external 6-DoF repo) consuming **DAVE-ML models generated from CFD
+  results** (`px4/sitl/daveml_spec.md`: coefficient-form airframe +
+  dimensional prop/vane models to survive the hover `q_∞ → 0`
+  singularity, S-119 check-cases, validation gates); the Gazebo model is
+  demoted to PX4-side integration smoke checks.
 
 ## [0.4.0] — 2026-07-11
 
