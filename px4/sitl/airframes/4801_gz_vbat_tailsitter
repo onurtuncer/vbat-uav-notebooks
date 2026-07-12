@@ -10,9 +10,11 @@
 # HAND until a generator exists. Only the simulator bindings
 # (PX4_SIM_MODEL, SIM_GZ_*) are unique to this file.
 #
-# CAVEAT: the Gazebo model's vane aerodynamics are placeholders (jet
-# wash is not modelled by stock plugins) -- see px4/README.md. Hover
-# results are not trustworthy until the custom vane plugin exists.
+# CAVEAT (ADR-0011): this Gazebo target is for PX4-side integration
+# smoke checks and visualisation ONLY. The trusted SITL plant is
+# Aetherion consuming CFD-derived DAVE-ML models (see
+# px4/sitl/daveml_spec.md); the gz vane aero blocks are physically
+# meaningless placeholders. Draw no flight-dynamics conclusions here.
 
 . ${R}etc/init.d/rc.vtol_defaults
 

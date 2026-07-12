@@ -16,12 +16,13 @@
     rotor ........... config/rotor.yaml (T_max 50 N),
                       out/vibration.yaml (hover 211.3 Hz shaft)
 
-  KNOWN LIMITATION: the four jet vanes sit in the EDF jet
-  (V_jet ~ 35.7 m/s at hover) but the LiftDrag plugin only sees the
-  freestream, so in hover the model has ~zero vane authority. The
-  LiftDrag blocks on the vanes are PLACEHOLDERS pending a custom gz
-  system plugin that feeds them the jet velocity (the main SITL work
-  item, see px4/README.md). Wing/aileron aero is valid in cruise.
+  ROLE (ADR-0011): PX4-side integration smoke checks and visualisation
+  ONLY — the trusted SITL plant is Aetherion consuming CFD-derived
+  DAVE-ML models (px4/sitl/daveml_spec.md). The four jet vanes sit in
+  the EDF jet (V_jet ~ 35.7 m/s at hover) but the LiftDrag plugin only
+  sees the freestream, so in hover this model has ~zero vane authority:
+  the vane aero blocks below are physically meaningless placeholders.
+  Draw no flight-dynamics conclusions from this model.
 -->
 <sdf version="1.9">
   <model name="vbat_tailsitter">
