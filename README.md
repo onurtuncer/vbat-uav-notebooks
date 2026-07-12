@@ -8,6 +8,18 @@
 **📖 Documentation:** rendered design notebooks are published at
 **<https://onurtuncer.github.io/vbat-uav-notebooks/>**
 
+<p align="center">
+  <a href="https://onurtuncer.github.io/vbat-uav-notebooks/viewer.html">
+    <img src="assets/vbat_render.png" width="560" alt="Rendered CAD model of the tail-sitter standing on its landing legs, nose up"/>
+  </a>
+  <br/>
+  <em>The current design point, rendered from the CadQuery solid model the
+  pipeline exports on every run — click the image for the
+  <a href="https://onurtuncer.github.io/vbat-uav-notebooks/viewer.html">interactive 3D viewer</a>
+  (orbit, exploded view).
+  Regenerate with <code>python scripts/render_readme_cad.py</code> after a design change.</em>
+</p>
+
 This repository contains a **first-principles conceptual sizing study** for a **small electric tail-sitter VTOL UAV** inspired by the *very early electric ancestors* of the V-BAT concept.
 
 The focus is **not** on a production UAV, but on:

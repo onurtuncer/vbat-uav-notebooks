@@ -9,6 +9,14 @@ is tagged.
 
 ## [Unreleased]
 
+### Added
+
+- **README hero render** (`assets/vbat_render.png`): shaded 3D view of the
+  vehicle standing tail-down, rasterised straight from the exported part
+  STLs by `scripts/render_readme_cad.py` (self-contained numpy/Pillow
+  z-buffer renderer — no OpenGL needed); linked to the interactive Pages
+  viewer from the top of the README.
+
 ## [0.4.0] — 2026-07-11
 
 Fourth design snapshot: the semi-monocoque clamshell architecture from
