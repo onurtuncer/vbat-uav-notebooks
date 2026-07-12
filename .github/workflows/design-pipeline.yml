@@ -57,7 +57,7 @@ jobs:
 
       - name: Upload design outputs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: design-outputs
           path: |
@@ -164,7 +164,7 @@ jobs:
 
       - name: Upload CFD logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cfd-smoke-logs
           path: |
