@@ -4,7 +4,7 @@
 # @type VTOL Tailsitter
 # @class VTOL
 #
-# @output Motor1 EDF (195 mm, single)
+# @output Motor1 ducted prop (203 mm 3-blade, single)
 # @output Servo1 jet vane T (top)
 # @output Servo2 jet vane B (bottom)
 # @output Servo3 jet vane L (left)
@@ -19,8 +19,8 @@
 # Allrun.case discipline). Axis convention: body FRD, x out the nose,
 # positions relative to CG.
 #
-# Design point (2026-07 re-baseline): MTOW 2.376 kg, hover 30.3 N /
-# ~710 W, 6S 3.71 Ah, cruise 20 m/s.
+# Design point (ADR-0003 prop-in-duct amendment, 2026-07-12): MTOW
+# 2.302 kg, hover 29.4 N (1.3 T/W) / ~652 W, 6S 3.50 Ah, cruise 20 m/s.
 
 . ${R}etc/init.d/rc.vtol_defaults
 
@@ -28,19 +28,21 @@
 param set-default CA_AIRFRAME 4          # VTOL Tailsitter
 param set-default VT_TYPE 0              # tailsitter
 
-# Single EDF, thrust along body +x (out the nose).
-# Position: fan station 0.44644 m, CG station 0.23841 m
-# (out/fuselage.yaml, out/mass_properties.yaml) -> x_body = -(0.44644-0.23841)
+# Single ducted prop, thrust along body +x (out the nose).
+# Position: rotor station 0.4424 m, CG station 0.23661 m
+# (out/fuselage.yaml, out/mass_properties.yaml) -> x_body = -(0.4424-0.23661)
 param set-default CA_ROTOR_COUNT 1
-param set-default CA_ROTOR0_PX -0.208
+param set-default CA_ROTOR0_PX -0.206
 param set-default CA_ROTOR0_PY 0.0
 param set-default CA_ROTOR0_PZ 0.0
 param set-default CA_ROTOR0_AX 1.0       # verify tailsitter CA frame in SITL
 param set-default CA_ROTOR0_AY 0.0
 param set-default CA_ROTOR0_AZ 0.0
-param set-default CA_ROTOR0_KM 0.0       # EDF stator cancels swirl torque
-                                         # to first order; measure residual
-                                         # on the thrust stand
+param set-default CA_ROTOR0_KM 0.0       # exhaust vanes/centerbody cancel
+                                         # swirl only partially for a bare
+                                         # 3-blade prop -- measure on the
+                                         # thrust stand; a residual KM is
+                                         # LIKELY (ADR-0003 amendment)
 
 # --- jet vanes: 4 custom control surfaces ---------------------------
 # TRQ entries transcribe the mixing matrix of out/control_vanes.yaml
@@ -88,11 +90,14 @@ param set-default PWM_MAIN_FUNC6 205     # Servo 5 left aileron
 param set-default PWM_MAIN_FUNC7 206     # Servo 6 right aileron
 
 # --- hover / transition / cruise -------------------------------------
-param set-default MPC_THR_HOVER 0.61     # T_hover/T_max = 30.3/50 N
-                                         # (CHANGELOG re-baseline /
-                                         # config/rotor.yaml); refine on
-                                         # first tether hover
-param set-default VT_ARSP_TRANS 16.0     # > 1.2*V_stall; V_stall ~12.9 m/s
+param set-default MPC_THR_HOVER 0.84     # T_hover/T_max = 29.4/35 N
+                                         # (config/rotor.yaml prop-in-duct
+                                         # guard). HIGH: the 1.3 T/W hover
+                                         # margin eats most of the prop's
+                                         # power-limited ceiling -- verify
+                                         # T_max on the thrust stand before
+                                         # tether hover (ADR-0011 stage a)
+param set-default VT_ARSP_TRANS 16.0     # > 1.2*V_stall; V_stall ~12.8 m/s
                                          # from CL_max_3D 1.2186
                                          # (out/airfoil.yaml) at W/S
                                          # ~123 N/m^2
@@ -103,10 +108,10 @@ param set-default FW_AIRSPD_MAX 26.0     # placeholder until flight test
 
 # --- battery (config/electrical.yaml, out/electrical.yaml) -----------
 param set-default BAT1_N_CELLS 6
-param set-default BAT1_CAPACITY 3710     # mAh; pack_capacity_ah 3.71
+param set-default BAT1_CAPACITY 3497     # mAh; pack_capacity_ah 3.50
 
-# --- IMU filtering vs EDF forcing (out/vibration.yaml) ----------------
-# Hover 1/rev f_shaft = 211.3 Hz, blade-pass 2324 Hz (11 blades); both
+# --- IMU filtering vs rotor forcing (out/vibration.yaml) --------------
+# Hover 1/rev f_shaft = 203.5 Hz, blade-pass 610.6 Hz (3 blades); both
 # scale with RPM, so the ESC-RPM-fed dynamic notch is the primary tool.
 # Bench vibration survey (ADR-0011 stage a) sets the final values.
 param set-default IMU_GYRO_DNF_EN 1      # requires ESC RPM feedback (DShot)

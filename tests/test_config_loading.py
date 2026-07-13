@@ -67,8 +67,9 @@ def test_propulsive_parameters(config_dir):
 
 def test_rotor(config_dir):
     r = RotorParams.from_yaml(config_dir / "rotor.yaml")
-    # COTS EDF class decision: 195 mm
-    assert r.D_rotor_m == pytest.approx(0.195)
+    # COTS rotor class decision: 203 mm 3-blade prop in the airframe
+    # duct (ADR-0003 as amended 2026-07-12)
+    assert r.D_rotor_m == pytest.approx(0.203)
 
 
 def test_forward_flight_params(config_dir):

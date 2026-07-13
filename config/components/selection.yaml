@@ -1,0 +1,89 @@
+# COTS component database -- selection policy.
+# (config/components/ is consumed by cots_selection.py via
+# notebooks/cots_selection.ipynb; one YAML per component category:
+# flight_controllers.yaml, escs.yaml, edf_motors.yaml, propellers.yaml,
+# servos.yaml, batteries.yaml, plus supporting_avionics.yaml.)
+#
+# WHAT THIS IS
+# ------------
+# A catalog of candidate COTS parts for the five component classes the
+# conceptual design leaves open (ADR-0011 fixes the *policy*: fly PX4 on
+# a COTS Pixhawk-class FC before any custom card), plus a fixed list of
+# supporting avionics that are not "selected" but must fit the same
+# avionics-bay budget.
+#
+# The selection notebook derives the hard requirements (ESC current,
+# motor/fan power, rotor diameter, servo torque) from the converged
+# design point -- nothing performance-related is configured here except
+# the MARGINS below. Among the candidates that pass every hard
+# requirement it freezes the lightest one into out/components.yaml
+# (deterministic; ties broken by id). Mass-allocation fit is REPORTED,
+# never used as a filter -- a too-heavy best candidate is a standing
+# finding against the weight fractions (same discipline as the marginal
+# ESC cold-plate, ADR-0009).
+#
+# DATA PROVENANCE
+# ---------------
+# mass/dims/ratings are vendor-catalog values where a datasheet was
+# checked (noted per entry), otherwise class-representative estimates
+# marked "EST". Every value must be re-verified against the actual
+# datasheet at procurement, before the frozen ids are pinned.
+#
+# PROCUREMENT URLS (`url` key, optional)
+# --------------------------------------
+# Each candidate may carry a `url` pointing at a product page, PREFERRING
+# Turkish retailers (robotistan, oyuncakhobi, ihahobi, kalyonmodel,
+# robotus, robolinkmarket, drone.net.tr, f1depo...) so procurement does
+# not depend on import lead times. No `url` = no known in-country source
+# at the last catalog review (noted per entry); stock/prices drift, so
+# re-check the link at procurement. The url is echoed for the selected
+# part in out/components.yaml but plays NO role in selection.
+#
+# --- Selection policy -------------------------------------------------
+# fc_min_imu_count     : minimum redundant IMU count on the FC [-].
+#                        2 = one sensor failure is detectable; the
+#                        vibration environment (211 Hz 1/rev, NB5) makes
+#                        IMU health a first-class concern.
+# fc_require_px4       : FC must be a supported PX4 target (ADR-0011).
+# esc_require_telemetry: ESC must stream RPM/current telemetry --
+#                        ADR-0011's flight-test campaign uses it to
+#                        close the loop on hover power and C-rate.
+# motor_power_margin   : motor max electrical power >= margin * P_design
+#                        [-]. 1.2 covers hot-day derate plus the thrust
+#                        modulation headroom hover attitude control
+#                        needs on top of the design power. The propeller
+#                        (fan) power rating uses the same margined power.
+# servo_torque_margin  : servo stall torque (at the 5 V BEC rail) >=
+#                        margin * worst hinge-moment requirement [-].
+#                        1.5: stall != usable torque; holding against a
+#                        fluctuating jet needs authority well below stall.
+#
+# The battery category has NO configurable margin: its requirements
+# (cell count, mission capacity, continuous discharge current) are fully
+# derived -- capacity already carries the config/battery.yaml DoD
+# reserve, and the discharge requirement reuses the ESC's margined
+# hover current (the pack feeds the ESC).
+#
+# frozen : per-category part-id pin. null = auto (lightest feasible).
+#          Set to a part id after procurement to lock the choice; the
+#          selection still validates the pinned part against the derived
+#          requirements and FAILS LOUDLY if a design change outgrows it.
+
+selection:
+  fc_min_imu_count: 2
+  fc_require_px4: true
+  esc_require_telemetry: true
+  motor_power_margin: 1.2
+  servo_torque_margin: 1.5
+  frozen:
+    flight_controller: null
+    esc: null
+    edf_motor: null
+    # ADR-0003 amendment (2026-07-12) decides the 3-BLADE 8x6: the
+    # configured rotor_solidity/FoM model that geometry. The TR-stocked
+    # 2-blade Gemfan is lighter and stays visible as a feasible
+    # alternative, but adopting it re-opens the solidity/FoM revisit --
+    # a further ADR amendment, not a pin flip.
+    propeller: ma_3blade_8x6
+    servo: null
+    battery: null

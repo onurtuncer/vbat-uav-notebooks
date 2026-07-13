@@ -1,22 +1,26 @@
 # config/rotor.yaml
 #
-# D_rotor_m : rotor / EDF diameter [m]
-#   0.195 targets the largest readily available COTS EDF class
-#   (e.g. Schuebeler DS-215 family, ~195 mm carbon fan). Decision from
-#   the 2026-07 design review: no custom fan development -- COTS only.
+# D_rotor_m : rotor diameter [m]
+#   0.203 = 8-inch COTS 3-blade propeller run in the airframe duct
+#   (ADR-0003 as amended 2026-07-12; e.g. Master Airscrew 3-blade 8x6,
+#   see config/components/propellers.yaml). Replaces the 0.195 COTS EDF
+#   cartridge class: the only purchasable 195 mm fan is DS-215 heavy-lift
+#   hardware (~6x over the propulsion mass allocation), while COTS
+#   3-blade props exist at 178/203 mm. Still COTS-only -- no custom
+#   rotor development.
 #
 # NOTE: disk loading is intentionally NOT configured here. For a
 # tail-sitter the rotor carries the full weight, so the sizing loop
 # computes DL = MTOW*g / (pi*D^2/4) at every iteration.
 #
-# T_max_N : static thrust capability of the COTS EDF class [N].
-#   Comfortable continuous rating for a DS-215-class 195 mm fan on the
-#   battery voltages this design carries (high-power HST variants reach
-#   further, but with no margin and at currents this pack can't hold).
-#   Used as a plausibility guard on the hover thrust requirement
-#   (T/W * MTOW * g) after the mass closure re-converges -- a design
+# T_max_N : static thrust capability of the COTS prop-in-duct class [N].
+#   Momentum-theory static thrust at the selected motor's power ceiling:
+#   T = (P_shaft * FM * sqrt(2 rho A))^(2/3) with P_shaft ~ 1.2 kW * 0.90
+#   (config/components/edf_motors.yaml x motor_efficiency), FM = 0.70,
+#   A = pi * (D/2)^2 -> ~35 N. Used as a plausibility guard on the hover
+#   thrust requirement after the mass closure re-converges -- a design
 #   that needs more hover thrust than this breaks the COTS assumption
 #   (ADR-0003) and must be caught loudly, not sized past.
 
-D_rotor_m: 0.195
-T_max_N: 50.0
+D_rotor_m: 0.203
+T_max_N: 35.0

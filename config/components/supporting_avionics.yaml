@@ -1,0 +1,18 @@
+# Supporting avionics (not selected; avionics-bay fit report only).
+# The ADR-0011 first-flight stack around the FC. Masses are installed
+# estimates (EST) incl. mounts/cables where noted; refine from a bench
+# weigh-in once hardware is in hand.
+
+supporting_avionics:
+  - name: GPS/compass (Holybro M9N class)
+    mass_g: 32.0
+  - name: telemetry radio (SiK 100 mW, onboard half)
+    mass_g: 22.0
+  - name: RC receiver (ELRS/R-XSR class, incl. antennas)
+    mass_g: 5.0
+  - name: digital airspeed sensor + pitot + tubing
+    mass_g: 10.0
+  - name: power module (PM02 class)
+    mass_g: 20.0
+  - name: wiring looms / connectors (EST)
+    mass_g: 15.0

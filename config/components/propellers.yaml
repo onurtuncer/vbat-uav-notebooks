@@ -1,0 +1,73 @@
+# Propeller / fan-unit candidates (see selection.yaml for policy/format).
+# The rotating unit the motor spins: either a COTS EDF fan cartridge
+# (rotor + stator, no motor) or a bare multi-blade propeller run inside
+# the airframe's own duct (the duct is airframe structure either way --
+# `config/fuselage.yaml` duct geometry, mass in the propulsion fraction).
+#
+# ADR-0003 froze the 195 mm COTS diameter class; the sizing derives disk
+# loading from D_rotor_m (config/rotor.yaml), so a candidate MUST match
+# that diameter -- a different-diameter rotor is a different design
+# point, not an alternative part. ratings: d_rotor_mm [mm] rotor
+# diameter, p_max_w [W] rated max power, n_blades [-]. Cylinder
+# primitive: dims_mm = [outer diameter, axial length].
+#
+# HONEST CATALOG NOTE: the only true COTS EDF unit in the 195 mm class
+# is the Schuebeler DS-215-DIA family -- a heavy-lift carbon fan built
+# for 10 kW-class jets. Its fan-only mass (EST below; the vendor lists
+# only the 3.4 kg fan+motor power unit) dwarfs this vehicle's whole
+# propulsion allocation. The two prop entries document the V-BAT-like
+# alternative: a low-solidity 3-blade propeller in the airframe duct is
+# ~30-50x lighter, but the nearest COTS sizes bracket the frozen
+# diameter (7" = 178 mm, 8" = 203 mm) -- adopting one means moving
+# D_rotor_m and re-converging, plus revisiting solidity/FoM and the
+# empirical RPM law (an ADR-0003 amendment, deliberately NOT smuggled in
+# through a parts database).
+
+propellers:
+  - id: schuebeler_ds215_dia_hst_fan
+    name: Schuebeler DS-215-DIA HST fan (no motor, EST)
+    mass_g: 1000.0          # EST fan-only share of the 3.4 kg power unit
+    dims_mm: [220.0, 150.0]
+    shape: cylinder
+    d_rotor_mm: 195.0
+    p_max_w: 10000.0
+    n_blades: 11
+    # no TR source (2026-07): Schuebeler sells factory-direct (DE) only.
+  - id: jetfan_130ez
+    name: JetFan 130 EZ (130 mm class, EST)
+    mass_g: 320.0           # EST -- documents the diameter rejection path
+    dims_mm: [140.0, 120.0]
+    shape: cylinder
+    d_rotor_mm: 130.0
+    p_max_w: 8000.0
+    n_blades: 10
+  - id: ma_3blade_8x6
+    name: Master Airscrew 3-blade 8x6 prop (in airframe duct, EST)
+    mass_g: 23.0            # EST -- the V-BAT-like light option, 203 mm
+    dims_mm: [203.0, 25.0]
+    shape: cylinder
+    d_rotor_mm: 203.0
+    p_max_w: 900.0
+    n_blades: 3
+  - id: ma_3blade_7x4
+    name: Master Airscrew 3-blade 7x4 prop (in airframe duct, EST)
+    mass_g: 18.0            # EST -- next COTS size down, 178 mm
+    dims_mm: [178.0, 25.0]
+    shape: cylinder
+    d_rotor_mm: 178.0
+    p_max_w: 700.0
+    n_blades: 3
+    # Master Airscrew has no TR retailer (2026-07) -- import
+    # (masterairscrew.com). The TR-procurable prop in the 203 mm class
+    # is the 2-blade Gemfan below (same diameter caveat).
+  - id: gemfan_apc_8x6
+    name: Gemfan APC-style 8x6 glass-nylon prop (in airframe duct, EST)
+    mass_g: 15.0            # EST -- TR-stocked 203 mm option, 2-blade
+    dims_mm: [203.0, 20.0]
+    shape: cylinder
+    d_rotor_mm: 203.0
+    p_max_w: 900.0          # EST -- same 8-inch sport class as the MA 8x6
+    n_blades: 2             # lower solidity than the 3-blade MA --
+                            # adopting it re-opens the solidity/FoM
+                            # revisit (a further ADR-0003 amendment)
+    url: https://www.robotistan.com/gemfan-fiberglass-apc-8x6-drone-propeller-set-2-pc-ccw

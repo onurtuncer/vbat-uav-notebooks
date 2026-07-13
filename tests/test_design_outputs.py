@@ -66,10 +66,11 @@ class TestAirfoil:
 
 class TestFuselage:
     def test_design_point(self, fuselage):
-        # 195 mm COTS EDF design point (2026-07 design review)
-        assert fuselage["D_fus_m"] == pytest.approx(0.09653, rel=1e-2)
-        assert fuselage["L_fus_m"] == pytest.approx(0.48264, rel=1e-2)
-        assert fuselage["x_CG_m"] == pytest.approx(0.23841, rel=1e-2)
+        # 203 mm COTS 3-blade prop-in-duct design point (ADR-0003 as
+        # amended 2026-07-12; MTOW 2.303 kg, hover ~652 W)
+        assert fuselage["D_fus_m"] == pytest.approx(0.09565, rel=1e-2)
+        assert fuselage["L_fus_m"] == pytest.approx(0.47827, rel=1e-2)
+        assert fuselage["x_CG_m"] == pytest.approx(0.23661, rel=1e-2)
         assert fuselage["static_margin"] == pytest.approx(0.05, rel=1e-2)
 
     def test_internal_consistency(self, fuselage):
@@ -87,14 +88,14 @@ class TestFuselage:
         # Rectangular wing: x_AC - x_LE = MAC/4. This MAC feeds the CFD
         # force-coefficient setup, so pin it explicitly.
         mac = 4.0 * (fuselage["x_wing_AC_m"] - fuselage["x_wing_LE_m"])
-        assert mac == pytest.approx(0.1776, rel=1e-2)
+        assert mac == pytest.approx(0.17484, rel=1e-2)
 
 
 class TestControlVanes:
     def test_design_point(self, vanes):
         assert vanes["n_vanes"] == 4
         assert vanes["AR_vane"] == pytest.approx(2.5, rel=1e-3)
-        assert vanes["servo_torque_req_gcm"] == pytest.approx(437.7, rel=2e-2)
+        assert vanes["servo_torque_req_gcm"] == pytest.approx(441.5, rel=2e-2)
 
     def test_deflection_ordering(self, vanes):
         assert vanes["delta_design_deg"] < vanes["delta_stall_deg"] <= vanes["delta_max_deg"]
@@ -143,7 +144,7 @@ class TestAileron:
         assert aileron["n_ailerons"] == 2
         assert aileron["span_frac_wing"] == pytest.approx(0.12, rel=1e-3)
         assert aileron["chord_frac"] == pytest.approx(0.12, rel=1e-3)
-        assert aileron["servo_torque_req_gcm"] == pytest.approx(79.4, rel=2e-2)
+        assert aileron["servo_torque_req_gcm"] == pytest.approx(75.7, rel=2e-2)
 
     def test_cruise_roll_authority(self, aileron):
         # The whole point of NB4: combined (aileron + residual jet-vane)
@@ -160,7 +161,7 @@ class TestVibration:
     def test_forcing_and_corner(self, vibration):
         # 1/rev forcing derived from rotor RPM; corner freq must sit in the
         # valid window (above control bandwidth, below isolation threshold).
-        assert vibration["f_shaft_hz"] == pytest.approx(211.3, rel=2e-2)
+        assert vibration["f_shaft_hz"] == pytest.approx(203.5, rel=2e-2)
         lo, hi = vibration["f_n_window_hz"]
         assert lo < vibration["f_n_hz"] < hi
         assert vibration["window_ok"] is True
@@ -180,10 +181,10 @@ class TestVibration:
 
 class TestThermal:
     def test_heat_loads_derived_and_sane(self, thermal):
-        # Heat loads follow from hover power and the efficiencies; pin the
-        # order of magnitude (ESC ~50 W, battery ~30 W at the 3.06 kg point).
-        assert thermal["esc"]["Q_W"] == pytest.approx(35.5, rel=5e-2)
-        assert thermal["battery"]["Q_W"] == pytest.approx(22.0, rel=5e-2)
+        # Heat loads follow from hover power and the efficiencies; pin
+        # them at the 2.303 kg / ~652 W prop-in-duct point.
+        assert thermal["esc"]["Q_W"] == pytest.approx(32.6, rel=5e-2)
+        assert thermal["battery"]["Q_W"] == pytest.approx(20.2, rel=5e-2)
 
     def test_battery_bay_vents_comfortably(self, thermal):
         b = thermal["battery"]
@@ -199,7 +200,70 @@ class TestThermal:
         assert e["ok"] is False
         assert e["mass_within_alloc"] is False    # plate heavier than ESC alloc
         assert 0.0 < e["temp_margin_C"] < 20.0     # positive but modest
-        assert e["A_req_cm2"] == pytest.approx(229.9, rel=5e-2)
+        assert e["A_req_cm2"] == pytest.approx(212.9, rel=5e-2)
+
+
+@pytest.fixture(scope="module")
+def components() -> dict:
+    path = OUT / "components.yaml"
+    if not path.exists():
+        pytest.skip("out/components.yaml not generated -- run cots_selection")
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+class TestCotsSelection:
+    def test_frozen_hardware_ids(self, components):
+        # The frozen COTS stack (lightest feasible per derived requirement).
+        # An intentional database/requirement change must update these ids
+        # in the same commit -- the diff is the procurement record.
+        sel = components["selected"]
+        assert sel["flight_controller"]["id"] == "pixhawk_6c"
+        assert sel["esc"]["id"] == "apd_80f3x"
+        assert sel["edf_motor"]["id"] == "sunnysky_x4120_465"
+        assert sel["propeller"]["id"] == "ma_3blade_8x6"   # ADR-0003 amendment
+        assert sel["propeller"]["frozen"] is True          # pinned, not auto
+        assert sel["servo"]["id"] == "kst_x08_v6"
+        assert sel["battery"]["id"] == "gens_ace_6s_4000_30c"
+
+    def test_requirements_derived_from_design_point(self, components):
+        req = components["requirements"]
+        assert req["esc"]["i_cont_min_a"] == pytest.approx(47.0, rel=2e-2)
+        assert req["propeller"]["d_rotor_mm"] == pytest.approx(203.0, rel=1e-3)
+        assert req["servo"]["stall_torque_min_gcm"] == pytest.approx(662.3, rel=2e-2)
+        assert req["battery"]["capacity_min_ah"] == pytest.approx(3.50, rel=2e-2)
+
+    def test_selected_parts_meet_their_requirements(self, components):
+        sel, req = components["selected"], components["requirements"]
+        assert sel["esc"]["ratings"]["i_cont_a"] >= req["esc"]["i_cont_min_a"]
+        assert sel["edf_motor"]["ratings"]["p_max_w"] >= req["edf_motor"]["p_max_min_w"]
+        assert (sel["servo"]["ratings"]["stall_torque_gcm"]
+                >= req["servo"]["stall_torque_min_gcm"])
+
+    def test_budget_findings_pinned(self, components):
+        # KNOWN findings (same discipline as the ADR-0009 thermal pin):
+        # ESC and servos fit; the avionics bay is over; motor + 3-blade
+        # prop still land ~1.5x over the motor_fan allocation (down from
+        # ~6x pre-amendment -- the motor now dominates). Pin the state so
+        # a change either way is caught.
+        b = components["budgets"]
+        assert b["esc"]["within"] is True
+        assert b["servo_each"]["within"] is True
+        assert b["avionics_bay"]["within"] is False
+        assert b["motor_fan"]["within"] is False
+        assert b["motor_fan"]["actual_g"] < 2 * b["motor_fan"]["alloc_g"]
+        # COTS capacity quantisation: the pack lands a little over the
+        # sized battery mass, but bounded (< 15%).
+        assert b["battery"]["within"] is False
+        assert b["battery"]["actual_g"] < 1.15 * b["battery"]["alloc_g"]
+        assert components["all_within_allocations"] is False
+
+    def test_heavy_fan_rejected_only_on_diameter(self, components):
+        # The ADR-0003 amendment's paper trail: the DS-215 heavy-lift fan
+        # (the pre-amendment selection) must stay visible as a
+        # diameter-only rejection at the 203 mm prop-in-duct point.
+        rej = components["selected"]["propeller"]["rejected"]
+        assert "schuebeler_ds215_dia_hst_fan" in rej
+        assert "mm rotor" in rej["schuebeler_ds215_dia_hst_fan"]
 
 
 class TestCrossFileConsistency:

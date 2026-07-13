@@ -1,0 +1,229 @@
+# AUTO-GENERATED -- do not edit by hand.
+# Source : src/conceptual_design/cots_selection.py
+# Input  : config/components/ + converged design point
+# Regen  : re-run notebooks/cots_selection.ipynb
+
+design_point:
+  MTOW_kg: 2.3026
+  P_hover_W: 651.7
+  P_design_W: 651.7
+  pack: 6S
+  D_rotor_mm: 203.0
+  esc_rating_req_a: 46.97
+  servo_torque_req_gcm: 441.53
+requirements:
+  flight_controller:
+    px4_required: true
+    min_imu_count: 2
+  esc:
+    i_cont_min_a: 46.969
+    series_cells: 6
+    telemetry_required: true
+  edf_motor:
+    p_max_min_w: 782.028
+    series_cells: 6
+  propeller:
+    d_rotor_mm: 203.0
+    p_max_min_w: 782.028
+  servo:
+    stall_torque_min_gcm: 662.3
+    tau_vane_req_gcm: 441.534
+    tau_aileron_req_gcm: 75.71
+  battery:
+    capacity_min_ah: 3.497
+    series_cells: 6
+    i_dis_min_a: 46.969
+selected:
+  flight_controller:
+    id: pixhawk_6c
+    name: Holybro Pixhawk 6C (plastic case)
+    frozen: false
+    url: https://drone.net.tr/en/ucus-kontrol-kartlari/holybro-combo-pixhawk-6c-aluminum-case-and-pm07-power-module.html
+    mass_g: 34.6
+    shape: box
+    dims_mm:
+    - 84.8
+    - 44.0
+    - 12.4
+    I_cg_kgm2:
+    - 6.025e-06
+    - 2.1178e-05
+    - 2.6316e-05
+    ratings:
+      imu_count: 2
+      px4: true
+    feasible_alternatives:
+    - pixhawk_6c_mini
+    - pixhawk_6x_mini_base
+    - cube_orange_plus
+    - radiolink_pixhawk_248
+    rejected: {}
+  esc:
+    id: apd_80f3x
+    name: APD 80F3[X] (KISS/serial telemetry)
+    frozen: false
+    mass_g: 30.0
+    shape: box
+    dims_mm:
+    - 58.0
+    - 25.0
+    - 12.0
+    I_cg_kgm2:
+    - 1.923e-06
+    - 8.77e-06
+    - 9.973e-06
+    ratings:
+      i_cont_a: 80.0
+      s_min: 2
+      s_max: 8
+      telemetry: true
+    feasible_alternatives:
+    - holybro_tekko32_65a
+    rejected:
+      hobbywing_flyfun_80a_v5: no live RPM/current telemetry (ADR-0011)
+      hobbywing_flyfun_80a_hv: no live RPM/current telemetry (ADR-0011)
+      hobbywing_platinum_60a_v4: no live RPM/current telemetry (ADR-0011)
+      tmotor_alpha_60a_lv: no live RPM/current telemetry (ADR-0011)
+  edf_motor:
+    id: sunnysky_x4120_465
+    name: SunnySky X4120 KV465 (EST)
+    frozen: false
+    mass_g: 283.0
+    shape: cylinder
+    dims_mm:
+    - 46.0
+    - 44.0
+    I_cg_kgm2:
+    - 7.4854e-05
+    - 8.3084e-05
+    - 8.3084e-05
+    ratings:
+      p_max_w: 1200.0
+      s_min: 4
+      s_max: 6
+      kv: 465.0
+    feasible_alternatives:
+    - cobra_c4120_540
+    - scorpion_sii_4020_540
+    - tmotor_at4130_450
+    rejected:
+      schuebeler_dsm10066_290: 6S outside 12-14S range
+  propeller:
+    id: ma_3blade_8x6
+    name: Master Airscrew 3-blade 8x6 prop (in airframe duct, EST)
+    frozen: true
+    mass_g: 23.0
+    shape: cylinder
+    dims_mm:
+    - 203.0
+    - 25.0
+    I_cg_kgm2:
+    - 0.000118476
+    - 6.0436e-05
+    - 6.0436e-05
+    ratings:
+      d_rotor_mm: 203.0
+      p_max_w: 900.0
+      n_blades: 3
+    feasible_alternatives:
+    - gemfan_apc_8x6
+    rejected:
+      schuebeler_ds215_dia_hst_fan: '195 mm rotor != frozen 203 mm class (ADR-0003:
+        different diameter = different disk loading = different design point)'
+      jetfan_130ez: '130 mm rotor != frozen 203 mm class (ADR-0003: different diameter
+        = different disk loading = different design point)'
+      ma_3blade_7x4: '178 mm rotor != frozen 203 mm class (ADR-0003: different diameter
+        = different disk loading = different design point)'
+  servo:
+    id: kst_x08_v6
+    name: KST X08 V6 (metal gear, digital)
+    frozen: false
+    mass_g: 8.9
+    shape: box
+    dims_mm:
+    - 23.5
+    - 8.0
+    - 16.8
+    I_cg_kgm2:
+    - 2.57e-07
+    - 6.19e-07
+    - 4.57e-07
+    ratings:
+      stall_torque_gcm: 1400.0
+      torque_at_v: 4.2
+    feasible_alternatives:
+    - sg90
+    - emax_es08ma2
+    - mg90s
+    rejected: {}
+  battery:
+    id: gens_ace_6s_4000_30c
+    name: Gens Ace 4000 mAh 6S 30C LiPo
+    frozen: false
+    url: https://www.robotus.net/gens-ace-4000mah-222v-30c-6s-lipo-batarya-lipo-pil
+    mass_g: 613.0
+    shape: box
+    dims_mm:
+    - 137.0
+    - 43.0
+    - 40.0
+    I_cg_kgm2:
+    - 0.000176186
+    - 0.001040516
+    - 0.001053236
+    ratings:
+      capacity_mah: 4000.0
+      s_cells: 6
+      c_rate_cont: 30.0
+    feasible_alternatives:
+    - tattu_6s_4500_25c
+    - leopard_6s_5200_40c
+    - profuse_6s_8000_65c
+    rejected:
+      leopard_6s_3300_40c: 3.30 Ah < required 3.50 Ah mission capacity
+supporting_avionics:
+- name: GPS/compass (Holybro M9N class)
+  mass_g: 32.0
+- name: telemetry radio (SiK 100 mW, onboard half)
+  mass_g: 22.0
+- name: RC receiver (ELRS/R-XSR class, incl. antennas)
+  mass_g: 5.0
+- name: digital airspeed sensor + pitot + tubing
+  mass_g: 10.0
+- name: power module (PM02 class)
+  mass_g: 20.0
+- name: wiring looms / connectors (EST)
+  mass_g: 15.0
+budgets:
+  avionics_bay:
+    actual_g: 138.6
+    alloc_g: 96.21
+    margin_g: -42.39
+    within: false
+    note: FC + supporting avionics vs the net avionics-bay budget
+  esc:
+    actual_g: 30.0
+    alloc_g: 86.3
+    margin_g: 56.3
+    within: true
+  motor_fan:
+    actual_g: 306.0
+    alloc_g: 207.2
+    margin_g: -98.8
+    within: false
+    note: EDF motor + fan/prop unit vs the motor_fan layout allocation
+  servo_each:
+    actual_g: 8.9
+    alloc_g: 12.0
+    margin_g: 3.1
+    within: true
+    note: per servo, x6 installed
+  battery:
+    actual_g: 613.0
+    alloc_g: 554.59
+    margin_g: -58.41
+    within: false
+    note: COTS pack vs the mass-closure battery mass (capacity quantisation makes
+      a small overshoot expected)
+  all_within: false
+all_within_allocations: false

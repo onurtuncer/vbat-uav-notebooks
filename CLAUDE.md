@@ -26,9 +26,10 @@ that the next one reads:
 8. `vehicle_solid_model` — CadQuery CAD → `out/cad/` (STEP/STL, per-part + fused + prop rotor)
 9. `mass_properties` — inertia tensor, BOM → `out/mass_properties.yaml`, `out/bom.csv`
 10. `wiring_diagram` — electrical block diagram → `out/wiring_diagram.svg`, `out/electrical.yaml`
+11. `cots_selection` — COTS FC/ESC/EDF-motor/propeller/servo/battery freeze → `out/components.yaml`
 
-NB2–NB10 re-run `run_sizing_loop` from `config/` to reconstruct the same
-design point — if you change the sizing API, update **all ten** call sites.
+NB2–NB11 re-run `run_sizing_loop` from `config/` to reconstruct the same
+design point — if you change the sizing API, update **all eleven** call sites.
 
 `aileron_design` exists because jet-vane control authority is sized from
 **hover** thrust and collapses in cruise (`q_jet` scales linearly with
@@ -39,8 +40,8 @@ and stay available as a roll backup in cruise. `ddot_min_deg_s2`
 (`config/aerodynamics.yaml`) is the one requirement both notebooks check
 against — keep it in sync if either notebook's authority margin changes.
 
-`vibration_isolation` soft-mounts the FC/IMU and payload against the EDF
-1/rev imbalance (~211 Hz forcing, derived from rotor RPM). It hands
+`vibration_isolation` soft-mounts the FC/IMU and payload against the rotor
+1/rev imbalance (~204 Hz forcing, derived from rotor RPM). It hands
 `fuselage_design` the isolator hardware mass (carved from the
 avionics/structural fractions) and the sway/rattle space added to the bay
 stack. Because the forcing is far above any practical isolator corner
@@ -53,9 +54,9 @@ a vented battery bay. Heat loads are derived (`P_hover·(1−eta_esc)` and
 `P_hover·(1/eta_bat−1)`), not configured. It does **not** change the mass
 model — the cold-plate is absorbed into the ESC/propulsion "mounts"
 allocation and its two CAD parts are assembly-only (excluded from the
-fused STL). It reports margins honestly: at the current 2.38 kg / ~0.7 kW-
+fused STL). It reports margins honestly: at the current 2.30 kg / ~0.65 kW-
 hover point the battery bay vents comfortably, but the ESC cold-plate is
-**marginal** (its ~35 W load needs a plate heavier than the ESC allocation
+**marginal** (its ~33 W load needs a plate heavier than the ESC allocation
 with only a few °C margin) — a standing finding, not a hard failure.
 
 `wiring_diagram` is generated, not hand-drawn: box positions/wiring
@@ -66,6 +67,31 @@ servo torque) is computed from `config/electrical.yaml` +
 `battery_series_cells` (cell count) is a free electrical variable — the
 mass-closure loop is voltage-agnostic. Doesn't need CadQuery, so it
 also runs in the local 3.14 venv.
+
+`cots_selection` freezes the open COTS hardware (flight controller, ESC,
+EDF drive motor, propeller/fan unit, vane/aileron servo, battery pack)
+from the per-category database files in `config/components/` (ADR-0011:
+PX4 on a Pixhawk-class FC, telemetry ESC). Hard requirements are
+**derived** (ESC current from the wiring module's law, motor/fan power
+from `P_design`, rotor diameter from `config/rotor.yaml`, servo torque
+from the NB3/NB4 hinge moments, battery capacity/discharge from the
+wiring module's operating point) — only the margins are configured; the
+lightest feasible candidate wins, deterministically. Mass-allocation fit is *reported, never
+filtered on*: at the current design point the ESC and servos fit; the
+avionics bay (~-42 g) and the motor (~-99 g of the motor_fan line, all
+motor) are over, and the COTS battery overshoots the sized pack by ~58 g
+(capacity quantisation, expected) — standing findings against the weight
+fractions, same status as the thermal cold-plate. The propeller is
+**pinned** via `selection.frozen` to the 3-blade 8×6 of the ADR-0003
+amendment (the configured solidity/FoM model that geometry); the lighter
+TR-stocked 2-blade Gemfan stays visible as a feasible alternative, but
+adopting it re-opens the solidity/FoM revisit — a further ADR amendment,
+not a pin flip. Candidates carry procurement URLs preferring Turkish
+retailers; the forced imports are the telemetry ESC and the KST servo.
+After procurement, weigh the parts, fix the `EST` entries, pin the
+remaining ids (pins are re-validated every run — a design change that
+outgrows frozen hardware fails loudly), and update the regression pins in
+the same commit.
 
 ## Hard rules
 
@@ -89,11 +115,14 @@ also runs in the local 3.14 venv.
 
 ## Design decisions (2026-07 review)
 
-- **COTS 195 mm EDF** (Schübeler DS-215 class) — no custom fan
-  development. Disk loading is therefore **derived** (`DL = MTOW·g/A`),
-  never configured. `T_max_N` (`config/rotor.yaml`) guards the hover
-  thrust requirement against the class capability — the sizing fails
-  loudly rather than sizing past the COTS fan.
+- **COTS 203 mm 3-blade prop in the airframe duct** (ADR-0003 as amended
+  2026-07-12; originally a 195 mm COTS EDF cartridge, but the only
+  purchasable 195 mm fan is DS-215 heavy-lift hardware) — still COTS
+  only, no custom rotor development. Disk loading is **derived**
+  (`DL = MTOW·g/A`), never configured. `T_max_N` (`config/rotor.yaml`,
+  ~35 N momentum-theory at the motor's power ceiling) guards the hover
+  thrust requirement — the sizing fails loudly rather than sizing past
+  the COTS rotor.
 - **15–20 min mission** (120 s hover + 40 s transitions + 900 s cruise);
   hover is expensive at this disk loading, so the mission is
   deliberately short-hover.
@@ -114,7 +143,7 @@ also runs in the local 3.14 venv.
   the configured method AND both skin options (FDM ~352 g now,
   2-ply CFRP ~242 g later) on every run. `t_shell_m` remains ONLY the
   packaging wall — decoupled from the structural skin.
-- Design point ≈ 2.38 kg MTOW, ~710 W hover electrical, ~8.6C peak
+- Design point ≈ 2.30 kg MTOW, ~652 W hover electrical, ~8.4C peak
   (segmented-FDM, k=1.1, fs_base re-baselined 0.25→0.22 to the
   ADR-0010 semi-monocoque member model — lighter than the original
   2.5 kg monocoque baseline; the FDM print penalty is more than paid
@@ -127,7 +156,7 @@ also runs in the local 3.14 venv.
 ## CI (GitHub Actions)
 
 - `ci.yml` — ruff, pytest (3.10/3.12/3.14), ShellCheck on `cfd/**/Allrun*`.
-- `design-pipeline.yml` — executes all ten notebooks on every PR, runs
+- `design-pipeline.yml` — executes all eleven notebooks on every PR, runs
   design-regression + geometry tests, uploads `out/` artifacts; on main
   additionally: coarse OpenFOAM smoke run and GitHub Pages deploy
   (rendered notebooks, 3D viewer with exploded view, BOM page).

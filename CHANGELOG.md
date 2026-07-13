@@ -16,6 +16,71 @@ is tagged.
   STLs by `scripts/render_readme_cad.py` (self-contained numpy/Pillow
   z-buffer renderer — no OpenGL needed); linked to the interactive Pages
   viewer from the top of the README.
+- **COTS component selection & freeze** (new pipeline stage
+  `cots_selection`, NB11): selects the open COTS hardware — flight
+  controller, ESC, EDF drive motor, propeller/fan unit, vane/aileron
+  servo — from a per-category candidate database
+  (`config/components/*.yaml`) against requirements **derived** from the
+  converged design point (ESC current via the wiring-module law, motor/fan
+  power from `P_design`, rotor diameter from `config/rotor.yaml`, servo
+  torque from the NB3/NB4 hinge moments; only the margins are configured).
+  Lightest feasible candidate wins deterministically; a `selection.frozen`
+  id pins a procured part and is re-validated every run, failing loudly if
+  a design change outgrows it. Freezes ids, masses, and own-CG inertia
+  tensors to `out/components.yaml`, pinned by new design-regression tests.
+  Selected stack: Pixhawk 6C, APD 80F3[X] (ADR-0011's telemetry
+  requirement eliminates the Hobbywing/T-Motor field), SunnySky
+  X4120-class motor, DS-215-DIA HST fan, KST X08 servos.
+- **Finding (dominant): the ADR-0003 "COTS 195 mm EDF" class has no
+  light implementation.** The only COTS fan at the frozen diameter is the
+  Schübeler DS-215 heavy-lift family; fan + lightest plausible motor land
+  ~6× over the propulsion allocation (−1069 g). A COTS 3-blade prop in
+  the airframe duct (V-BAT-like) is ~40× lighter but exists at
+  178/203 mm, not 195 mm — kept visible as a diameter-only rejection
+  because adopting it means moving `D_rotor_m`, re-converging, and
+  amending ADR-0003. Second finding: the lightest PX4 stack overruns the
+  avionics bay by ~37 g. Both pinned as standing findings (ADR-0009
+  discipline).
+
+- **Battery pack joins the COTS selection** (`batteries.yaml`): fully
+  derived requirements (6S exact, capacity ≥ the sized mission Ah,
+  continuous discharge ≥ the ESC's margined hover current — no
+  configurable margin), compared against the mass-closure battery mass
+  where COTS capacity quantisation makes a small overshoot expected
+  (Gens Ace 6S 4000 30C: ~58 g over the sized pack). Candidates across
+  all categories now carry procurement URLs preferring Turkish
+  retailers; the forced imports are the telemetry ESC (no TR retailer
+  stocks a live-telemetry 50 A+ single ESC) and the KST X08 servo
+  (TR fallback: MG90S, +3 g each).
+
+### Changed
+
+- **ADR-0003 amended: the COTS rotor is a 3-blade 8×6 propeller
+  (203 mm) in the airframe duct, replacing the 195 mm COTS EDF
+  cartridge** — resolving NB11's dominant finding (the only purchasable
+  195 mm fan is 10 kW-class heavy-lift hardware). The sizing physics
+  already modelled a low-solidity prop (σ = 0.077 matches a 3-blade 8×6
+  over the annulus outside the 0.4 R hub); only the procurement
+  assumption changed. `D_rotor_m` 0.195 → 0.203 and the whole design
+  re-converged: **MTOW 2.376 → 2.302 kg, hover 710 → 652 W** (+8% disk
+  area, lower disk loading), 1/rev forcing 211 → 204 Hz, pack 3.71 →
+  3.50 Ah. `T_max_N` guard re-derived for the prop-in-duct power
+  ceiling (50 → 35 N — note hover now sits at ~84% of the guard;
+  thrust-stand verification is ADR-0011 stage a). The CAD rotor is now
+  a 3-blade prop (`config/prop_geometry.yaml`). All regression pins,
+  `cfd/vehicle/Allrun.case`, and the `px4/` provenance values
+  (airframe params, Gazebo model, README) updated in the same commit;
+  `out/cad/` regenerates in CI. Propulsion mass now closes to a ~100 g
+  finding (all motor, EST) instead of ~1.1 kg of unbuyable hardware;
+  NB11 pins the propeller via `selection.frozen` (the TR-stocked
+  2-blade Gemfan is lighter but re-opens the solidity/FoM revisit).
+- **Trusted SITL plant redirected to Aetherion + CFD-derived DAVE-ML**
+  (amends the v0.4.0 PX4 plan): the trusted plant is **Aetherion**
+  (external 6-DoF repo) consuming **DAVE-ML models generated from CFD
+  results** (`px4/sitl/daveml_spec.md`: coefficient-form airframe +
+  dimensional prop/vane models to survive the hover `q_∞ → 0`
+  singularity, S-119 check-cases, validation gates); the Gazebo model is
+  demoted to PX4-side integration smoke checks.
 
 ## [0.4.0] — 2026-07-11
 

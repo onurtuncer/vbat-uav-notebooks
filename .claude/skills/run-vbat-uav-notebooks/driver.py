@@ -34,6 +34,7 @@ NOTEBOOKS = [
     "vehicle_solid_model",   # CadQuery -- skipped when OCP is missing
     "mass_properties",
     "wiring_diagram",
+    "cots_selection",
 ]
 
 CAD_NOTEBOOK = "vehicle_solid_model"

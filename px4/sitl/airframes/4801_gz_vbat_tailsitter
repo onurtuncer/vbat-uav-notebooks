@@ -10,9 +10,11 @@
 # HAND until a generator exists. Only the simulator bindings
 # (PX4_SIM_MODEL, SIM_GZ_*) are unique to this file.
 #
-# CAVEAT: the Gazebo model's vane aerodynamics are placeholders (jet
-# wash is not modelled by stock plugins) -- see px4/README.md. Hover
-# results are not trustworthy until the custom vane plugin exists.
+# CAVEAT (ADR-0011): this Gazebo target is for PX4-side integration
+# smoke checks and visualisation ONLY. The trusted SITL plant is
+# Aetherion consuming CFD-derived DAVE-ML models (see
+# px4/sitl/daveml_spec.md); the gz vane aero blocks are physically
+# meaningless placeholders. Draw no flight-dynamics conclusions here.
 
 . ${R}etc/init.d/rc.vtol_defaults
 
@@ -25,7 +27,7 @@ param set-default CA_AIRFRAME 4
 param set-default VT_TYPE 0
 
 param set-default CA_ROTOR_COUNT 1
-param set-default CA_ROTOR0_PX -0.208
+param set-default CA_ROTOR0_PX -0.206
 param set-default CA_ROTOR0_PY 0.0
 param set-default CA_ROTOR0_PZ 0.0
 param set-default CA_ROTOR0_AX 1.0
@@ -53,19 +55,19 @@ param set-default CA_SV_CS3_TRQ_Y 1.0
 param set-default CA_SV_CS4_TYPE 1
 param set-default CA_SV_CS5_TYPE 2
 
-param set-default MPC_THR_HOVER 0.61
+param set-default MPC_THR_HOVER 0.84
 param set-default VT_ARSP_TRANS 16.0
 param set-default FW_AIRSPD_MIN 14.0
 param set-default FW_AIRSPD_TRIM 20.0
 param set-default FW_AIRSPD_MAX 26.0
 
 param set-default BAT1_N_CELLS 6
-param set-default BAT1_CAPACITY 3710
+param set-default BAT1_CAPACITY 3497
 
 # --- gz output bindings (order matches model.sdf joints) --------------
 param set-default SIM_GZ_EC_FUNC1 101    # Motor 1 -> rotor_joint
 param set-default SIM_GZ_EC_MIN1 10
-param set-default SIM_GZ_EC_MAX1 1705    # rad/s at T_max 50 N, see model.sdf
+param set-default SIM_GZ_EC_MAX1 1394    # rad/s at T_max 35 N, see model.sdf
 param set-default SIM_GZ_SV_FUNC1 201    # Servo 1 -> vane_t_joint
 param set-default SIM_GZ_SV_FUNC2 202    # Servo 2 -> vane_b_joint
 param set-default SIM_GZ_SV_FUNC3 203    # Servo 3 -> vane_l_joint

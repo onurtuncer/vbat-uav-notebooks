@@ -1,0 +1,50 @@
+# Flight-controller candidates (see selection.yaml for policy/format).
+# ratings: imu_count [-], px4 [bool]. dims_mm are the case envelope
+# (box primitive for the frozen inertia). url: TR retailer where one
+# exists (see selection.yaml PROCUREMENT URLS).
+
+flight_controllers:
+  - id: pixhawk_6c
+    name: Holybro Pixhawk 6C (plastic case)
+    mass_g: 34.6            # vendor datasheet (docs.holybro.com)
+    dims_mm: [84.8, 44.0, 12.4]
+    shape: box
+    imu_count: 2            # ICM-42688-P + BMI055
+    px4: true
+    # TR link is the aluminium-case + PM07 combo (drone.net.tr = Holybro
+    # TR distributor); ask for the plastic-case variant when ordering --
+    # the alu case adds ~25 g over the mass listed here.
+    url: https://drone.net.tr/en/ucus-kontrol-kartlari/holybro-combo-pixhawk-6c-aluminum-case-and-pm07-power-module.html
+  - id: pixhawk_6c_mini
+    name: Holybro Pixhawk 6C Mini (Model A)
+    mass_g: 42.4            # vendor datasheet
+    dims_mm: [53.3, 39.0, 16.2]
+    shape: box
+    imu_count: 2
+    px4: true
+    # no TR product page found at catalog review (2026-07); drone.net.tr
+    # (Holybro TR distributor) can order-in.
+  - id: pixhawk_6x_mini_base
+    name: Holybro Pixhawk 6X + mini baseboard
+    mass_g: 57.8            # 31.3 g module + 26.5 g mini baseboard (vendor)
+    dims_mm: [52.0, 45.0, 24.0]   # EST assembled envelope
+    shape: box
+    imu_count: 3
+    px4: true
+    # no TR product page found at catalog review (see 6c_mini note).
+  - id: cube_orange_plus
+    name: CubePilot Cube Orange+ (standard carrier)
+    mass_g: 73.0            # ~33 g cube + carrier board (vendor/retailer)
+    dims_mm: [94.5, 44.3, 17.3]
+    shape: box
+    imu_count: 3
+    px4: true
+    url: https://www.oyuncakhobi.com/pixhawk-the-cube-orange-imu-v8-standard-set-otopilot-sistemi-ads-b-carrier-board--distributor-garantili
+  - id: radiolink_pixhawk_248
+    name: Radiolink Pixhawk 2.4.8 (Pixhawk 1 class, EST)
+    mass_g: 80.0            # EST incl. case -- verify at procurement
+    dims_mm: [81.5, 50.0, 15.5]
+    shape: box
+    imu_count: 2            # MPU6000 + L3GD20/LSM303D chains (FMUv2/v3)
+    px4: true               # legacy but supported PX4 target
+    url: https://www.oyuncakhobi.com/radiolink-pixhawk-flight-controller

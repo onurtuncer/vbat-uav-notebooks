@@ -1,0 +1,66 @@
+# EDF drive-motor candidates (see selection.yaml for policy/format).
+# The FAN/PROP is selected separately (propellers.yaml); this is the
+# motor that spins it at this vehicle's ~0.7 kW hover point. NOTE the
+# heavy-lift motor sold with the DS-215-DIA HST (DSM 10066: full unit
+# 3.4 kg!) is a 10 kW-class part for 20 kg+ jets -- completely
+# incompatible with a 2.4 kg MTOW; it is listed to document that fact,
+# not as a plausible pick.
+# ratings: p_max_w [W] max electrical, s_min/s_max [cells],
+# kv [rpm/V] informational (fan RPM matching is NB1's empirical
+# k_rpm law; a proper kv <-> fan-map check needs the fan curve and
+# is deliberately out of conceptual scope). Cylinder primitive:
+# dims_mm = [diameter, length]. url: TR retailer where one exists
+# (see selection.yaml PROCUREMENT URLS).
+
+edf_motors:
+  - id: sunnysky_x4120_465
+    name: SunnySky X4120 KV465 (EST)
+    mass_g: 283.0           # EST -- verify at procurement
+    dims_mm: [46.0, 44.0]
+    shape: cylinder
+    p_max_w: 1200.0
+    s_min: 4
+    s_max: 6
+    kv: 465.0
+    # no TR source found at catalog review (2026-07) -- US/EU import
+    # (sunnyskyusa, readymaderc). The TR-stocked alternative in this
+    # power class is the AT4130 below.
+  - id: cobra_c4120_540
+    name: Cobra C-4120/14 KV540 (EST)
+    mass_g: 315.0           # EST -- verify at procurement
+    dims_mm: [49.8, 43.5]
+    shape: cylinder
+    p_max_w: 1330.0
+    s_min: 3
+    s_max: 6
+    kv: 540.0
+  - id: scorpion_sii_4020_540
+    name: Scorpion SII-4020-540 (EST)
+    mass_g: 340.0           # EST -- verify at procurement
+    dims_mm: [49.5, 45.0]
+    shape: cylinder
+    p_max_w: 1480.0
+    s_min: 4
+    s_max: 6
+    kv: 540.0
+  - id: tmotor_at4130_450
+    name: T-Motor AT4130 KV450
+    mass_g: 405.0           # vendor class value
+    dims_mm: [49.5, 61.5]
+    shape: cylinder
+    p_max_w: 1600.0
+    s_min: 4
+    s_max: 8
+    kv: 450.0
+    # ihahobi lists KV230/300/450 on one page -- pick KV450; pilottr
+    # stocks the KV230 long-shaft variant only.
+    url: https://www.ihahobi.com/-at4130-long-shaft-kv230
+  - id: schuebeler_dsm10066_290
+    name: Schuebeler DSM 10066-290 (DS-215 heavy-lift motor)
+    mass_g: 2400.0          # EST motor share of the 3.4 kg HST power unit
+    dims_mm: [100.0, 66.0]
+    shape: cylinder
+    p_max_w: 10000.0
+    s_min: 12
+    s_max: 14
+    kv: 290.0
