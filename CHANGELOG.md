@@ -9,6 +9,27 @@ is tagged.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Prop rotor CAD rebuilt to the actual COTS 3-blade prop** — the v0.4.1
+  snapshot still carried EDF-cartridge proportions and the EDF-era
+  station: a 114 mm hub barrel + spinner (hub_length_ratio 0.35,
+  spinner_ratio 1.0) placed at the duct CG, which buried the hub inside
+  the fuselage tailcone, pushed the spinner out through its skin, and
+  had the blade roots emerging through the tailcone (the tailcone is
+  still ~83 mm across at that station). The rotor is now a short
+  adapter collar (~24 mm, no spinner) with the disk plane at the
+  fuselage-tailcone / exhaust-centerbody junction (`L_fus_m`), where
+  the body has shrunk to the 40.6 mm centerbody radius and the blades
+  clear the airframe. Blade planform replaced by a peaked chord law
+  (`c_peak_ratio`/`f_peak`, max chord at 35% span) with a rounded tip
+  (`tip_round_expo`), matching the COTS 8x6 look while keeping the
+  ~14-15 mm mean chord of the sigma = 0.077 solidity model. Diameter
+  stays exactly 203 mm and the twist stays the exact
+  constant-geometric-pitch law beta(r) = atan(p/2*pi*r) with the true
+  6 in pitch. NB8's rotor-diameter printout fixed for 3 blades (bbox
+  z-max, not z-extent).
+
 ## [0.4.1] — 2026-07-15
 
 Point release on the ADR-0010 baseline: freezes the open COTS hardware
