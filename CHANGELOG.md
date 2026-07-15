@@ -9,6 +9,12 @@ is tagged.
 
 ## [Unreleased]
 
+## [0.4.2] — 2026-07-15
+
+Patch release: the v0.4.1 snapshot shipped with the prop rotor CAD still
+carrying EDF-cartridge proportions at the EDF-era station; this release
+rebuilds it as the actual COTS 3-blade prop-in-duct.
+
 ### Fixed
 
 - **Prop rotor CAD rebuilt to the actual COTS 3-blade prop** — the v0.4.1
