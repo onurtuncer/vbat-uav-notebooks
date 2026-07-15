@@ -99,6 +99,7 @@ def frame_parts(
     rail_x_start_m:  float,   # battery rail axial start [m, +aft]
     rail_length_m:   float,   # battery rail length [m]
     r_int_m:         float,   # internal shell radius [m]
+    hull:            cq.Workplane,   # full fuselage solid (trim boundary)
 ) -> Dict[str, cq.Workplane]:
     """
     Semi-monocoque frame display parts (ADR-0010) -- ASSEMBLY-ONLY, like
@@ -113,7 +114,10 @@ def frame_parts(
                            battery tray slides on it
 
     Display simplification: longerons drawn straight at y = +/-0.35 D
-    (the real profile follows the hull width); rings drawn as half-annuli.
+    (the real profile follows the hull width) and trimmed to the hull,
+    so they end where the nose taper becomes narrower than the joint
+    line instead of pricking out through the skin; rings drawn as
+    half-annuli.
     """
     s = profile_mm
     L_clam = x_clam_aft_m * MM
@@ -125,6 +129,7 @@ def frame_parts(
             cq.Workplane("XY")
             .box(L_clam, s, s, centered=(False, True, True))
             .translate((-L_clam, sy * y_lon, 0))
+            .intersect(hull)
         )
 
     for i in range(n_crossbeams):
@@ -606,6 +611,7 @@ def build_vehicle(
         rail_x_start_m=battery_it["x_start_m"],
         rail_length_m=battery_it["length_m"],
         r_int_m=D / 2.0 - fus["t_shell_m"],
+        hull=fuselage,
     )
 
     # -- wing (split into fixed wing + 2 ailerons, at zero deflection),
