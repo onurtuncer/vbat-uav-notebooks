@@ -9,6 +9,16 @@ is tagged.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Frame longerons trimmed to the hull**: the L/R clamshell-joint
+  longerons were straight bars at y = ±0.35 D running the full
+  clamshell length to the nose tip, so forward of ~station 22 mm they
+  protruded through the nose taper. `frame_parts` now intersects them
+  with the fuselage solid — they end where the ogive becomes narrower
+  than the joint line (display part only; the member mass model is
+  unchanged).
+
 ## [0.4.2] — 2026-07-15
 
 Patch release: the v0.4.1 snapshot shipped with the prop rotor CAD still
