@@ -9,6 +9,11 @@ is tagged.
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-07-15
+
+Patch release: frame-longeron display parts no longer protrude through
+the nose taper.
+
 ### Fixed
 
 - **Frame longerons trimmed to the hull**: the L/R clamshell-joint
