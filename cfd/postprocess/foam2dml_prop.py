@@ -7,7 +7,8 @@ Inputs (either or both):
                            (V_mps, T_disk_N) and a `forces` functionObject
                            on (duct centerbody)
   --vane-dir vanes/sweep   dirs named Vj*_d* with run_meta.yaml
-                           (V_jet_mps, delta_deg, S_vane_m2, c_vane_m) and
+                           (V_jet_mps, delta_deg, S_vane_m2, c_vane_m,
+                           h_vane_m, hinge_xc, tc_design) and
                            `forces` on (vane), CofR at the hinge line
 
 Outputs:
@@ -34,6 +35,7 @@ converged iteration tail) for verification by the Aetherion DAVEml loader.
 
 import argparse
 import glob
+import math
 import os
 import re
 import sys
@@ -190,6 +192,7 @@ def grid(points, xkey, ykey, vkey):
 
 def export_prop(prop_dir, avg_frac, out):
     points = []
+    geo = None
     for d in sorted(glob.glob(os.path.join(prop_dir, "V*_T*"))):
         meta = read_meta(d)
         try:
@@ -197,6 +200,8 @@ def export_prop(prop_dir, avg_frac, out):
         except RuntimeError as e:
             print(f"!! skipping {d}: {e}", file=sys.stderr)
             continue
+        if geo is None:
+            geo = meta
         Td = meta["T_disk_N"]
         Ti = Td + f["Fx"]           # thrust +x; surfaces add lip suction/drag
         points.append(dict(V=meta["V_mps"], Td=Td, Ti=Ti,
@@ -210,12 +215,24 @@ def export_prop(prop_dir, avg_frac, out):
     Vs, Ts, tdata = grid(points, "V", "Td", "Ti")
     _, _, adata = grid(points, "V", "Td", "tau")
 
+    # geometry sentence from run_meta.yaml (Allrun.prop writes these from
+    # out/fuselage.yaml) -- never hardcode dimensions here, they drift
+    try:
+        geom_txt = (
+            f"(r_disk = {math.sqrt(geo['A_disk_m2'] / math.pi):.4f} m, "
+            f"A = {geo['A_disk_m2']:.5f} m^2, duct mid-chord). Duct "
+            f"D_inner/D_outer = {geo['D_duct_inner_m']:.3f}/"
+            f"{geo['D_duct_outer_m']:.3f} m, chord {geo['duct_chord_m']:.4f} "
+            f"m, NACA0012-section ring; hub r = {geo['r_hub_m']:.4f} m "
+            "(out/fuselage.yaml). ")
+    except KeyError as e:
+        sys.exit(f"run_meta.yaml missing geometry key {e}; sweep predates "
+                 "the fuselage.yaml-sourced geometry -- re-run Allrun.prop")
+
     dml = Dml("vbat_propulsion_cfd",
               "Installed thrust map of the V-BAT ducted fan from steady RANS "
               "(OpenFOAM simpleFoam, k-omega SST) with a uniform actuator-"
-              "disk momentum source (r_disk = 0.143 m, A = 0.06424 m^2, duct "
-              "mid-chord). Duct D_inner/D_outer = 0.286/0.302 m, chord 0.126 "
-              "m, NACA0012-section ring; hub r = 0.056 m (out/fuselage.yaml). "
+              "disk momentum source " + geom_txt +
               "T_installed = T_disk + Fx(duct+centerbody): includes duct lip "
               "suction and ram drag, excludes fan/blade efficiency (no blade "
               "CAD in the conceptual model -- combine with the momentum-"
@@ -247,6 +264,7 @@ def export_prop(prop_dir, avg_frac, out):
 
 def export_vanes(vane_dir, avg_frac, out):
     points = []
+    geo = None
     for d in sorted(glob.glob(os.path.join(vane_dir, "Vj*_d*"))):
         meta = read_meta(d)
         try:
@@ -254,6 +272,8 @@ def export_vanes(vane_dir, avg_frac, out):
         except RuntimeError as e:
             print(f"!! skipping {d}: {e}", file=sys.stderr)
             continue
+        if geo is None:
+            geo = meta
         rho = meta.get("rho", 1.225)
         S = meta["S_vane_m2"]
         c = meta["c_vane_m"]
@@ -272,26 +292,40 @@ def export_vanes(vane_dir, avg_frac, out):
     vjs = sorted({p["Vj"] for p in points})
     two_d = len(vjs) > 1
 
+    # geometry sentence from run_meta.yaml (Allrun.vanes writes these from
+    # out/control_vanes.yaml) -- never hardcode dimensions here, they drift
+    try:
+        hinge = geo["hinge_xc"]
+        re_c = geo["V_jet_mps"] * geo["c_vane_m"] / 1.5e-5   # nu, case value
+        geom_txt = (
+            f"vane per out/control_vanes.yaml: span {geo['h_vane_m']:.4f} m, "
+            f"chord {geo['c_vane_m']:.5f} m, S = {geo['S_vane_m2']:.6f} m^2, "
+            f"hinge at {hinge:.2f}c; 1.5 mm plate thickness for meshability "
+            f"(t/c = {geo['tc_design']:.2f} design). ")
+    except KeyError as e:
+        sys.exit(f"run_meta.yaml missing geometry key {e}; sweep predates "
+                 "the control_vanes.yaml-sourced geometry -- re-run "
+                 "Allrun.vanes")
+
     dml = Dml("vbat_controls_cfd",
               "Single control-vane force and hinge-moment coefficients from "
               "steady RANS (OpenFOAM simpleFoam, k-omega SST). Flat-plate "
-              "vane per out/control_vanes.yaml: span 0.0714 m, chord "
-              "0.02856 m, S = 0.0020392 m^2, hinge at 0.25c; 1.5 mm plate "
-              "thickness for meshability (t/c = 0.02 design). Uniform jet "
-              "inflow (slip outer boundary), 5% turbulence intensity, "
-              "Re_c ~ 4.5e4. CN = Fz/(q_jet S), CH = My/(q_jet S c) about "
-              "the hinge; positive delta deflects the LE toward -z (positive CN), jet "
-              "along -x. Per-vane data: apply the T/B/L/R mixing matrix "
-              "from control_vanes.yaml downstream. Companion to "
-              "vbat_aero_cfd.dml and vbat_propulsion_cfd.dml.")
+              + geom_txt +
+              "Uniform jet inflow (slip outer boundary), 5% turbulence "
+              f"intensity, Re_c ~ {re_c:.2g}. CN = Fz/(q_jet S), CH = "
+              "My/(q_jet S c) about the hinge; positive delta deflects the "
+              "LE toward -z (positive CN), jet along -x. Per-vane data: "
+              "apply the T/B/L/R mixing matrix from control_vanes.yaml "
+              "downstream. Companion to vbat_aero_cfd.dml and "
+              "vbat_propulsion_cfd.dml.")
     dml.var("vaneDeflection", "delta", "deg",
-            "Vane deflection about the 0.25c hinge line.")
+            f"Vane deflection about the {hinge:.2f}c hinge line.")
     if two_d:
         dml.var("jetVelocity", "Vjet", "m_s", "Local jet speed at the vane.")
     dml.var("vaneNormalForceCoeff", "CN", "nd",
             "Vane normal-force coefficient (per vane).", output=True)
     dml.var("vaneHingeMomentCoeff", "CH", "nd",
-            "Vane hinge-moment coefficient about 0.25c.", output=True)
+            f"Vane hinge-moment coefficient about {hinge:.2f}c.", output=True)
 
     if two_d:
         ds = sorted({p["d"] for p in points})

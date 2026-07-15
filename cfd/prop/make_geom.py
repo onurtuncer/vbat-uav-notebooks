@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 make_geom.py -- Parametric duct + centerbody STL for the actuator-disk
-propulsion case, dimensions from vbat-uav-notebooks outputs:
-
-    D_duct_inner = 0.286 m, D_duct_outer = 0.302 m, duct_chord = 0.126 m
-    r_hub = 0.056 m                                (out/fuselage.yaml)
+propulsion case. Dimensions (duct_chord_m, D_duct_inner_m,
+D_duct_outer_m, r_hub_m) are read at run time from the design-pipeline
+handoff `out/fuselage.yaml`, so the CFD geometry tracks the converged
+design point instead of drifting; CLI flags override single values.
 
 Local propulsion frame (FRD-consistent): x along the duct axis, inflow
 from +x, jet exits toward -x.  Duct mid-chord (= actuator disk plane)
@@ -15,11 +15,38 @@ revolved about x, mean radius R_mid, max thickness = R_outer - R_inner.
 Centerbody: tangent-ogive nose + cylinder + conical tail, hub radius r_hub.
 
 Usage:  make_geom.py [--out constant/triSurface] [--nseg 96]
+        make_geom.py --print-dims    # one line for Allrun.prop:
+                                     # chord D_in D_out r_hub r_disk A_disk
 Writes: duct.stl, centerbody.stl
 """
 import argparse
 import math
 import os
+import re
+
+FUSELAGE_YAML = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             "..", "..", "out", "fuselage.yaml")
+
+
+def read_fuselage_dims(path):
+    """Duct/hub dimensions from the fuselage handoff. Minimal top-level
+    `key: number` parser (same idiom as postprocess/foam2dml.py) -- the
+    OpenFOAM host only has a bare python3, no PyYAML."""
+    vals = {}
+    with open(path) as f:
+        for line in f:
+            m = re.match(r"([A-Za-z_]\w*):\s*([-+\d.eE]+)\s*$", line)
+            if m:
+                vals[m.group(1)] = float(m.group(2))
+    try:
+        return dict(chord=vals["duct_chord_m"],
+                    r_inner=vals["D_duct_inner_m"] / 2.0,
+                    r_outer=vals["D_duct_outer_m"] / 2.0,
+                    r_hub=vals["r_hub_m"])
+    except KeyError as e:
+        raise SystemExit(
+            f"{path}: missing key {e} -- regenerate the design handoffs "
+            "(notebooks/fuselage_design.ipynb)")
 
 
 def naca00_halfthickness(xi, t):
@@ -92,21 +119,38 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="constant/triSurface")
     ap.add_argument("--nseg", type=int, default=96)
-    # repo values (out/fuselage.yaml); override if the design changes
-    ap.add_argument("--chord", type=float, default=0.126)
-    ap.add_argument("--r-inner", type=float, default=0.143)
-    ap.add_argument("--r-outer", type=float, default=0.151)
-    ap.add_argument("--r-hub", type=float, default=0.056)
+    ap.add_argument("--fuselage-yaml", default=FUSELAGE_YAML,
+                    help="design handoff supplying the duct/hub dimensions")
+    # dimensions default to the out/fuselage.yaml handoff; flags are
+    # one-off overrides for sensitivity studies, not a place to pin values
+    ap.add_argument("--chord", type=float, default=None)
+    ap.add_argument("--r-inner", type=float, default=None)
+    ap.add_argument("--r-outer", type=float, default=None)
+    ap.add_argument("--r-hub", type=float, default=None)
+    ap.add_argument("--print-dims", action="store_true",
+                    help="print 'chord D_in D_out r_hub r_disk A_disk' "
+                         "(SI) and exit; consumed by Allrun.prop")
     a = ap.parse_args()
 
+    dims = read_fuselage_dims(a.fuselage_yaml)
+    chord = dims["chord"] if a.chord is None else a.chord
+    r_in = dims["r_inner"] if a.r_inner is None else a.r_inner
+    r_out = dims["r_outer"] if a.r_outer is None else a.r_outer
+    r_hub = dims["r_hub"] if a.r_hub is None else a.r_hub
+
+    if a.print_dims:
+        print(f"{chord:.6g} {2*r_in:.6g} {2*r_out:.6g} {r_hub:.6g} "
+              f"{r_in:.6g} {math.pi*r_in**2:.6g}")
+        return
+
     os.makedirs(a.out, exist_ok=True)
-    n1 = revolve_to_stl(duct_profile(a.chord, a.r_inner, a.r_outer),
+    n1 = revolve_to_stl(duct_profile(chord, r_in, r_out),
                         os.path.join(a.out, "duct.stl"), "duct", a.nseg)
-    n2 = revolve_to_stl(centerbody_profile(a.r_hub),
+    n2 = revolve_to_stl(centerbody_profile(r_hub),
                         os.path.join(a.out, "centerbody.stl"),
                         "centerbody", a.nseg)
     print(f"duct.stl: {n1} tris; centerbody.stl: {n2} tris "
-          f"(disk plane x=0, r_disk = {a.r_inner:.3f} m)")
+          f"(disk plane x=0, r_disk = {r_in:.4f} m)")
 
 
 if __name__ == "__main__":

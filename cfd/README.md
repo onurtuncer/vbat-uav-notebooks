@@ -22,7 +22,7 @@ cd vehicle
 ./Allrun.polar -n 8 -V 20 -- -4 -2 0 2 4 6 8 10 12
 python3 ../postprocess/foam2dml.py --polar-dir polar --out vbat_aero_cfd.dml --plot
 
-# Propulsion map (self-contained geometry via make_geom.py)
+# Propulsion map (duct/hub dims read from out/fuselage.yaml via make_geom.py)
 cd prop
 ./Allrun.prop -n 8
 python3 ../postprocess/foam2dml_prop.py --prop-dir sweep
