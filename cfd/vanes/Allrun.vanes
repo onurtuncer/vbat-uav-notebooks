@@ -3,13 +3,14 @@
 # Control-vane characterization: single flat-plate vane in the duct jet.
 #
 #   ./Allrun.vanes [-n nProcs] [-V "vjet1 vjet2 ..."] [-d "d1 d2 ..."]
-#   defaults:  V = "23.38"                 (V_jet_ms, out/control_vanes.yaml)
+#   defaults:  V = V_jet_ms read from out/control_vanes.yaml
 #              d = "-20 -15 -10 -5 0 5 10 15 20"   (deflection, deg)
 #
-# Vane (out/control_vanes.yaml): flat plate, span h = 0.0714 m,
-# chord c = 0.02856 m, hinge at 0.25c, t/c = 0.02 -> plate ~0.6 mm; a
-# 1.5 mm physical plate thickness is used for meshability (blunt-plate
-# CN penalty at this Re ~ few %, Re_vane ~ 4.6e4).
+# Vane geometry (span, chord, hinge, design t/c) is read at run time from
+# the design handoff out/control_vanes.yaml, so the CFD vane tracks the
+# converged design point instead of drifting. The only case constant is
+# the 1.5 mm physical plate thickness, kept for meshability (design t/c
+# gives a sub-mm plate; blunt-plate CN penalty at this Re ~ few %).
 #
 # Local frame: flow from +x moving -x (jet), span along y, deflection
 # rotates the plate about the hinge line (y-axis at x_hinge).  Positive
@@ -19,7 +20,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 NPROCS=8
-VLIST="23.38"
+VLIST=""
 DLIST="-20 -15 -10 -5 0 5 10 15 20"
 while getopts "n:V:d:" opt; do
     case $opt in
@@ -33,11 +34,30 @@ done
 command -v blockMesh >/dev/null || { echo "ERROR: source OpenFOAM first."; exit 1; }
 mkdir -p log
 
-# vane constants (repo values)
-CHORD=0.02856
-SPAN=0.0714
-THICK=0.0015
-XH=$(python3 -c "print($CHORD*(0.5-0.25))")   # hinge at 0.25c; plate centred
+# vane dimensions from the design handoff (single source, no drift);
+# fails loudly (set -e) if the handoff is missing or incomplete
+DIMS=$(python3 - << 'PYEOF'
+import re
+vals = {}
+for line in open("../../out/control_vanes.yaml"):
+    m = re.match(r"([A-Za-z_]\w*):\s*([-+\d.eE]+)\s*$", line)
+    if m:
+        vals[m.group(1)] = float(m.group(2))
+try:
+    print(" ".join(f"{vals[k]:.6g}" for k in
+                   ("c_vane_m", "h_vane_m", "S_vane_m2",
+                    "hinge_xc", "tc_ratio", "V_jet_ms")))
+except KeyError as e:
+    raise SystemExit(f"out/control_vanes.yaml: missing key {e} -- "
+                     "re-run notebooks/control_vane_design.ipynb")
+PYEOF
+)
+read -r CHORD SPAN S_VANE HINGE_XC TC_DESIGN VJET_DESIGN <<< "$DIMS"
+VLIST=${VLIST:-$VJET_DESIGN}
+echo ">> vane: chord $CHORD m, span $SPAN m, hinge ${HINGE_XC}c, V_jet $VLIST m/s"
+
+THICK=0.0015   # physical plate thickness for meshability (case constant)
+XH=$(python3 -c "print($CHORD*(0.5-$HINGE_XC))")   # hinge line; plate centred
 
 gen_vane_stl() {  # $1 = delta_deg, $2 = out.stl
 python3 - "$1" "$2" << PYEOF
@@ -86,10 +106,22 @@ write_case() {  # $1 = dir, $2 = Vjet, $3 = delta
     mkdir -p "$DIR/system" "$DIR/constant/triSurface" "$DIR/0"
     gen_vane_stl "$DELTA" "$DIR/constant/triSurface/vane.stl"
 
+    cat > "$DIR/constant/transportProperties" << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object transportProperties; }
+transportModel Newtonian;
+nu 1.5e-05;
+EOF
+    cat > "$DIR/constant/turbulenceProperties" << 'EOF'
+FoamFile { version 2.0; format ascii; class dictionary; object turbulenceProperties; }
+simulationType RAS;
+RAS { RASModel kOmegaSST; turbulence on; printCoeffs off; }
+EOF
+
     cat > "$DIR/system/blockMeshDict" << 'EOF'
 FoamFile { version 2.0; format ascii; class dictionary; object blockMeshDict; }
 scale 1;
-// chord c = 0.0286: ~7c upstream, 14c wake, 7c lateral. Base cell 10 mm.
+// Fixed box: >=7c upstream, >=14c wake, >=7c lateral for any chord up to
+// ~0.03 m (actual c from out/control_vanes.yaml). Base cell 10 mm.
 vertices
 (
     (-0.40 -0.20 -0.20) (0.20 -0.20 -0.20) (0.20 0.20 -0.20) (-0.40 0.20 -0.20)
@@ -297,8 +329,11 @@ EOF
 delta_deg: $DELTA
 V_jet_mps: $V
 rho: 1.225
-S_vane_m2: 0.00203918
+S_vane_m2: $S_VANE
 c_vane_m: $CHORD
+h_vane_m: $SPAN
+hinge_xc: $HINGE_XC
+tc_design: $TC_DESIGN
 EOF
 }
 
