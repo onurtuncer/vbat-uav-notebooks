@@ -9,6 +9,14 @@ is tagged.
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-07-15
+
+Point release on the ADR-0010 baseline: freezes the open COTS hardware
+(NB11), amends ADR-0003 to the 3-blade 203 mm prop-in-duct the selection
+forced — re-converging the design to **MTOW 2.302 kg / 652 W hover** —
+and drift-proofs the propulsion/vane CFD cases against future design
+moves.
+
 ### Added
 
 - **README hero render** (`assets/vbat_render.png`): shaded 3D view of the
@@ -81,6 +89,24 @@ is tagged.
   dimensional prop/vane models to survive the hover `q_∞ → 0`
   singularity, S-119 check-cases, validation gates); the Gazebo model is
   demoted to PX4-side integration smoke checks.
+
+### Fixed
+
+- **Prop/vane CFD geometry sourced from the design handoffs, not
+  hardcodes** (`cfd/prop/make_geom.py`, `Allrun.prop`, `Allrun.vanes`,
+  `foam2dml_prop.py`): the actuator-disk propulsion case still built the
+  ancient 286/302 mm duct (56 mm hub) and the vane sweep still meshed
+  the pre-resize vane (span 0.0714 m, chord 0.02856 m, V_jet
+  23.38 m/s) — both had silently drifted from the converged design
+  point. The duct/hub dims now come from `out/fuselage.yaml` and the
+  vane dims/default jet speed from `out/control_vanes.yaml` at run
+  time; `Allrun.prop` refuses to reuse a base mesh built for a
+  different design point (`base/.geom_dims` stamp), and the DAVE-ML
+  exporter builds its provenance text from `run_meta.yaml`, exiting
+  loudly on sweeps that predate the change. `Allrun.vanes` also gains
+  the previously missing `constant/transportProperties` and
+  `turbulenceProperties`, without which simpleFoam could not run at
+  all.
 
 ## [0.4.0] — 2026-07-11
 
