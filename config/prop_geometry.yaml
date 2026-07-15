@@ -4,40 +4,65 @@
 #
 # Blade tip radius is D_rotor_m/2 from config/rotor.yaml; the duct bore
 # already carries the tip clearance (fuselage design), so the blade is
-# built to the full rotor radius.
+# built to the full rotor radius. The blade twist is the exact
+# constant-geometric-pitch law beta(r) = atan(pitch / (2*pi*r)) with
+# pitch = pitch_ratio * D — for the 8x6 this is the true 6 in
+# (152.25 mm at 203 mm) geometric pitch. Sections are NACA 4-digit,
+# thickness tapering root -> tip.
 #
-# The rotor is a constant-geometric-pitch blade: local twist follows
-# beta(r) = atan(pitch / (2*pi*r)), the classic propeller pitch law.
-# Sections are NACA 4-digit, thickness tapering root -> tip.
+# The hub is a short adapter collar, not an EDF cartridge: the prop
+# bolts to the motor through an adapter at the fuselage-tailcone /
+# exhaust-centerbody junction, so the collar only needs to be a little
+# longer than the blade-root chord projection. (The pre-amendment EDF
+# values — hub_length_ratio 0.35, spinner_ratio 1.0 — buried a 114 mm
+# barrel inside the tailcone and pushed a spinner out through its skin.)
 #
 # n_blades         : blade count (3 = the COTS prop class)
-# hub_radius_ratio : hub radius / tip radius -- kept at the exhaust
-#                    centerbody radius (0.42): the centerbody houses the
-#                    vane servos and is airframe, not prop; the prop
-#                    mounts to the motor via an adapter inside it
-# hub_length_ratio : hub length / fan diameter
-# spinner_ratio    : spinner (nose cone) length / hub radius
+# hub_radius_ratio : hub (adapter collar) radius / tip radius. 0.42 sits
+#                    ~2 mm proud of the 40.6 mm tailcone/centerbody
+#                    junction radius, so the collar reads as the prop
+#                    adapter and the blade roots emerge from it, not
+#                    from the airframe skin.
+# hub_length_ratio : collar length / rotor diameter. 0.12 (~24 mm)
+#                    covers the blade-root axial extent (root chord
+#                    ~13 mm at ~34 deg twist) plus mounting hardware.
+# spinner_ratio    : spinner (nose cone) length / hub radius. 0 = no
+#                    spinner (flat collar face): the fuselage tailcone
+#                    is immediately upstream, a spinner has no place on
+#                    a prop-in-duct.
 # pitch_ratio      : geometric pitch / diameter (8x6 -> 6/8 = 0.75)
-# c_root_ratio     : blade chord at root / tip radius
-# c_tip_ratio      : blade chord at tip  / tip radius
-#                    (0.18/0.10 gives the ~15 mm mean chord of the
-#                    8x6-class blade, consistent with rotor_solidity
-#                    0.077 in config/propulsive_system_parameters.yaml)
+# c_root_ratio     : blade chord at the collar exit / tip radius
+# c_peak_ratio     : maximum blade chord / tip radius
+# f_peak           : span fraction (0 root -> 1 tip) of maximum chord.
+#                    Real 8x6-class 3-blades peak around 35% span.
+# c_tip_ratio      : blade chord at the tip / tip radius, BEFORE tip
+#                    rounding (see tip_round_expo).
+#                    (0.13/0.175/0.10 give a ~14-15 mm mean chord,
+#                    consistent with rotor_solidity 0.077 in
+#                    config/propulsive_system_parameters.yaml)
+# tip_round_expo   : tip-rounding exponent m in the planform factor
+#                    sqrt(1 - f^m): ~1 inboard, shrinks the chord over
+#                    the outer ~15% span to a rounded tip. Higher m =
+#                    squarer tip; 10 matches the COTS 8x6 look.
 # camber_M         : NACA 4-digit max camber (e.g. 0.04 = 4%)
 # camber_P         : NACA 4-digit camber position (0.4 = 40% chord)
 # tc_root          : thickness/chord at blade root
 # tc_tip           : thickness/chord at blade tip
-# n_sections       : radial loft stations per blade
+# n_sections       : radial loft stations per blade (13 keeps the
+#                    peaked planform and tip rounding smooth)
 
 n_blades: 3
 hub_radius_ratio: 0.42
-hub_length_ratio: 0.35
-spinner_ratio: 1.0
+hub_length_ratio: 0.12
+spinner_ratio: 0.0
 pitch_ratio: 0.75
-c_root_ratio: 0.18
+c_root_ratio: 0.13
+c_peak_ratio: 0.175
+f_peak: 0.35
 c_tip_ratio: 0.10
+tip_round_expo: 10
 camber_M: 0.04
 camber_P: 0.4
 tc_root: 0.12
 tc_tip: 0.06
-n_sections: 9
+n_sections: 13
