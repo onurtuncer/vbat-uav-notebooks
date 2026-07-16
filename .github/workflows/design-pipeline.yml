@@ -15,6 +15,16 @@ on:
 permissions:
   contents: read
 
+env:
+  # Single source of truth for the pipeline: the execute loop AND the
+  # published index page both derive from this order. Adding a notebook
+  # here is the ONLY edit needed for it to run and appear on Pages.
+  NOTEBOOK_ORDER: >-
+    vbat_conceptual_design wing_design control_vane_design
+    aileron_design vibration_isolation fuselage_design
+    thermal_design vehicle_solid_model mass_properties
+    wiring_diagram cots_selection
+
 concurrency:
   group: design-${{ github.ref }}
   cancel-in-progress: true
@@ -41,10 +51,7 @@ jobs:
       - name: Execute notebooks (dependency order)
         run: |
           set -euo pipefail
-          for nb in vbat_conceptual_design wing_design control_vane_design \
-                    aileron_design vibration_isolation fuselage_design \
-                    thermal_design vehicle_solid_model mass_properties \
-                    wiring_diagram cots_selection; do
+          for nb in $NOTEBOOK_ORDER; do
             echo "::group::notebooks/${nb}.ipynb"
             jupyter nbconvert --to notebook --execute \
               --ExecutePreprocessor.timeout=1200 \
@@ -212,12 +219,16 @@ jobs:
           cp -r out/cad/stl out/cad/step site/cad/
           cp out/*.png site/img/ 2>/dev/null || true
 
-          # Part manifest for the exploded-view viewer
+          # Part manifest for the exploded-view viewer. "version" is the
+          # deployed commit: the viewer appends it to STL URLs as a
+          # cache-buster so a redeploy is never masked by stale browser/
+          # CDN caches.
           python3 - << 'PYEOF'
-          import json, pathlib
+          import json, os, pathlib
           parts = sorted(p.name for p in pathlib.Path("site/cad/stl/parts").glob("*.stl"))
-          pathlib.Path("site/cad/parts.json").write_text(json.dumps({"parts": parts}))
-          print(f"parts.json: {len(parts)} parts")
+          manifest = {"parts": parts, "version": os.environ["GITHUB_SHA"][:12]}
+          pathlib.Path("site/cad/parts.json").write_text(json.dumps(manifest))
+          print(f"parts.json: {len(parts)} parts @ {manifest['version']}")
           PYEOF
 
           # Bill of materials page from out/bom.csv
@@ -252,18 +263,37 @@ jobs:
           PYEOF
           cp out/bom.csv site/
           cp out/wiring_diagram.svg site/
-          cat > site/index.html << 'EOF'
-          <!DOCTYPE html>
+
+          # Index page. The notebook list is GENERATED from NOTEBOOK_ORDER
+          # (the same list the execute job runs) with each entry's title
+          # taken from the notebook's first markdown heading — it cannot
+          # go stale when a notebook is added or renamed.
+          python3 - << 'PYEOF'
+          import html, json, os, pathlib
+          items = []
+          for nb in os.environ["NOTEBOOK_ORDER"].split():
+              cells = json.loads(pathlib.Path(f"executed/{nb}.ipynb")
+                                 .read_text(encoding="utf-8"))["cells"]
+              title = nb.replace("_", " ")
+              for cell in cells:
+                  if cell["cell_type"] == "markdown":
+                      src = "".join(cell["source"]).strip()
+                      if src.startswith("#"):
+                          title = src.splitlines()[0].lstrip("#").strip()
+                          break
+              items.append(f'    <li><a href="{nb}.html">{html.escape(title)}</a></li>')
+          nb_list = "\n".join(items)
+          page = f"""<!DOCTYPE html>
           <html lang="en">
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>V-BAT Tail-Sitter — Conceptual Design Report</title>
             <style>
-              body { font-family: system-ui, sans-serif; max-width: 46rem;
-                     margin: 3rem auto; padding: 0 1rem; line-height: 1.6; }
-              li { margin: 0.4rem 0; }
-              img { max-width: 100%; border: 1px solid #ccc; border-radius: 6px; }
+              body {{ font-family: system-ui, sans-serif; max-width: 46rem;
+                     margin: 3rem auto; padding: 0 1rem; line-height: 1.6; }}
+              li {{ margin: 0.4rem 0; }}
+              img {{ max-width: 100%; border: 1px solid #ccc; border-radius: 6px; }}
             </style>
           </head>
           <body>
@@ -281,19 +311,15 @@ jobs:
 
             <h2>Design notebooks (run order)</h2>
             <ol>
-              <li><a href="vbat_conceptual_design.html">Conceptual design — mission sizing &amp; mass closure</a></li>
-              <li><a href="wing_design.html">Wing design — airfoil selection &amp; planform</a></li>
-              <li><a href="control_vane_design.html">Control vane design</a></li>
-              <li><a href="fuselage_design.html">Fuselage design — layout &amp; drag trade</a></li>
-              <li><a href="vehicle_solid_model.html">Full-vehicle solid model (CadQuery)</a></li>
-              <li><a href="mass_properties.html">Mass properties — inertia tensor &amp; BOM</a></li>
-              <li><a href="wiring_diagram.html">Electrical block wiring diagram</a></li>
+          {nb_list}
             </ol>
 
             <p><a href="https://github.com/onurtuncer/vbat-uav-notebooks">Source repository</a></p>
           </body>
-          </html>
-          EOF
+          </html>"""
+          pathlib.Path("site/index.html").write_text(page, encoding="utf-8")
+          print(f"index.html: {len(items)} notebooks listed")
+          PYEOF
 
       - uses: actions/upload-pages-artifact@v5
         with:
