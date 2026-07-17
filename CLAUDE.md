@@ -83,9 +83,12 @@ wiring module's operating point) — only the margins are configured; the
 lightest feasible candidate wins, deterministically. Mass-allocation fit is *reported, never
 filtered on*: at the current design point the ESC and servos fit; the
 avionics bay (~-42 g) and the motor (~-99 g of the motor_fan line, all
-motor) are over, and the COTS battery overshoots the sized pack by ~58 g
-(capacity quantisation, expected) — standing findings against the weight
-fractions, same status as the thermal cold-plate. The propeller is
+motor) are over — standing findings against the weight fractions, same
+status as the thermal cold-plate. The battery line flipped sign when the
+Li-ion 21700 class entered the catalog: the Molicel P50B 6S1P (450 g,
+108 Wh) undercuts the sized LiPo pack by ~105 g (its pack-level specific
+energy beats the config/battery.yaml LiPo density; note its 3.6 V/cell
+nominal vs the configured 3.7 — see batteries.yaml). The propeller is
 **pinned** via `selection.frozen` to the 3-blade 8×6 of the ADR-0003
 amendment (the configured solidity/FoM model that geometry); the lighter
 TR-stocked 2-blade Gemfan stays visible as a feasible alternative, but
@@ -106,9 +109,10 @@ physical-fit report. They write parallel `*_cots.yaml` handoffs (same
 schemas, via `cots_integration.py`) and NEVER touch the conceptual
 outputs — no back-edge: CAD/CFD and `Allrun.case` stay on the conceptual
 geometry, and the deltas are pinned standing findings (as-selected all-up
-2.427 kg = closure +125 g; hull grows to ⌀106×531 mm; structure model
-~33 g over its budget), folded into `config/` only as a deliberate
-next-iteration change after procurement. `design_summary` (NB15, last) is
+2.264 kg = closure −38 g since the Li-ion Molicel battery won the freeze;
+hull grows to ⌀107×533 mm; structure model ~33 g over its budget), folded
+into `config/` only as a deliberate next-iteration change after
+procurement. `design_summary` (NB15, last) is
 a pure reader: design point, margins table, frozen hardware, and every
 standing finding collected programmatically from the handoffs.
 

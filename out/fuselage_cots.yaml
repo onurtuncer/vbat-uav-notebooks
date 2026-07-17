@@ -5,29 +5,29 @@
 
 axis_convention: body FRD (x fwd, y right, z down); stations from nose, +aft; x_body
   = -station
-D_fus_m: 0.10627
-L_fus_m: 0.53133
-L_nose_m: 0.11689
-L_mid_m: 0.25504
-L_tail_m: 0.1594
+D_fus_m: 0.10659
+L_fus_m: 0.53295
+L_nose_m: 0.11725
+L_mid_m: 0.25581
+L_tail_m: 0.15988
 r_hub_m: 0.0406
 f_nose: 0.22
 f_tail: 0.3
 fineness: 5.0
 active_constraint: packaging
-S_wet_m2: 0.16519
-CD0_fus: 0.00629
-m_shell_kg: 0.3749
+S_wet_m2: 0.16614
+CD0_fus: 0.00632
+m_shell_kg: 0.3768
 t_shell_m: 0.0008
 construction_method: segmented_fdm
 semimono_members_kg:
-  skin: 0.25809
-  longerons: 0.0723
-  crossbeams: 0.01928
-  half_rings: 0.02524
-  total: 0.37492
-m_semimono_fdm_kg: 0.37492
-m_semimono_cfrp_kg: 0.25558
+  skin: 0.25958
+  longerons: 0.07252
+  crossbeams: 0.01934
+  half_rings: 0.02532
+  total: 0.37675
+m_semimono_fdm_kg: 0.37675
+m_semimono_cfrp_kg: 0.25674
 m_struct_pool_kg: 0.4434
 m_struct_carved_kg: 0.10186
 m_avionics_budget_kg: 0.208
@@ -36,17 +36,17 @@ m_avionics_net_kg: 0.1386
 m_misc_budget_kg: 0.16118
 m_misc_carved_kg: 0.015
 m_misc_net_kg: 0.14618
-x_CG_m: 0.25678
-x_wing_LE_m: 0.22181
-x_wing_AC_m: 0.26552
-x_vane_m: 0.55668
-L_vane_arm_m: 0.2999
+x_CG_m: 0.25598
+x_wing_LE_m: 0.22102
+x_wing_AC_m: 0.26472
+x_vane_m: 0.5583
+L_vane_arm_m: 0.30232
 static_margin: 0.05
 x_battery_trim_m: 0.0
 battery_tray_travel_m: 0.025
 sway_pad_m: 0.0016
 m_isolation_hw_kg: 0.032
-x_clam_aft_m: 0.37193
+x_clam_aft_m: 0.37306
 frame_profile_side_m: 0.008
 n_crossbeams: 3
 spar_od_m: 0.008
@@ -61,102 +61,102 @@ D_duct_outer_m: 0.225
 layout:
 - name: payload
   mass_kg: 0.5
-  x_start_m: 0.02922
-  length_m: 0.12187
-  x_cg_m: 0.09016
+  x_start_m: 0.02931
+  length_m: 0.12112
+  x_cg_m: 0.08987
 - name: avionics
   mass_kg: 0.1386
-  x_start_m: 0.15109
-  length_m: 0.04961
-  x_cg_m: 0.1759
+  x_start_m: 0.15044
+  length_m: 0.04931
+  x_cg_m: 0.17509
 - name: battery
-  mass_kg: 0.613
-  x_start_m: 0.20071
-  length_m: 0.142
-  x_cg_m: 0.27171
+  mass_kg: 0.45
+  x_start_m: 0.19975
+  length_m: 0.144
+  x_cg_m: 0.27175
 - name: esc
   mass_kg: 0.03
-  x_start_m: 0.24566
+  x_start_m: 0.24647
   length_m: 0.04
-  x_cg_m: 0.26566
+  x_cg_m: 0.26647
 - name: motor_fan
   mass_kg: 0.306
-  x_start_m: 0.49148
+  x_start_m: 0.49297
   length_m: 0.0
-  x_cg_m: 0.49148
+  x_cg_m: 0.49297
 - name: duct
   mass_kg: 0.0518
-  x_start_m: 0.50518
+  x_start_m: 0.50668
   length_m: 0.0
-  x_cg_m: 0.50518
+  x_cg_m: 0.50668
 - name: shell_struct
   mass_kg: 0.3415
-  x_start_m: 0.2391
+  x_start_m: 0.23983
   length_m: 0.0
-  x_cg_m: 0.2391
+  x_cg_m: 0.23983
 - name: battery_tray
   mass_kg: 0.015
-  x_start_m: 0.27171
+  x_start_m: 0.27175
   length_m: 0.0
-  x_cg_m: 0.27171
+  x_cg_m: 0.27175
 - name: control_hw
   mass_kg: 0.0613
-  x_start_m: 0.5515
+  x_start_m: 0.55312
   length_m: 0.0
-  x_cg_m: 0.5515
+  x_cg_m: 0.55312
 - name: isolation_hw
   mass_kg: 0.032
-  x_start_m: 0.13303
+  x_start_m: 0.13248
   length_m: 0.0
-  x_cg_m: 0.13303
+  x_cg_m: 0.13248
 - name: joint_hw
   mass_kg: 0.02
-  x_start_m: 0.18596
+  x_start_m: 0.18653
   length_m: 0.0
-  x_cg_m: 0.18596
+  x_cg_m: 0.18653
 - name: misc
   mass_kg: 0.1462
-  x_start_m: 0.21253
+  x_start_m: 0.21318
   length_m: 0.0
-  x_cg_m: 0.21253
+  x_cg_m: 0.21318
 - name: wing
   mass_kg: 0.1138
-  x_start_m: 0.25678
+  x_start_m: 0.25598
   length_m: 0.0
-  x_cg_m: 0.25678
+  x_cg_m: 0.25598
 - name: aileron_hw
   mass_kg: 0.0238
-  x_start_m: 0.25678
+  x_start_m: 0.25598
   length_m: 0.0
-  x_cg_m: 0.25678
+  x_cg_m: 0.25598
 - name: spar_hw
   mass_kg: 0.0341
-  x_start_m: 0.25678
+  x_start_m: 0.25598
   length_m: 0.0
-  x_cg_m: 0.25678
+  x_cg_m: 0.25598
 as_selected:
-  m_items_total_kg: 2.42722
+  m_items_total_kg: 2.26422
   m_closure_mtow_kg: 2.30261
-  m_delta_kg: 0.12462
-  rho_battery_eff_kgm3: 2601.4
-  battery_id: gens_ace_6s_4000_30c
+  m_delta_kg: -0.03838
+  rho_battery_eff_kgm3: 1798.6
+  battery_id: molicel_p50b_6s1p_5000
   fc_id: pixhawk_6c
   servo_id: kst_x08_v6
   edf_motor_id: sunnysky_x4120_465
   esc_id: apd_80f3x
   propeller_id: ma_3blade_8x6
 bay_fit:
-- part: gens_ace_6s_4000_30c
+- part: molicel_p50b_6s1p_5000
   category: battery
   where: battery
-  need_mm: 142.0
-  have_mm: 142.0
+  need_mm: 144.0
+  have_mm: 144.0
   ok: true
 - part: pixhawk_6c
   category: flight_controller
   where: avionics
   need_mm: 17.4
-  have_mm: 49.6
+  have_mm: 49.3
   ok: true
 - part: apd_80f3x
   category: esc
@@ -171,9 +171,9 @@ bay_fit:
   have_mm: 81.2
   ok: true
 delta_vs_conceptual:
-  D_fus_mm: 10.62
-  L_fus_mm: 53.06
-  x_CG_mm: 20.17
-  S_wet_m2: 0.02959
-  CD0_fus: 0.00096
-  L_vane_arm_mm: 32.88
+  D_fus_mm: 10.94
+  L_fus_mm: 54.68
+  x_CG_mm: 19.37
+  S_wet_m2: 0.03054
+  CD0_fus: 0.00099
+  L_vane_arm_mm: 35.3
