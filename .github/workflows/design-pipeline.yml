@@ -24,6 +24,8 @@ env:
     aileron_design vibration_isolation fuselage_design
     thermal_design vehicle_solid_model mass_properties
     wiring_diagram cots_selection
+    aileron_design_cots vibration_isolation_cots fuselage_design_cots
+    design_summary
 
 concurrency:
   group: design-${{ github.ref }}

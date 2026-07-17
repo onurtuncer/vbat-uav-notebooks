@@ -32,18 +32,19 @@ notebooks) — it runs the mass-closure sizing loop directly from `config/`:
 ./.venv/Scripts/python.exe .claude/skills/run-vbat-uav-notebooks/driver.py smoke
 ```
 
-Expected output (current design point, re-baselined per ADR-0010):
+Expected output (current design point, 203 mm prop-in-duct per the
+ADR-0003 amendment):
 
 ```
-converged   : True (24 iterations)
-MTOW        : 2.376 kg
-P_hover     : 710 W
-P_cruise    : 100 W
-C_rate_peak : 8.6
-wing        : S=0.1892 m^2  b=1.066 m
+converged   : True (22 iterations)
+MTOW        : 2.303 kg
+P_hover     : 652 W
+P_cruise    : 98 W
+C_rate_peak : 8.4
+wing        : S=0.1834 m^2  b=1.049 m
 ```
 
-`pipeline` executes the eleven notebooks in dependency order (same order and
+`pipeline` executes the fifteen notebooks in dependency order (same order and
 mechanism as CI: `jupyter nbconvert --execute`, `MPLBACKEND=Agg`). Executed
 copies land in `executed/`, design outputs in `out/`, figures in
 `notebooks/figures/`. Takes ~4 min locally; `vehicle_solid_model` is
@@ -112,7 +113,7 @@ above; ruff clean.)
 ## Run (human path)
 
 Open any notebook under `notebooks/` in Jupyter (`.venv` has jupyterlab) and
-run cells top-to-bottom, respecting the eleven-notebook order in `CLAUDE.md`.
+run cells top-to-bottom, respecting the fifteen-notebook order in `CLAUDE.md`.
 Agents should use the driver instead.
 
 ## Gotchas
@@ -126,7 +127,7 @@ Agents should use the driver instead.
   the committed `out/cad/`.
 - **Trust `config/` + the test pins over prose design-point numbers.**
   CLAUDE.md may quote a design point from an earlier baseline (e.g.
-  ≈3.06 kg vs the ADR-0010 re-baselined 2.376 kg in
+  ≈2.376 kg vs the ADR-0003-amendment 2.303 kg implied by
   `config/initial_weight_fraction_estimation.yaml`). `smoke` prints
   whatever `config/` implies; `tests/test_design_outputs.py` is the
   authoritative pin set.

@@ -266,6 +266,136 @@ class TestCotsSelection:
         assert "mm rotor" in rej["schuebeler_ds215_dia_hst_fan"]
 
 
+@pytest.fixture(scope="module")
+def aileron_cots() -> dict:
+    path = OUT / "aileron_cots.yaml"
+    if not path.exists():
+        pytest.skip("out/aileron_cots.yaml not generated -- run aileron_design_cots")
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+@pytest.fixture(scope="module")
+def vibration_cots() -> dict:
+    path = OUT / "vibration_cots.yaml"
+    if not path.exists():
+        pytest.skip("out/vibration_cots.yaml not generated -- run vibration_isolation_cots")
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+@pytest.fixture(scope="module")
+def fuselage_cots() -> dict:
+    path = OUT / "fuselage_cots.yaml"
+    if not path.exists():
+        pytest.skip("out/fuselage_cots.yaml not generated -- run fuselage_design_cots")
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+class TestAsSelectedResolve:
+    """Post-freeze re-solve (NB12/NB13, ADR-0012): the conceptual
+    solutions stay in aileron/vibration.yaml; the as-selected ones land
+    in the *_cots.yaml handoffs, tied to the frozen hardware ids."""
+
+    def test_aileron_resolve_uses_frozen_servo(self, aileron_cots, components):
+        servo = components["selected"]["servo"]
+        assert aileron_cots["cots_servo"]["id"] == servo["id"]
+        assert aileron_cots["servo_mass_kg_each"] == pytest.approx(
+            servo["mass_g"] * 1e-3, rel=1e-6)
+
+    def test_aileron_surface_is_servo_independent(self, aileron, aileron_cots):
+        # the re-solve must not move the aerodynamic solution -- only the
+        # hardware mass and the torque check change
+        for key in ("c_aileron_m", "b_aileron_m", "S_aileron_m2",
+                    "servo_torque_req_gcm", "ddot_roll_total_cruise_deg_s2"):
+            assert aileron_cots[key] == pytest.approx(aileron[key], rel=1e-6)
+
+    def test_frozen_servo_margins(self, aileron_cots):
+        s = aileron_cots["cots_servo"]
+        assert s["margin_vs_vane_req"] >= 1.0        # vane torque sizes the servo
+        assert s["margin_vs_aileron_req"] >= s["margin_vs_vane_req"]
+        assert aileron_cots["cruise_authority_ok"] is True
+
+    def test_vibration_resolve_uses_frozen_fc(self, vibration_cots, components):
+        fc = components["selected"]["flight_controller"]
+        assert vibration_cots["cots_fc"]["id"] == fc["id"]
+        assert vibration_cots["modules"]["fc_imu"]["m_isolated_kg"] == pytest.approx(
+            fc["mass_g"] * 1e-3, rel=1e-3)
+
+    def test_corner_frequency_is_mass_independent(self, vibration, vibration_cots):
+        # f_n depends only on forcing/target/damping -- the re-solve must
+        # reproduce it (and the sway pad NB6/NB14 pack against) exactly
+        assert vibration_cots["f_n_hz"] == pytest.approx(vibration["f_n_hz"], rel=1e-6)
+        assert vibration_cots["sway_pad_total_m"] == pytest.approx(
+            vibration["sway_pad_total_m"], rel=1e-6)
+        assert vibration_cots["window_ok"] is True
+
+    def test_fc_isolator_softens_with_the_real_board(self, vibration, vibration_cots):
+        # k scales with the isolated mass; the Pixhawk 6C is lighter than
+        # the 60 g estimate, so the procured isolators must be softer
+        k_est  = vibration["modules"]["fc_imu"]["k_isolator_N_m"]
+        k_cots = vibration_cots["modules"]["fc_imu"]["k_isolator_N_m"]
+        assert k_cots < k_est
+        assert vibration_cots["modules"]["payload"]["k_isolator_N_m"] == pytest.approx(
+            vibration["modules"]["payload"]["k_isolator_N_m"], rel=1e-6)
+
+
+class TestAsSelectedFuselage:
+    """Post-freeze fuselage re-solve (NB14, ADR-0012): real masses,
+    envelope-floored bays, physical fit. The conceptual out/fuselage.yaml
+    stays the CAD/CFD geometry; these pin the as-selected hull and its
+    standing findings."""
+
+    def test_design_point(self, fuselage_cots):
+        assert fuselage_cots["D_fus_m"] == pytest.approx(0.10627, rel=1e-2)
+        assert fuselage_cots["L_fus_m"] == pytest.approx(0.53133, rel=1e-2)
+        assert fuselage_cots["x_CG_m"] == pytest.approx(0.25678, rel=1e-2)
+        assert fuselage_cots["active_constraint"] == "packaging"
+
+    def test_internal_consistency(self, fuselage_cots):
+        segments = (fuselage_cots["L_nose_m"] + fuselage_cots["L_mid_m"]
+                    + fuselage_cots["L_tail_m"])
+        assert segments == pytest.approx(fuselage_cots["L_fus_m"], rel=1e-3)
+        assert fuselage_cots["fineness"] == pytest.approx(
+            fuselage_cots["L_fus_m"] / fuselage_cots["D_fus_m"], rel=1e-3)
+
+    def test_hull_grows_to_hold_the_real_hardware(self, fuselage, fuselage_cots):
+        # rigid COTS envelopes floor the bay stack -- the as-selected hull
+        # must be at least as big as the conceptual one, never smaller
+        assert fuselage_cots["D_fus_m"] >= fuselage["D_fus_m"]
+        assert fuselage_cots["L_fus_m"] >= fuselage["L_fus_m"]
+        assert fuselage_cots["S_wet_m2"] >= fuselage["S_wet_m2"]
+
+    def test_battery_bay_holds_the_real_pack(self, fuselage_cots, components):
+        layout = {e["name"]: e for e in fuselage_cots["layout"]}
+        battery = components["selected"]["battery"]
+        assert layout["battery"]["mass_kg"] == pytest.approx(
+            battery["mass_g"] * 1e-3, rel=1e-6)
+        assert layout["battery"]["length_m"] * 1e3 >= max(battery["dims_mm"])
+
+    def test_all_frozen_parts_fit(self, fuselage_cots):
+        for entry in fuselage_cots["bay_fit"]:
+            assert entry["ok"] is True, (
+                f"{entry['part']} no longer fits {entry['where']} "
+                f"(needs {entry['need_mm']} mm, has {entry['have_mm']} mm)")
+
+    def test_as_selected_mass_rollup(self, fuselage_cots):
+        # the all-up delta IS the sum of the freeze's standing mass
+        # findings; pin its state (positive, bounded) like the thermal pin
+        s = fuselage_cots["as_selected"]
+        assert s["m_items_total_kg"] == pytest.approx(
+            s["m_closure_mtow_kg"] + s["m_delta_kg"], rel=1e-3)
+        assert 0.0 < s["m_delta_kg"] < 0.2
+        assert s["m_delta_kg"] == pytest.approx(0.1246, rel=5e-2)
+
+    def test_structure_over_budget_is_pinned_finding(self, fuselage_cots):
+        # KNOWN finding (ADR-0012): the hull that holds the real hardware
+        # outgrows the structural fraction at the closure MTOW. Pin the
+        # state so a change either way is caught.
+        budget = (fuselage_cots["m_struct_pool_kg"]
+                  - fuselage_cots["m_struct_carved_kg"])
+        assert fuselage_cots["m_shell_kg"] > budget
+        assert fuselage_cots["m_shell_kg"] < 1.25 * budget   # over, but bounded
+
+
 class TestCrossFileConsistency:
     def test_vane_hub_matches_fuselage_hub(self, fuselage, vanes):
         assert vanes["R_hub_m"] == pytest.approx(fuselage["r_hub_m"], rel=1e-6)

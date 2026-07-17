@@ -35,6 +35,10 @@ NOTEBOOKS = [
     "mass_properties",
     "wiring_diagram",
     "cots_selection",
+    "aileron_design_cots",        # post-freeze as-selected re-solves (ADR-0012)
+    "vibration_isolation_cots",
+    "fuselage_design_cots",
+    "design_summary",             # final rollup, reads out/ only
 ]
 
 CAD_NOTEBOOK = "vehicle_solid_model"

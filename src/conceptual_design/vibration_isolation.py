@@ -212,9 +212,15 @@ def size_isolation(
 #  Handoff writer
 # ---------------------------------------------
 
-def write_vibration_yaml(res: dict, p: VibrationParams, path) -> None:
+def write_vibration_yaml(res: dict, p: VibrationParams, path,
+                         regen_notebook: str = "notebooks/vibration_isolation.ipynb",
+                         extra: dict = None) -> None:
     """Write out/vibration.yaml -- consumed by fuselage_design (sway pad +
-    isolator hardware mass) and read for reference downstream."""
+    isolator hardware mass) and read for reference downstream.
+
+    The post-freeze re-solve reuses this writer for out/vibration_cots.yaml
+    (same schema) with its own `regen_notebook` provenance and an `extra`
+    block (frozen FC id/mass provenance) appended."""
     def _mod(m: IsolationResult) -> dict:
         return {
             "m_isolated_kg":     round(m.m_isolated_kg, 5),
@@ -250,9 +256,11 @@ def write_vibration_yaml(res: dict, p: VibrationParams, path) -> None:
         "m_isolation_struct_kg":   round(pl.hw_mass_kg, 5),
         "modules": {"fc_imu": _mod(fc), "payload": _mod(pl)},
     }
+    if extra:
+        data.update(extra)
     with open(path, "w", encoding="utf-8") as f:
         f.write("# AUTO-GENERATED -- do not edit by hand.\n")
         f.write("# Source : src/conceptual_design/vibration_isolation.py\n")
         f.write("# Input  : config/vibration.yaml + rotor RPM + payload mass\n")
-        f.write("# Regen  : re-run notebooks/vibration_isolation.ipynb\n\n")
+        f.write(f"# Regen  : re-run {regen_notebook}\n\n")
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)

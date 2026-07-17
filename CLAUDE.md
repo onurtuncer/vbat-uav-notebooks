@@ -27,9 +27,13 @@ that the next one reads:
 9. `mass_properties` — inertia tensor, BOM → `out/mass_properties.yaml`, `out/bom.csv`
 10. `wiring_diagram` — electrical block diagram → `out/wiring_diagram.svg`, `out/electrical.yaml`
 11. `cots_selection` — COTS FC/ESC/EDF-motor/propeller/servo/battery freeze → `out/components.yaml`
+12. `aileron_design_cots` — NB4 re-solved with the frozen servo → `out/aileron_cots.yaml`
+13. `vibration_isolation_cots` — NB5 re-solved with the frozen FC → `out/vibration_cots.yaml`
+14. `fuselage_design_cots` — NB6 re-solved with as-selected masses/envelopes → `out/fuselage_cots.yaml`
+15. `design_summary` — final rollup, reads `out/` only, writes nothing
 
-NB2–NB11 re-run `run_sizing_loop` from `config/` to reconstruct the same
-design point — if you change the sizing API, update **all eleven** call sites.
+NB2–NB15 re-run `run_sizing_loop` from `config/` to reconstruct the same
+design point — if you change the sizing API, update **all fifteen** call sites.
 
 `aileron_design` exists because jet-vane control authority is sized from
 **hover** thrust and collapses in cruise (`q_jet` scales linearly with
@@ -92,6 +96,21 @@ After procurement, weigh the parts, fix the `EST` entries, pin the
 remaining ids (pins are re-validated every run — a design change that
 outgrows frozen hardware fails loudly), and update the regression pins in
 the same commit.
+
+NB12–NB14 are the **post-freeze as-selected re-solve** (ADR-0012): NB4–NB6
+re-solved with the frozen hardware — real servo/FC masses, the pack
+density derived from the battery's own envelope, bay lengths **floored at
+each rigid part's best-orientation axial length** (`part_clearance_m` in
+`config/fuselage.yaml`), actual motor/prop/ESC layout masses, and a
+physical-fit report. They write parallel `*_cots.yaml` handoffs (same
+schemas, via `cots_integration.py`) and NEVER touch the conceptual
+outputs — no back-edge: CAD/CFD and `Allrun.case` stay on the conceptual
+geometry, and the deltas are pinned standing findings (as-selected all-up
+2.427 kg = closure +125 g; hull grows to ⌀106×531 mm; structure model
+~33 g over its budget), folded into `config/` only as a deliberate
+next-iteration change after procurement. `design_summary` (NB15, last) is
+a pure reader: design point, margins table, frozen hardware, and every
+standing finding collected programmatically from the handoffs.
 
 ## Hard rules
 
@@ -156,7 +175,7 @@ the same commit.
 ## CI (GitHub Actions)
 
 - `ci.yml` — ruff, pytest (3.10/3.12/3.14), ShellCheck on `cfd/**/Allrun*`.
-- `design-pipeline.yml` — executes all eleven notebooks on every PR, runs
+- `design-pipeline.yml` — executes all fifteen notebooks on every PR, runs
   design-regression + geometry tests, uploads `out/` artifacts; on main
   additionally: coarse OpenFOAM smoke run and GitHub Pages deploy
   (rendered notebooks, 3D viewer with exploded view, BOM page).
