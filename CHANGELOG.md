@@ -9,6 +9,32 @@ is tagged.
 
 ## [Unreleased]
 
+## [0.4.4] — 2026-07-17
+
+Patch release: post-freeze as-selected re-solve stage (ADR-0012) — the
+pipeline is now fifteen notebooks.
+
+### Added
+
+- **NB12–NB14 as-selected re-solves** (`aileron_design_cots`,
+  `vibration_isolation_cots`, `fuselage_design_cots`): NB4–NB6 re-solved
+  downstream of the COTS freeze with the frozen hardware — real servo/FC
+  masses, pack density from the battery's own envelope, bay lengths
+  floored at each rigid part's best-orientation axial length, actual
+  motor/prop/ESC layout masses, and a physical-fit report. Parallel
+  `out/*_cots.yaml` handoffs; the conceptual solutions and the CAD/CFD
+  geometry are untouched (no back-edge). New standing findings, pinned:
+  as-selected all-up 2.427 kg (+125 g over the 2.303 kg closure),
+  as-selected hull ⌀106 × 531 mm, structure model ~33 g over budget.
+- **NB15 `design_summary`** (last notebook): pure reader — design point,
+  margins table, frozen COTS hardware, and all standing findings
+  collected programmatically from the `out/` handoffs.
+- `src/conceptual_design/cots_integration.py` and backward-compatible
+  `fuselage_design.py` extensions (`min_axial_length_m`,
+  `part_envelopes`, `prop_item_masses`); `part_clearance_m` in
+  `config/fuselage.yaml`; regression pins for the new handoffs;
+  ADR-0012.
+
 ## [0.4.3] — 2026-07-15
 
 Patch release: frame-longeron display parts no longer protrude through
