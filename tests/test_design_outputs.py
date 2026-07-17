@@ -60,7 +60,10 @@ class TestAirfoil:
         assert airfoil["designation"] == "NACA 2412"
         assert airfoil["tc_ratio"] == pytest.approx(0.12, rel=1e-3)
         assert airfoil["CL_max_3D"] == pytest.approx(1.2186, rel=1e-2)
-        assert airfoil["LD_cruise"] == pytest.approx(13.22, rel=1e-2)
+        # 12.76 since the CL_max stall-consistency fix (2026-07 aero
+        # review): the wing sized to the real CL_max_3D flies cruise at
+        # CL 0.437, slightly off the polar optimum (13.22 at CL 0.503).
+        assert airfoil["LD_cruise"] == pytest.approx(12.76, rel=1e-2)
         assert airfoil["e_oswald"] == pytest.approx(0.8691, rel=1e-2)
 
 
@@ -70,7 +73,7 @@ class TestFuselage:
         # amended 2026-07-12; MTOW 2.303 kg, hover ~652 W)
         assert fuselage["D_fus_m"] == pytest.approx(0.09565, rel=1e-2)
         assert fuselage["L_fus_m"] == pytest.approx(0.47827, rel=1e-2)
-        assert fuselage["x_CG_m"] == pytest.approx(0.23661, rel=1e-2)
+        assert fuselage["x_CG_m"] == pytest.approx(0.23675, rel=1e-2)
         assert fuselage["static_margin"] == pytest.approx(0.05, rel=1e-2)
 
     def test_internal_consistency(self, fuselage):
@@ -88,7 +91,9 @@ class TestFuselage:
         # Rectangular wing: x_AC - x_LE = MAC/4. This MAC feeds the CFD
         # force-coefficient setup, so pin it explicitly.
         mac = 4.0 * (fuselage["x_wing_AC_m"] - fuselage["x_wing_LE_m"])
-        assert mac == pytest.approx(0.17484, rel=1e-2)
+        # 0.18740 since the CL_max stall-consistency fix: W/S drops to
+        # the true stall limit 107.2 N/m^2 -> S 0.2107 m^2, b 1.124 m.
+        assert mac == pytest.approx(0.18740, rel=1e-2)
 
 
 class TestControlVanes:
@@ -144,7 +149,7 @@ class TestAileron:
         assert aileron["n_ailerons"] == 2
         assert aileron["span_frac_wing"] == pytest.approx(0.12, rel=1e-3)
         assert aileron["chord_frac"] == pytest.approx(0.12, rel=1e-3)
-        assert aileron["servo_torque_req_gcm"] == pytest.approx(75.7, rel=2e-2)
+        assert aileron["servo_torque_req_gcm"] == pytest.approx(93.3, rel=2e-2)
 
     def test_cruise_roll_authority(self, aileron):
         # The whole point of NB4: combined (aileron + residual jet-vane)
@@ -362,7 +367,7 @@ class TestAsSelectedFuselage:
     def test_design_point(self, fuselage_cots):
         assert fuselage_cots["D_fus_m"] == pytest.approx(0.10627, rel=1e-2)
         assert fuselage_cots["L_fus_m"] == pytest.approx(0.53133, rel=1e-2)
-        assert fuselage_cots["x_CG_m"] == pytest.approx(0.25678, rel=1e-2)
+        assert fuselage_cots["x_CG_m"] == pytest.approx(0.25609, rel=1e-2)
         assert fuselage_cots["active_constraint"] == "packaging"
 
     def test_internal_consistency(self, fuselage_cots):

@@ -9,6 +9,21 @@ is tagged.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Stall-speed consistency** (from the 2026-07 external aero review by
+  C. Ucler): the wing card's 11.98 m/s stall line was computed from the
+  pre-selection placeholder `CL_max: 1.4` while every other number on
+  the card came from the selected NACA 2412 (`CL_max_3D = 1.2186`) —
+  the real wing stalled at ~12.8 m/s and the V_stall ≤ 12 m/s
+  requirement was silently unmet. `CL_max` is now the selected wing's
+  1.2186 (and must track the NB2 selection). The stall-limited wing
+  loading drops 123.2 → 107.2 N/m² (S 0.1834 → 0.2107 m², b 1.049 →
+  1.124 m, MAC 0.175 → 0.187 m, cruise L/D 13.22 → 12.76); MTOW,
+  hover power, and the battery point are unchanged. Regression pins,
+  `Allrun.case` (lRef/Aref/CofR), and the CAD exports updated in the
+  same change.
+
 ## [0.4.5] — 2026-07-17
 
 Patch release: Li-ion battery freeze, thin-notebook refactor, and the
