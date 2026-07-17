@@ -689,7 +689,31 @@ def print_thermal_sizing(res, tp, m_esc_alloc) -> None:
     print(f"  verdict             : {'OK' if b.ok else 'INFEASIBLE'}")
 
 
-def print_thermal_findings(res, tp, m_esc_alloc) -> None:
+def print_battery_transient(trans, tp) -> None:
+    """Pack mission-transient card (NB7, ADR-0014)."""
+    print(f"Pack thermal mass  : C_th = {trans.C_th_J_K:.0f} J/K, "
+          f"cruise UA = {trans.UA_W_K:.3f} W/K  ->  tau = {trans.tau_s/60:.1f} min")
+    print(f"Mission profile    : 2 x {trans.t_leg_s:.0f} s vertical legs "
+          f"(adiabatic) around {trans.t_cruise_s:.0f} s cruise "
+          f"(Re_L = {trans.Re_L:.3g}, laminar)")
+    print(f"Currents           : hover {trans.I_hover_A:.1f} A, "
+          f"cruise {trans.I_cruise_A:.1f} A  (wiring-law bus voltage)")
+    print()
+    print(f"{'case':<14}{'R [mOhm]':>10}{'Q_hov [W]':>11}{'dT/leg [C]':>12}"
+          f"{'after leg1':>12}{'after cruise':>14}{'final [C]':>11}{'margin':>9}")
+    print("-" * 93)
+    for c in trans.cases.values():
+        print(f"{c.label:<14}{c.R_pack_ohm*1e3:>10.0f}{c.Q_hover_W:>11.1f}"
+              f"{c.dT_leg_C:>12.1f}{c.T_after_leg1_C:>12.1f}"
+              f"{c.T_after_cruise_C:>14.1f}{c.T_final_C:>11.1f}"
+              f"{c.temp_margin_C:>+9.1f}")
+    print("-" * 93)
+    print(f"Limit: pack average <= {tp.T_batt_max_C:.0f} C at "
+          f"{tp.T_ambient_C:.0f} C hot-day ambient (spatial average -- "
+          f"cell cores/busbars run 5-10 C hotter until validated by test).")
+
+
+def print_thermal_findings(res, tp, m_esc_alloc, trans=None) -> None:
     """Standing-finding narration for the two thermal paths (NB7)."""
     e = res["esc"]
     b = res["battery"]
@@ -721,10 +745,30 @@ def print_thermal_findings(res, tp, m_esc_alloc) -> None:
         print("       * ESC nearer the inlet (higher esc_inflow_frac) -- CG cost")
         print("       * a lighter/finned spreader, or accept a larger propulsion")
         print("         fraction for the cold-plate")
+
+    if trans is not None:
+        n = trans.cases["nominal"]
+        if trans.ok_nominal:
+            print(f"[OK]   Pack mission transient (ADR-0014): nominal "
+                  f"{n.R_pack_ohm*1e3:.0f} mOhm case ends the mission at "
+                  f"{n.T_final_C:.0f} C ({n.temp_margin_C:+.0f} C margin).")
+        else:
+            print(f"[WARN] Pack mission transient (ADR-0014) EXCEEDS the "
+                  f"{tp.T_batt_max_C:.0f} C pack limit at the hot-day ambient:")
+            print(f"       - nominal {n.R_pack_ohm*1e3:.0f} mOhm pack ends the "
+                  f"mission at {n.T_final_C:.0f} C ({n.temp_margin_C:+.0f} C)")
+            print("       - the vent check above is air-side only; the pack's")
+            print("         own thermal mass integrates the I^2 R hover heat")
+            print("       Levers (next pass / procurement, not resolved here):")
+            print("       * build/buy a low-resistance pack (thick nickel+copper")
+            print("         busbars; measure DCIR -- the optimistic case passes)")
+            print("       * duct part of the hover vent flow directly over the")
+            print("         pack (the legs are modelled adiabatic)")
+            print("       * mission-plan around the limit at high ambient")
     print("=" * 64)
 
 
-def print_thermal_summary(res, tp) -> None:
+def print_thermal_summary(res, tp, trans=None) -> None:
     """The thermal-path design summary card (NB7)."""
     e = res["esc"]
     b = res["battery"]
@@ -746,6 +790,13 @@ def print_thermal_summary(res, tp) -> None:
     print(f"  {'Battery temp / limit':<34}: {b.T_at_avail_C:.0f} / {tp.T_batt_max_C:.0f} degC "
           f"(margin {b.temp_margin_C:+.0f})")
     print(f"  {'Battery path':<34}: {'OK' if b.ok else 'FAIL':>8s}")
+    if trans is not None:
+        n = trans.cases["nominal"]
+        print()
+        print(f"  {'Pack transient (nominal R)':<34}: {n.T_final_C:8.0f} degC "
+              f"end-of-mission (limit {tp.T_batt_max_C:.0f})")
+        print(f"  {'Pack transient check':<34}: "
+              f"{'OK' if trans.ok_nominal else 'FINDING':>8s}")
     print(bar)
 
 

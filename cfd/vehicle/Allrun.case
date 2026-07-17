@@ -183,10 +183,10 @@ functions
         liftDir         ($LX 0 $LZ);
         dragDir         ($DX 0 $DZ);
         pitchAxis       (0 1 0);
-        CofR            (-0.23661 0 0);   // x_CG from out/fuselage.yaml
+        CofR            (-0.23675 0 0);   // x_CG from out/fuselage.yaml
         magUInf         $VMAG;
-        lRef            0.17484;          // MAC
-        Aref            0.18342;          // S_wing = span x MAC
+        lRef            0.18740;          // MAC
+        Aref            0.21071;          // S_wing = span x MAC
     }
 
     yPlus

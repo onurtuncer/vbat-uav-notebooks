@@ -9,6 +9,59 @@ is tagged.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Stall-speed consistency** (from the 2026-07 external aero review by
+  C. Ucler): the wing card's 11.98 m/s stall line was computed from the
+  pre-selection placeholder `CL_max: 1.4` while every other number on
+  the card came from the selected NACA 2412 (`CL_max_3D = 1.2186`) —
+  the real wing stalled at ~12.8 m/s and the V_stall ≤ 12 m/s
+  requirement was silently unmet. `CL_max` is now the selected wing's
+  1.2186 (and must track the NB2 selection). The stall-limited wing
+  loading drops 123.2 → 107.2 N/m² (S 0.1834 → 0.2107 m², b 1.049 →
+  1.124 m, MAC 0.175 → 0.187 m, cruise L/D 13.22 → 12.76); MTOW,
+  hover power, and the battery point are unchanged. Regression pins,
+  `Allrun.case` (lRef/Aref/CofR), and the CAD exports updated in the
+  same change.
+
+## [0.4.5] — 2026-07-17
+
+Patch release: Li-ion battery freeze, thin-notebook refactor, and the
+battery pack mission-transient thermal check from the external design
+review.
+
+### Added
+
+- **Battery pack mission-transient thermal check** (ADR-0014, from the
+  external battery-thermal review by C. Ucler): NB7 now integrates the
+  pack's own `I²R_pack` Joule heat through the two vertical legs
+  (adiabatic) with laminar flat-plate cruise cooling between, at the
+  wiring-law currents and configured 60/90/120 mΩ pack-resistance
+  cases. New `battery_transient` block in `out/thermal.yaml`; margins
+  row and standing finding in `design_summary`; regression pins. New
+  standing finding: at the 40 °C hot-day ambient the nominal 90 mΩ
+  pack ends the mission at 62.4 °C average vs the 60 °C limit — the
+  optimistic 60 mΩ build passes (54.9 °C), making measured pack DCIR
+  the procurement acceptance criterion. `eta_bat: 0.97` is unchanged
+  in the closure but documented as implying an unrealistic ~23 mΩ
+  pack.
+- **Molicel P50B 6S1P 5000 mAh Li-ion (21700)** added to the battery
+  catalog and won the freeze at 450 g — ~105 g under the sized LiPo
+  (pack-level specific energy beats the configured LiPo density). The
+  battery budget line flips positive and the as-selected all-up drops
+  to 2.264 kg (−38 g **under** the closure MTOW, from +125 g over in
+  v0.4.4). Note its 3.6 V/cell nominal vs the configured 3.7.
+
+### Changed
+
+- **Thin-notebook refactor** (ADR-0013): all physics, figure, and
+  report code moved from the notebooks into `src/conceptual_design/`
+  (`design_point.py` as the single sizing-loop call site, `plots/`,
+  `reports.py`, `design_summary.py`, `notebook.py` shared prelude).
+  Notebooks are now parameters + module calls + interpretation only;
+  the `out/` handoffs were verified byte-identical across the move.
+  NB8 (`vehicle_solid_model`) keeps its inline sizing block (CI-only).
+
 ## [0.4.4] — 2026-07-17
 
 Patch release: post-freeze as-selected re-solve stage (ADR-0012) — the

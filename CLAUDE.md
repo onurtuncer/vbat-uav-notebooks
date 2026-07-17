@@ -72,6 +72,14 @@ fused STL). It reports margins honestly: at the current 2.30 kg / ~0.65 kW-
 hover point the battery bay vents comfortably, but the ESC cold-plate is
 **marginal** (its ~33 W load needs a plate heavier than the ESC allocation
 with only a few °C margin) — a standing finding, not a hard failure.
+NB7 also runs the **battery pack mission transient** (ADR-0014, from an
+external review): lumped-capacitance `I²R_pack` heating through the two
+vertical legs with cruise cooling between, at 60/90/120 mΩ pack-resistance
+cases. At the 40 °C design ambient the nominal 90 mΩ case ends the mission
+~2 °C over the 60 °C pack limit — a second standing finding (the vent
+check is air-side only and cannot see it; `eta_bat: 0.97` implies an
+unrealistically low ~23 mΩ pack). Measure the built pack's DCIR at
+procurement, collapse the cases to it, and re-pin.
 
 `wiring_diagram` is generated, not hand-drawn: box positions/wiring
 topology are a fixed layout in `electrical_diagram.py`, but every label
@@ -176,6 +184,17 @@ standing finding collected programmatically from the handoffs.
   the configured method AND both skin options (FDM ~352 g now,
   2-ply CFRP ~242 g later) on every run. `t_shell_m` remains ONLY the
   packaging wall — decoupled from the structural skin.
+- **Wing sized to the real airfoil CL_max** (2026-07 external aero
+  review, C. Ucler): `config/aerodynamics.yaml` CL_max re-baselined
+  1.4 (pre-selection placeholder) → **1.2186**, the selected NACA 2412
+  wing's CL_max_3D — the old wing card claimed V_stall 11.98 m/s that
+  the real airfoil couldn't deliver (true ~12.8). The stall-limited
+  W/S drops 123.2 → 107.2 N/m² (S 0.1834 → 0.2107 m², b 1.049 →
+  1.124 m, MAC 0.175 → 0.187 m); MTOW/hover power are unchanged (the
+  closure carries wing mass inside the fractions). V_stall 12.0 m/s is
+  now genuinely met; cruise L/D 13.22 → 12.76 (CL 0.437, slightly off
+  the polar optimum). CL_max must track the NB2 airfoil selection —
+  change the airfoil, update CL_max in the same commit.
 - Design point ≈ 2.30 kg MTOW, ~652 W hover electrical, ~8.4C peak
   (segmented-FDM, k=1.1, fs_base re-baselined 0.25→0.22 to the
   ADR-0010 semi-monocoque member model — lighter than the original

@@ -31,3 +31,44 @@ battery:
   temp_margin_C: 19.51
   ok: true
 all_ok: false
+battery_transient:
+  I_hover_A: 29.36
+  I_cruise_A: 4.39
+  C_th_J_K: 499.1
+  UA_W_K: 0.282
+  tau_s: 1770.0
+  t_leg_s: 80.0
+  t_cruise_s: 900.0
+  T_batt_max_C: 60.0
+  cases:
+    optimistic:
+      R_pack_mohm: 60.0
+      Q_hover_W: 51.7
+      Q_cruise_W: 1.158
+      dT_leg_C: 8.29
+      T_after_leg1_C: 48.29
+      T_after_cruise_C: 46.62
+      T_final_C: 54.91
+      temp_margin_C: 5.09
+      ok: true
+    nominal:
+      R_pack_mohm: 90.0
+      Q_hover_W: 77.56
+      Q_cruise_W: 1.737
+      dT_leg_C: 12.43
+      T_after_leg1_C: 52.43
+      T_after_cruise_C: 49.93
+      T_final_C: 62.36
+      temp_margin_C: -2.36
+      ok: false
+    conservative:
+      R_pack_mohm: 120.0
+      Q_hover_W: 103.41
+      Q_cruise_W: 2.316
+      dT_leg_C: 16.57
+      T_after_leg1_C: 56.57
+      T_after_cruise_C: 53.24
+      T_final_C: 69.82
+      temp_margin_C: -9.82
+      ok: false
+  ok_nominal: false

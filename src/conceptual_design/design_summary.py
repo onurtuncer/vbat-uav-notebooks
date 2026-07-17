@@ -38,6 +38,10 @@ def margins_table(vanes, ail, ail_cots, vib_cots, thermal, fus_cots,
          "> 0 C", thermal["battery"]["ok"]),
         ("ESC cold-plate",            "NB7",  f"{thermal['esc']['temp_margin_C']:.1f} C margin",
          "mass in alloc", thermal["esc"]["ok"]),
+        ("pack transient (nominal R)", "NB7",
+         f"{thermal['battery_transient']['cases']['nominal']['T_final_C']:.0f} C end-of-mission",
+         f"<= {thermal['battery_transient']['T_batt_max_C']:.0f} C",
+         thermal["battery_transient"]["ok_nominal"]),
         ("cruise drag budget",        "NB14", f"CD0 {CD0_total:.4f}",
          f"<= {aero.CD0:.4f}", CD0_total <= aero.CD0),
         ("frozen parts fit the hull", "NB14", f"{sum(1 for e in fus_cots['bay_fit'] if e['ok'])}/"
@@ -63,6 +67,15 @@ def collect_findings(comp, thermal, fus, fus_cots) -> list[str]:
         findings.append(f"ESC cold-plate (ADR-0009): needs {thermal['esc']['A_req_cm2']:.0f} cm^2 / "
                         f"{thermal['esc']['plate_mass_g']:.0f} g plate vs the ESC allocation; "
                         f"temp margin only {thermal['esc']['temp_margin_C']:.1f} C")
+
+    bt = thermal["battery_transient"]
+    if not bt["ok_nominal"]:
+        n = bt["cases"]["nominal"]
+        findings.append(f"battery pack transient (ADR-0014): nominal {n['R_pack_mohm']:.0f} mOhm pack "
+                        f"ends the mission at {n['T_final_C']:.0f} C average vs the "
+                        f"{bt['T_batt_max_C']:.0f} C limit at hot-day ambient ({n['temp_margin_C']:+.0f} C) "
+                        f"-- measure pack DCIR at procurement; the optimistic "
+                        f"{bt['cases']['optimistic']['R_pack_mohm']:.0f} mOhm build passes")
 
     for e in fus_cots["bay_fit"]:
         if not e["ok"]:
