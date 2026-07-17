@@ -165,6 +165,44 @@ def size_aileron(
 
 
 # ---------------------------------------------
+#  Residual jet-vane authority in cruise
+# ---------------------------------------------
+@dataclass
+class VaneCruiseAuthority:
+    """Jet-vane authority scaled from hover to cruise thrust.
+
+    q_jet scales linearly with thrust (actuator disk), so every vane
+    ddot scales by T_cruise/T_hover.  Shared by NB4 and the NB12 COTS
+    re-solve so the law is derived exactly once.
+    """
+    s_ratio:      float
+    LD_cruise:    float
+    T_hover_N:    float
+    T_cruise_N:   float
+    thrust_ratio: float
+    ddot_roll_hover:    float
+    ddot_pitch_hover:   float
+    ddot_roll_cruise:   float
+    ddot_pitch_cruise:  float
+
+
+def vane_cruise_authority(W_N: float, s_ratio: float, LD_cruise: float,
+                          vanes: dict) -> VaneCruiseAuthority:
+    """Scale the NB3 hover vane authority to the cruise thrust setting."""
+    T_hover  = s_ratio * W_N
+    T_cruise = W_N / LD_cruise
+    thrust_ratio = T_cruise / T_hover
+    return VaneCruiseAuthority(
+        s_ratio=s_ratio, LD_cruise=LD_cruise,
+        T_hover_N=T_hover, T_cruise_N=T_cruise, thrust_ratio=thrust_ratio,
+        ddot_roll_hover   = vanes["ddot_roll_deg_s2"],
+        ddot_pitch_hover  = vanes["ddot_pitch_deg_s2"],
+        ddot_roll_cruise  = vanes["ddot_roll_deg_s2"]  * thrust_ratio,
+        ddot_pitch_cruise = vanes["ddot_pitch_deg_s2"] * thrust_ratio,
+    )
+
+
+# ---------------------------------------------
 #  Handoff writer
 # ---------------------------------------------
 

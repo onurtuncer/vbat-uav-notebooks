@@ -229,6 +229,35 @@ def vtol_climb_power_to_weight(
     return A + B + C1 + C2
 
 
+def climb_pw_terms(
+    RoC_mps: float,
+    disk_loading_N_m2: float,
+    wing_loading_N_m2: float,
+    D_rotor_m: float,
+    p: VTOLParams = VTOLParams(),
+) -> Dict[str, float]:
+    """
+    The four additive terms of equation (2-61) individually [W/N], for
+    term-breakdown reporting (vtol_climb_power_to_weight returns the sum):
+
+        induced_climb, blade_profile, fuselage_parasite, wing_parasite
+    """
+    rpm  = rpm_from_diameter(D_rotor_m, p)
+    Vtip = vtip_from_rpm_and_diameter(rpm, D_rotor_m)
+
+    A  = 0.5 * RoC_mps + 0.5 * sqrt(RoC_mps**2 + 2.0 * disk_loading_N_m2 / p.rho0)
+    B  = (p.rho0 * Vtip**3 * p.sigma * p.CD_blade) / (8.0 * disk_loading_N_m2)
+    C1 = (p.rho0 * RoC_mps**3) / disk_loading_N_m2
+    C2 = (p.rho0 * RoC_mps**3) / (p.S_ratio * wing_loading_N_m2)
+
+    return {
+        "induced_climb":     A,
+        "blade_profile":     B,
+        "fuselage_parasite": C1,
+        "wing_parasite":     C2,
+    }
+
+
 # ---------------------------------------------
 #  Convenience wrapper
 # ---------------------------------------------
