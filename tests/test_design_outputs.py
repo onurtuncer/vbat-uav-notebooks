@@ -202,6 +202,20 @@ class TestThermal:
         assert 0.0 < e["temp_margin_C"] < 20.0     # positive but modest
         assert e["A_req_cm2"] == pytest.approx(212.9, rel=5e-2)
 
+    def test_battery_pack_transient_finding_pinned(self, thermal):
+        # KNOWN finding (ADR-0014, external battery-thermal review
+        # 2026-07): the pack's own mission temperature transient exceeds
+        # the 60 C pack limit at the nominal 90 mOhm pack resistance and
+        # the 40 C hot-day ambient; the optimistic 60 mOhm build passes.
+        # Pin the state so a change either way is caught.
+        bt = thermal["battery_transient"]
+        assert bt["ok_nominal"] is False
+        assert bt["cases"]["optimistic"]["ok"] is True
+        assert bt["cases"]["conservative"]["ok"] is False
+        assert bt["cases"]["nominal"]["T_final_C"] == pytest.approx(62.5, abs=1.5)
+        # the I^2 R nominal heat load is ~4x the eta_bat-derived vent load
+        assert bt["cases"]["nominal"]["Q_hover_W"] > 3.0 * thermal["battery"]["Q_W"]
+
 
 @pytest.fixture(scope="module")
 def components() -> dict:

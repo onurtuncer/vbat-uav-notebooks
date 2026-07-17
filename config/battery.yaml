@@ -12,6 +12,12 @@
 #
 # eta_bat : battery discharge efficiency [-]
 #   0.97 accounts for internal resistance losses during discharge.
+#   NOTE (ADR-0014): at the ~29 A hover current 0.97 implies a ~23 mOhm
+#   pack; a realistic 6S1P 21700 pack is ~60-120 mOhm, i.e. hover-phase
+#   efficiency nearer 0.88-0.92. Mission energy is cruise-dominated so
+#   the closure impact is small (a few %), but revisit this value with
+#   the measured pack DCIR after procurement (deliberate next-iteration
+#   change -- it moves the design point and the regression pins).
 #
 # c_rate_max : maximum continuous discharge C-rate [1/h]
 #   25C continuous is a routine rating for hobby LiPo packs.

@@ -72,6 +72,14 @@ fused STL). It reports margins honestly: at the current 2.30 kg / ~0.65 kW-
 hover point the battery bay vents comfortably, but the ESC cold-plate is
 **marginal** (its ~33 W load needs a plate heavier than the ESC allocation
 with only a few °C margin) — a standing finding, not a hard failure.
+NB7 also runs the **battery pack mission transient** (ADR-0014, from an
+external review): lumped-capacitance `I²R_pack` heating through the two
+vertical legs with cruise cooling between, at 60/90/120 mΩ pack-resistance
+cases. At the 40 °C design ambient the nominal 90 mΩ case ends the mission
+~2 °C over the 60 °C pack limit — a second standing finding (the vent
+check is air-side only and cannot see it; `eta_bat: 0.97` implies an
+unrealistically low ~23 mΩ pack). Measure the built pack's DCIR at
+procurement, collapse the cases to it, and re-pin.
 
 `wiring_diagram` is generated, not hand-drawn: box positions/wiring
 topology are a fixed layout in `electrical_diagram.py`, but every label

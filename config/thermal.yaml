@@ -46,6 +46,35 @@
 #                         to bond the cold-plate to [-].
 # vent_wall_usable_frac : fraction of the battery-bay wall area that can be
 #                         opened as vents without compromising the shell [-].
+#
+# --- Battery pack lumped transient (ADR-0014, external review) --------
+# The vented-bay model above is a steady-state AIR-SIDE capacity check:
+# it sizes the vents to carry the heat away but says nothing about how
+# hot the pack ITSELF gets over the short-hover mission. This block
+# parameterises a lumped-capacitance transient (C. Ucler review,
+# 2026-07): adiabatic Joule heating I^2*R_pack through each hover+
+# transition leg (conservative -- bay vent flow neglected in hover),
+# laminar flat-plate cruise cooling over the exposed pack surface at
+# V_cruise between the legs.
+#
+# c_p_pack_J_kgK : effective pack-level specific heat [J/(kg K)].
+#                  900 is a representative value for Li-ion/LiPo packs
+#                  (cells + case + potting); cell-level literature spans
+#                  ~800-1100.
+# R_pack_mohm    : complete-pack DC resistance cases [mOhm], measured at
+#                  the terminals (cells + welds + leads + connector).
+#                  A 6S1P 21700 pack is ~60-80 mOhm of cells alone
+#                  (P50B DCIR ~10-13 mOhm/cell), so 90 nominal with
+#                  60/120 bounds. MEASURE at procurement and collapse
+#                  the cases to the measured value (the ground test of
+#                  the review, sec. 13).
+# pack_exposed_frac : fraction of the pack envelope surface receiving
+#                  direct cruise airflow [-]. 1/6 = one face of the
+#                  brick; the rest sits against the tray/bay wall.
+# pack_dims_m    : estimated pack external envelope [m] (L, W, H).
+#                  Generic 4-5 Ah 6S brick (review estimate); replace
+#                  with the frozen pack's measured envelope after
+#                  procurement.
 
 T_ambient_C: 40.0
 T_esc_max_C: 90.0
@@ -60,3 +89,11 @@ plate_material: "Al 6061"
 
 esc_wall_usable_frac: 0.5
 vent_wall_usable_frac: 0.25
+
+c_p_pack_J_kgK: 900.0
+R_pack_mohm:
+  optimistic: 60.0
+  nominal: 90.0
+  conservative: 120.0
+pack_exposed_frac: 0.1667
+pack_dims_m: [0.145, 0.070, 0.036]

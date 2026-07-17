@@ -45,6 +45,20 @@ VENTED BATTERY BAY  (through-flow energy balance)
 The exit air (hence the pack) rises dT_air above ambient; size the vent
 area for the pack to stay under its limit.
 
+BATTERY PACK MISSION TRANSIENT  (ADR-0014; reported, never filtered on)
+------------------------------------------------------------------------
+The vent balance above is steady-state and AIR-SIDE only -- it checks
+that the bay can carry the heat away, not how hot the pack itself gets.
+An external review (C. Ucler, 2026-07) showed that over the short-hover
+mission the pack integrates its own Joule heat I^2 R_pack faster than
+the cruise leg can reject it.  ``battery_pack_transient`` reproduces
+that lumped-capacitance model: adiabatic hover+transition legs, then
+exponential cruise cooling off the exposed pack surface, evaluated for
+the configured optimistic/nominal/conservative pack-resistance cases.
+Note the I^2 R heat load at the nominal resistance is ~4x the
+eta_bat-derived Q_batt above (eta_bat 0.97 implies ~23 mOhm; a real
+6S1P 21700 pack is ~60-120 mOhm) -- see config/battery.yaml.
+
 References
 ----------
   Incropera & DeWitt, "Fundamentals of Heat and Mass Transfer",
@@ -85,6 +99,11 @@ class ThermalParams:
     plate_material:        str
     esc_wall_usable_frac:  float
     vent_wall_usable_frac: float
+    # pack lumped transient (ADR-0014)
+    c_p_pack_J_kgK:        float          # effective pack specific heat
+    R_pack_ohm:            dict           # {case label: pack DCR [Ohm]}
+    pack_exposed_frac:     float          # envelope fraction in cruise flow
+    pack_dims_m:           tuple          # (L, W, H) pack envelope
 
     @classmethod
     def from_yaml(cls, path) -> "ThermalParams":
@@ -101,6 +120,11 @@ class ThermalParams:
             plate_material        = str(data["plate_material"]),
             esc_wall_usable_frac  = float(data["esc_wall_usable_frac"]),
             vent_wall_usable_frac = float(data["vent_wall_usable_frac"]),
+            c_p_pack_J_kgK        = float(data["c_p_pack_J_kgK"]),
+            R_pack_ohm            = {str(k): float(v) * 1e-3
+                                     for k, v in data["R_pack_mohm"].items()},
+            pack_exposed_frac     = float(data["pack_exposed_frac"]),
+            pack_dims_m           = tuple(float(v) for v in data["pack_dims_m"]),
         )
 
 
@@ -132,6 +156,118 @@ class BatteryVentResult:
     T_at_avail_C:   float   # pack temp at the full available vent area
     temp_margin_C:  float   # T_batt_max - T_at_avail
     ok:             bool
+
+
+# ---------------------------------------------
+#  Battery pack lumped transient (ADR-0014)
+# ---------------------------------------------
+
+#: Flat-plate transition Reynolds number -- above this the laminar
+#: average-Nusselt correlation no longer applies (Incropera ch. 7).
+RE_X_TRANSITION = 5.0e5
+
+
+@dataclass
+class PackTransientCase:
+    """One pack-resistance case of the mission temperature transient."""
+    label:            str
+    R_pack_ohm:       float
+    Q_hover_W:        float   # I_hover^2 R
+    Q_cruise_W:       float   # I_cruise^2 R
+    dT_leg_C:         float   # adiabatic rise per hover+transition leg
+    T_after_leg1_C:   float
+    T_after_cruise_C: float
+    T_final_C:        float   # end of second leg = mission peak average
+    temp_margin_C:    float   # T_batt_max - T_final
+    ok:               bool    # T_final <= T_batt_max
+
+
+@dataclass
+class PackTransientResult:
+    """Lumped-capacitance pack transient over the design mission.
+
+    Model (C. Ucler external review, 2026-07): the mission is two
+    hover+transition legs (adiabatic Joule heating -- hover bay airflow
+    conservatively neglected) separated by the cruise segment, where the
+    pack cools by laminar flat-plate forced convection over the exposed
+    fraction of its envelope at V_cruise:
+
+        T(t) = T_ss + (T_start - T_ss) exp(-t/tau),
+        T_ss = T_ambient + Q_cruise/UA,   tau = m c_p / UA
+    """
+    I_hover_A:   float
+    I_cruise_A:  float
+    C_th_J_K:    float   # m_bat * c_p
+    UA_W_K:      float   # h * A_exposed (cruise)
+    tau_s:       float   # C_th / UA
+    Re_L:        float   # cruise Reynolds number on the pack length
+    t_leg_s:     float   # per-leg time at hover current
+    t_cruise_s:  float
+    cases:       dict    # {label: PackTransientCase}
+    ok_nominal:  bool    # 'nominal' case stays under T_batt_max
+
+
+def battery_pack_transient(
+    m_bat_kg:    float,
+    I_hover_A:   float,   # wiring-law hover current (P_hover / V_pack)
+    I_cruise_A:  float,   # wiring-law cruise current
+    t_hover_s:   float,   # total mission hover budget (split into 2 legs)
+    t_transition_s: float,  # total transition budget, billed at hover current
+    t_cruise_s:  float,
+    V_cruise_ms: float,
+    rho:         float,   # ambient air density [kg/m^3]
+    p:           ThermalParams,
+) -> PackTransientResult:
+    """Mission temperature transient of the battery pack (ADR-0014).
+
+    The two vertical legs each carry half the hover budget plus half the
+    transition budget (transitions are billed at hover power, the same
+    convention as the mass-closure energy model).
+    """
+    L, W, H = p.pack_dims_m
+    A_pack = 2.0 * (L * W + L * H + W * H)
+    A_exp  = A_pack * p.pack_exposed_frac
+
+    # cruise cooling: laminar flat-plate average h on the pack length
+    nu = MU_AIR / rho
+    Pr = _prandtl()
+    Re_L = V_cruise_ms * L / nu
+    if Re_L >= RE_X_TRANSITION:
+        raise ValueError(
+            f"Pack cruise Re_L={Re_L:.3g} above laminar transition "
+            f"{RE_X_TRANSITION:.1e}; extend the correlation before use.")
+    Nu = 0.664 * math.sqrt(Re_L) * Pr ** (1.0 / 3.0)
+    h  = Nu * K_AIR / L
+    UA = h * A_exp
+
+    C_th  = m_bat_kg * p.c_p_pack_J_kgK
+    tau   = C_th / UA
+    t_leg = 0.5 * t_hover_s + 0.5 * t_transition_s
+
+    cases = {}
+    for label, R in p.R_pack_ohm.items():
+        Q_h = I_hover_A ** 2 * R
+        Q_c = I_cruise_A ** 2 * R
+        dT_leg = Q_h * t_leg / C_th                    # adiabatic leg
+        T1 = p.T_ambient_C + dT_leg
+        T_ss = p.T_ambient_C + Q_c / UA                # cruise equilibrium
+        T2 = T_ss + (T1 - T_ss) * math.exp(-t_cruise_s / tau)
+        T3 = T2 + dT_leg
+        cases[label] = PackTransientCase(
+            label=label, R_pack_ohm=R, Q_hover_W=Q_h, Q_cruise_W=Q_c,
+            dT_leg_C=dT_leg, T_after_leg1_C=T1, T_after_cruise_C=T2,
+            T_final_C=T3, temp_margin_C=p.T_batt_max_C - T3,
+            ok=T3 <= p.T_batt_max_C,
+        )
+
+    if "nominal" not in cases:
+        raise ValueError("R_pack_mohm must define a 'nominal' case")
+    return PackTransientResult(
+        I_hover_A=I_hover_A, I_cruise_A=I_cruise_A, C_th_J_K=C_th,
+        UA_W_K=UA, tau_s=tau, Re_L=Re_L, t_leg_s=t_leg,
+        t_cruise_s=t_cruise_s, cases=cases,
+        ok_nominal=cases["nominal"].ok,
+    )
 
 
 # ---------------------------------------------
@@ -215,9 +351,12 @@ def size_thermal(
 #  Handoff writer
 # ---------------------------------------------
 
-def write_thermal_yaml(res: dict, p: ThermalParams, path) -> None:
+def write_thermal_yaml(res: dict, p: ThermalParams, path,
+                       trans: PackTransientResult | None = None) -> None:
     """Write out/thermal.yaml -- consumed by the CAD notebook (cold-plate
-    + vent geometry) and read for reference downstream."""
+    + vent geometry) and read for reference downstream.  ``trans`` appends
+    the ADR-0014 pack mission transient as a reported (never filtered-on)
+    block."""
     esc: EscPlateResult = res["esc"]
     batt: BatteryVentResult = res["battery"]
     data = {
@@ -254,6 +393,32 @@ def write_thermal_yaml(res: dict, p: ThermalParams, path) -> None:
         },
         "all_ok": bool(res["all_ok"]),
     }
+    if trans is not None:
+        data["battery_transient"] = {
+            "I_hover_A":    round(trans.I_hover_A, 2),
+            "I_cruise_A":   round(trans.I_cruise_A, 2),
+            "C_th_J_K":     round(trans.C_th_J_K, 1),
+            "UA_W_K":       round(trans.UA_W_K, 4),
+            "tau_s":        round(trans.tau_s, 1),
+            "t_leg_s":      round(trans.t_leg_s, 1),
+            "t_cruise_s":   round(trans.t_cruise_s, 1),
+            "T_batt_max_C": p.T_batt_max_C,
+            "cases": {
+                label: {
+                    "R_pack_mohm":      round(c.R_pack_ohm * 1e3, 1),
+                    "Q_hover_W":        round(c.Q_hover_W, 2),
+                    "Q_cruise_W":       round(c.Q_cruise_W, 3),
+                    "dT_leg_C":         round(c.dT_leg_C, 2),
+                    "T_after_leg1_C":   round(c.T_after_leg1_C, 2),
+                    "T_after_cruise_C": round(c.T_after_cruise_C, 2),
+                    "T_final_C":        round(c.T_final_C, 2),
+                    "temp_margin_C":    round(c.temp_margin_C, 2),
+                    "ok":               bool(c.ok),
+                }
+                for label, c in trans.cases.items()
+            },
+            "ok_nominal": bool(trans.ok_nominal),
+        }
     with open(path, "w", encoding="utf-8") as f:
         f.write("# AUTO-GENERATED -- do not edit by hand.\n")
         f.write("# Source : src/conceptual_design/thermal_design.py\n")
