@@ -29,16 +29,6 @@ The focus is **not** on a production UAV, but on:
 
 The code is intentionally simple, transparent, and extensible.
 
-## Theory & Models
-
-The low-order physics models used in this study are documented in
-[`docs/`](docs/).
-
-See:
-- Hover power derivation
-- Cruise power estimation
-- Battery sizing assumptions
-
 ---
 
 ## 1. Problem Definition

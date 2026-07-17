@@ -22,3 +22,4 @@ Format: one file per decision, `NNNN-kebab-title.md`, each with
 | [0009](0009-thermal-paths-as-structure.md) | Thermal paths as structure (ESC cold-plate + vented battery bay) | Accepted |
 | [0010](0010-semi-monocoque-clamshell.md) | Semi-monocoque clamshell fuselage (external review) | Accepted |
 | [0011](0011-px4-flight-validation-before-custom-fc.md) | Fly on PX4 + COTS Pixhawk before a custom flight controller | Accepted |
+| [0012](0012-post-freeze-as-selected-resolve.md) | Post-freeze as-selected re-solve as new downstream notebooks | Accepted |

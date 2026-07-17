@@ -1,0 +1,46 @@
+# AUTO-GENERATED -- do not edit by hand.
+# Source : src/conceptual_design/vibration_isolation.py
+# Input  : config/vibration.yaml + rotor RPM + payload mass
+# Regen  : re-run notebooks/vibration_isolation_cots.ipynb
+
+target_transmissibility: 0.1
+damping_ratio: 0.1
+f_shaft_hz: 203.521
+f_blade_hz: 610.564
+n_blades: 3
+f_n_hz: 55.667
+f_n_window_hz:
+- 25.0
+- 143.911
+window_ok: true
+sway_mm: 0.8016
+sway_pad_total_m: 0.0016
+m_isolation_avionics_kg: 0.016
+m_isolation_struct_kg: 0.016
+modules:
+  fc_imu:
+    m_isolated_kg: 0.0346
+    n_isolators: 4
+    f_n_hz: 55.667
+    r_ratio: 3.656
+    transmissibility: 0.1
+    attenuation_pct: 90.0
+    delta_static_mm: 0.0802
+    sway_mm: 0.8016
+    k_isolator_N_m: 1058.22
+    hw_mass_kg: 0.016
+  payload:
+    m_isolated_kg: 0.5
+    n_isolators: 4
+    f_n_hz: 55.667
+    r_ratio: 3.656
+    transmissibility: 0.1
+    attenuation_pct: 90.0
+    delta_static_mm: 0.0802
+    sway_mm: 0.8016
+    k_isolator_N_m: 15292.2
+    hw_mass_kg: 0.016
+cots_fc:
+  id: pixhawk_6c
+  name: Holybro Pixhawk 6C (plastic case)
+  mass_g: 34.6

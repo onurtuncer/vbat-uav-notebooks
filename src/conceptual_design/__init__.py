@@ -62,8 +62,19 @@ from .fuselage_design import (
     LayoutItem,
     ModularityParams,
     fuselage_radius,
+    min_axial_length_m,
     size_fuselage,
     write_fuselage_yaml,
+)
+
+from .cots_integration import (
+    FrozenComponents,
+    FrozenPart,
+    avionics_budget_bottom_up,
+    bay_fit_report,
+    bay_part_envelopes,
+    effective_density,
+    propulsion_item_masses,
 )
 
 from .electrical_diagram import (

@@ -170,10 +170,16 @@ def size_aileron(
 
 def write_aileron_yaml(ail: AileronSizing, p: AileronParams, path,
                        ddot_roll_vane_cruise_deg_s2: float,
-                       ddot_min_deg_s2: float) -> None:
+                       ddot_min_deg_s2: float,
+                       regen_notebook: str = "notebooks/aileron_design.ipynb",
+                       extra: dict = None) -> None:
     """
     Write out/aileron.yaml -- the handoff consumed by fuselage_design.py
     (servo/linkage mass) and read for reference by downstream notebooks.
+
+    The post-freeze re-solve reuses this writer for out/aileron_cots.yaml
+    (same schema) with its own `regen_notebook` provenance and an `extra`
+    block (frozen-servo id/stall/margins) appended.
     """
     ddot_roll_total = ail.ddot_roll_deg_s2 + ddot_roll_vane_cruise_deg_s2
     data = {
@@ -201,9 +207,11 @@ def write_aileron_yaml(ail: AileronSizing, p: AileronParams, path,
         "linkage_mass_kg_each":  p.linkage_mass_kg,
         "n_ailerons": 2,
     }
+    if extra:
+        data.update(extra)
     with open(path, "w", encoding="utf-8") as f:
         f.write("# AUTO-GENERATED -- do not edit by hand.\n")
         f.write("# Source : src/conceptual_design/aileron_design.py\n")
         f.write("# Input  : config/aileron.yaml + wing geometry + control vanes\n")
-        f.write("# Regen  : re-run notebooks/aileron_design.ipynb\n\n")
+        f.write(f"# Regen  : re-run {regen_notebook}\n\n")
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)

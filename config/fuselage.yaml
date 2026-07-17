@@ -24,6 +24,14 @@
 #                    accounts for corner losses against the curved
 #                    shell, foam, connectors, and access clearances.
 #
+# part_clearance_m : axial clearance per rigid COTS part in a bay [m].
+#                    The post-freeze re-solve (NB14) floors each bay
+#                    length at the frozen part's best-orientation axial
+#                    length plus this clearance -- a volume-based bay
+#                    assumes the contents can be shaped to it, which a
+#                    rigid LiPo pack or FC board cannot. 5 mm covers
+#                    connector overhang and hand access at one end.
+#
 # --- Shape ----------------------------------------------------------
 # fineness_ratio   : target L_fus / D_fus [-]
 #                    Hoerner minimum-drag bodies of revolution lie at
@@ -103,6 +111,7 @@ rho_battery_pack: 1500.0
 rho_payload: 800.0
 rho_avionics: 550.0
 packing_factor: 0.60
+part_clearance_m: 0.005
 
 fineness_ratio: 5.0
 f_nose: 0.22

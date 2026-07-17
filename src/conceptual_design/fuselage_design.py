@@ -120,6 +120,7 @@ class FuselageParams:
     f_nose:           float   # nose fraction of L [-]
     f_tail:           float   # tail-cone fraction of L [-]
     d_hub_margin:     float   # D_fus >= margin * d_hub [-]
+    part_clearance_m: float   # axial clearance per COTS part in a bay [m]
     # shell
     t_shell_m:        float   # packaging wall for r_int [m]
     rho_shell:        float   # [kg/m^3] (vane plates etc.)
@@ -152,6 +153,7 @@ class FuselageParams:
             rho_payload      = float(data["rho_payload"]),
             rho_avionics     = float(data["rho_avionics"]),
             packing_factor   = float(data["packing_factor"]),
+            part_clearance_m = float(data["part_clearance_m"]),
             fineness_ratio   = float(data["fineness_ratio"]),
             f_nose           = float(data["f_nose"]),
             f_tail           = float(data["f_tail"]),
@@ -446,16 +448,70 @@ def component_volumes(m_battery_kg: float, m_payload_kg: float,
     }
 
 
+def min_axial_length_m(shape: str, dims_m: tuple, D_int_m: float) -> float:
+    """
+    Shortest axial bay length a catalog envelope can occupy inside a
+    circular cross-section of internal diameter D_int_m, over all
+    orientations whose cross-section fits (a rectangle fits a circle
+    iff its diagonal does).  Returns math.inf if the part fits in no
+    orientation -- the diameter solver then has to grow the hull.
+
+    Used by the post-freeze fuselage re-solve (cots_integration):
+    volume-based bay lengths assume the contents can be shaped to the
+    bay, which a rigid COTS part (a long LiPo pack, an FC board)
+    cannot.
+    """
+    best = math.inf
+    if shape == "cylinder":
+        d, length = dims_m
+        if d <= D_int_m:                       # axis along the fuselage
+            best = length
+        if math.hypot(d, length) <= D_int_m:   # lying transverse (box bound)
+            best = min(best, d)
+        return best
+    a, b, c = dims_m
+    for axial, u, v in ((a, b, c), (b, a, c), (c, a, b)):
+        if math.hypot(u, v) <= D_int_m:
+            best = min(best, axial)
+    return best
+
+
+def _envelope_floor_m(envelopes: list, D_int_m: float,
+                      clearance_m: float) -> float:
+    """Minimum axial length for a bay that must hold the given rigid
+    catalog envelopes [(shape, dims_m), ...], stacked axially, each
+    with its own clearance.  0 for an empty list; inf if any envelope
+    cannot fit the cross-section in any orientation."""
+    total = 0.0
+    for shape, dims in envelopes:
+        need = min_axial_length_m(shape, dims, D_int_m)
+        if not math.isfinite(need):
+            return math.inf
+        total += need + clearance_m
+    return total
+
+
 def _stack_length(volumes: Dict[str, float], D: float, p: FuselageParams,
-                  sway_pad_m: float = 0.0) -> float:
+                  sway_pad_m: float = 0.0,
+                  part_envelopes: Dict[str, list] = None) -> float:
     """Total bay stack length needed at internal diameter of D.
 
     `sway_pad_m` is fixed extra length (independent of D) reserved as
     rattle space around the soft-mounted bays (vibration isolation).
+    `part_envelopes` (bay name -> [(shape, dims_m), ...]) floors each
+    bay's volume-based length at what its rigid COTS contents need
+    (post-freeze re-solve; None keeps the conceptual volume model).
     """
     r_int = D / 2.0 - p.t_shell_m
     A_int = math.pi * r_int * r_int
-    return sum(v / (p.packing_factor * A_int) for v in volumes.values()) + sway_pad_m
+    env = part_envelopes or {}
+    total = 0.0
+    for name, v in volumes.items():
+        L_vol = v / (p.packing_factor * A_int)
+        L_min = _envelope_floor_m(env.get(name, []), 2.0 * r_int,
+                                  p.part_clearance_m)
+        total += max(L_vol, L_min)
+    return total + sway_pad_m
 
 
 # ---------------------------------------------
@@ -463,12 +519,14 @@ def _stack_length(volumes: Dict[str, float], D: float, p: FuselageParams,
 # ---------------------------------------------
 
 def solve_diameter(volumes: Dict[str, float], r_hub: float,
-                   p: FuselageParams, sway_pad_m: float = 0.0) -> Tuple[float, str]:
+                   p: FuselageParams, sway_pad_m: float = 0.0,
+                   part_envelopes: Dict[str, list] = None) -> Tuple[float, str]:
     """
     Smallest D that satisfies BOTH constraints at L = fineness * D:
 
       hub      : D >= d_hub_margin * 2 r_hub
-      packaging: stack length (incl. isolator sway pad) <= L_mid + 0.5 L_nose
+      packaging: stack length (incl. isolator sway pad and any rigid
+                 COTS envelope floors) <= L_mid + 0.5 L_nose
 
     Returns (D, active_constraint).
     """
@@ -477,7 +535,7 @@ def solve_diameter(volumes: Dict[str, float], r_hub: float,
     def packaging_ok(D: float) -> bool:
         L = p.fineness_ratio * D
         L_avail = p.f_mid * L + 0.5 * p.f_nose * L
-        return _stack_length(volumes, D, p, sway_pad_m) <= L_avail
+        return _stack_length(volumes, D, p, sway_pad_m, part_envelopes) <= L_avail
 
     # bisection for the packaging-limited diameter
     lo, hi = 0.02, 1.0
@@ -553,6 +611,13 @@ def size_fuselage(
     construction_method: str = "segmented_fdm",
     # battery CG trim (0 = nominal, no trim)
     x_battery_trim_m: float = 0.0,
+    # post-freeze re-solve (cots_integration): rigid catalog envelopes
+    # flooring the bay lengths (bay name -> [(shape, dims_m), ...]),
+    # and actual propulsion item masses replacing the PROP_SPLIT
+    # allocation ({"motor_fan": kg, "esc": kg, "duct": kg}).  None keeps
+    # the conceptual models.
+    part_envelopes:   Dict[str, list] = None,
+    prop_item_masses: Dict[str, float] = None,
 ) -> FuselageSizing:
     """
     Complete fuselage sizing.  See module docstring for the model.
@@ -643,7 +708,7 @@ def size_fuselage(
     # sway_pad_m is rattle space reserved around the two soft-mounted bays
     # (payload + FC/IMU); it enlarges the required bay stack.
     vols = component_volumes(m_battery_kg, m_payload_kg, m_avionics_net, p)
-    D, active = solve_diameter(vols, R_hub_m, p, sway_pad_m)
+    D, active = solve_diameter(vols, R_hub_m, p, sway_pad_m, part_envelopes)
     L = p.fineness_ratio * D
 
     L_nose = p.f_nose * L
@@ -652,7 +717,7 @@ def size_fuselage(
 
     # -- 2. volume / wetted area ---------------------------------------
     V_tot, S_wet = _integrate_profile(D, L, p.f_nose, p.f_tail, R_hub_m)
-    L_stack = _stack_length(vols, D, p, sway_pad_m)
+    L_stack = _stack_length(vols, D, p, sway_pad_m, part_envelopes)
     L_avail = L_mid + 0.5 * L_nose
 
     # -- 3. drag ---------------------------------------------------------
@@ -676,9 +741,13 @@ def size_fuselage(
     # -- 5. layout -------------------------------------------------------
     r_int = D / 2.0 - p.t_shell_m
     A_int = math.pi * r_int * r_int
+    env = part_envelopes or {}
 
-    def bay_len(v: float) -> float:
-        return v / (p.packing_factor * A_int)
+    def bay_len(name: str, v: float) -> float:
+        L_vol = v / (p.packing_factor * A_int)
+        L_min = _envelope_floor_m(env.get(name, []), 2.0 * r_int,
+                                  p.part_clearance_m)
+        return max(L_vol, L_min)
 
     # sway rattle space is split evenly between the two soft-mounted bays
     # (payload + FC/IMU avionics); it lengthens those bays without adding
@@ -693,7 +762,7 @@ def size_fuselage(
         li = LayoutItem(name, {"payload": m_payload_kg,
                                "avionics": m_avionics_net,
                                "battery": m_battery_kg}[name],
-                        x_start=x, length=bay_len(vols[name]) + bay_pad.get(name, 0.0))
+                        x_start=x, length=bay_len(name, vols[name]) + bay_pad.get(name, 0.0))
         items.append(li)
         bay_item[name] = li
         x = li.x_start + li.length
@@ -703,9 +772,16 @@ def size_fuselage(
     # battery tray: slides the packed bay +/- x_battery_trim_m on its rail
     battery_item.x_start += x_battery_trim_m
 
-    m_motor = PROP_SPLIT["motor_fan"] * m_propulsion_kg
-    m_esc   = PROP_SPLIT["esc"]       * m_propulsion_kg
-    m_duct  = PROP_SPLIT["duct"]      * m_propulsion_kg
+    if prop_item_masses is None:
+        m_motor = PROP_SPLIT["motor_fan"] * m_propulsion_kg
+        m_esc   = PROP_SPLIT["esc"]       * m_propulsion_kg
+        m_duct  = PROP_SPLIT["duct"]      * m_propulsion_kg
+    else:
+        # post-freeze re-solve: actual motor/prop and ESC masses, duct
+        # still modeled (structure booked in the propulsion fraction)
+        m_motor = prop_item_masses["motor_fan"]
+        m_esc   = prop_item_masses["esc"]
+        m_duct  = prop_item_masses["duct"]
 
     duct_chord = p.duct_chord_ratio * D_rotor_m
     x_fan      = L - 0.25 * L_tail            # fan plane in the boattail
@@ -810,10 +886,16 @@ def size_fuselage(
 #  Handoff writer
 # ---------------------------------------------
 
-def write_fuselage_yaml(fus: FuselageSizing, p: FuselageParams, path) -> None:
+def write_fuselage_yaml(fus: FuselageSizing, p: FuselageParams, path,
+                        regen_notebook: str = "notebooks/fuselage_design.ipynb",
+                        extra: dict = None) -> None:
     """
     Write out/fuselage.yaml -- the handoff consumed by the CAD notebook.
     Stations are from the nose tip, +aft;  x_body = -station  (FRD).
+
+    The post-freeze re-solve reuses this writer for out/fuselage_cots.yaml
+    (same schema) with its own `regen_notebook` provenance and an `extra`
+    block (fit report, deltas vs the conceptual solution) appended.
     """
     data = {
         "axis_convention": "body FRD (x fwd, y right, z down); stations from nose, +aft; x_body = -station",
@@ -888,9 +970,11 @@ def write_fuselage_yaml(fus: FuselageSizing, p: FuselageParams, path) -> None:
             for it in fus.items
         ],
     }
+    if extra:
+        data.update(extra)
     with open(path, "w", encoding="utf-8") as f:
         f.write("# AUTO-GENERATED -- do not edit by hand.\n")
         f.write("# Source : src/conceptual_design/fuselage_design.py\n")
         f.write("# Input  : config/fuselage.yaml + mass closure + control vanes\n")
-        f.write("# Regen  : re-run notebooks/fuselage_design.ipynb\n\n")
+        f.write(f"# Regen  : re-run {regen_notebook}\n\n")
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)
