@@ -32,8 +32,18 @@ that the next one reads:
 14. `fuselage_design_cots` — NB6 re-solved with as-selected masses/envelopes → `out/fuselage_cots.yaml`
 15. `design_summary` — final rollup, reads `out/` only, writes nothing
 
-NB2–NB15 re-run `run_sizing_loop` from `config/` to reconstruct the same
-design point — if you change the sizing API, update **all fifteen** call sites.
+NB2–NB15 re-run the sizing loop from `config/` to reconstruct the same
+design point, via `conceptual_design.design_point.solve_design_point` —
+a **single call site** (ADR-0013). Only NB8 (`vehicle_solid_model`)
+still carries an inline `run_sizing_loop` block (it only executes in
+CI/CadQuery); a sizing-API change touches `design_point.py` plus that
+one block.
+
+Notebooks are thin orchestration (ADR-0013): parameters, module calls,
+short interpretive prints. Shared prelude is `notebook.nb_setup()`;
+figures live in `src/conceptual_design/plots/`, console cards/tables in
+`reports.py` and `design_summary.py`. Moving code between a notebook
+and `src/` must never change a byte of the `out/` handoffs.
 
 `aileron_design` exists because jet-vane control authority is sized from
 **hover** thrust and collapses in cruise (`q_jet` scales linearly with

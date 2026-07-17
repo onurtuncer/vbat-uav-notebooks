@@ -457,3 +457,56 @@ def write_components_yaml(
         f.write("# Input  : config/components/ + converged design point\n")
         f.write("# Regen  : re-run notebooks/cots_selection.ipynb\n\n")
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+
+# Rating columns shown per category in the notebook candidate tables.
+RATING_COLS = {
+    "flight_controller": ["imu_count", "px4"],
+    "esc":               ["i_cont_a", "s_min", "s_max", "telemetry"],
+    "edf_motor":         ["p_max_w", "s_min", "s_max", "kv"],
+    "propeller":         ["d_rotor_mm", "p_max_w", "n_blades"],
+    "servo":             ["stall_torque_gcm", "torque_at_v"],
+    "battery":           ["capacity_mah", "s_cells", "c_rate_cont"],
+}
+
+
+def candidate_tables(db, selections):
+    """Per-category candidate DataFrames with a SELECTED/ok/REJECTED verdict
+    column, for notebook display."""
+    import pandas as pd
+
+    tables = {}
+    for cat in CATEGORIES:
+        sel = selections[cat]
+        rows = []
+        for spec in db.candidates[cat]:
+            verdict = ("SELECTED" if spec.id == sel.selected.id
+                       else "ok" if spec.id in sel.feasible_ids
+                       else f"REJECTED: {sel.rejected[spec.id]}")
+            row = {"id": spec.id, "mass_g": spec.mass_kg * 1e3}
+            row.update({k: spec.ratings.get(k) for k in RATING_COLS[cat]})
+            row["verdict"] = verdict
+            rows.append(row)
+        tables[cat] = pd.DataFrame(rows).set_index("id")
+    return tables
+
+
+def validate_components_yaml(path, selections, reqs, esc_rating_a,
+                             pack_capacity_ah, D_rotor_m):
+    """Self-checks on the written out/components.yaml handoff: the frozen
+    ids round-trip, and every selection still clears its derived
+    requirement (a failure means the design outgrew the freeze)."""
+    frozen = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    assert set(frozen["selected"]) == set(CATEGORIES)
+    for cat, sel in selections.items():
+        assert frozen["selected"][cat]["id"] == sel.selected.id
+    esc_sel = selections["esc"].selected
+    assert esc_sel.ratings["i_cont_a"] >= esc_rating_a
+    srv_sel = selections["servo"].selected
+    assert srv_sel.ratings["stall_torque_gcm"] >= reqs["servo"]["stall_torque_min_gcm"]
+    prop_sel = selections["propeller"].selected
+    assert abs(prop_sel.ratings["d_rotor_mm"] * 1e-3 - D_rotor_m) < 1.5e-3
+    assert selections["propeller"].frozen, (
+        "propeller must stay pinned to the ADR-0003 amendment decision")
+    bat_sel = selections["battery"].selected
+    assert bat_sel.ratings["capacity_mah"] * 1e-3 >= pack_capacity_ah

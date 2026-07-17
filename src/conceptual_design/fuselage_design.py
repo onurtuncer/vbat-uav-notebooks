@@ -978,3 +978,19 @@ def write_fuselage_yaml(fus: FuselageSizing, p: FuselageParams, path,
         f.write("# Input  : config/fuselage.yaml + mass closure + control vanes\n")
         f.write(f"# Regen  : re-run {regen_notebook}\n\n")
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+
+def fineness_sweep(fus_kwargs: dict, p: FuselageParams, FR_values):
+    """Re-size the fuselage across a fineness-ratio range (drag trade).
+
+    ``fus_kwargs`` is the full ``size_fuselage`` keyword set minus ``p``;
+    returns (CD0_fus, m_shell_kg) lists over ``FR_values``.
+    """
+    from dataclasses import replace
+
+    cd0_sweep, mshell_sweep = [], []
+    for fr in FR_values:
+        f_i = size_fuselage(**fus_kwargs, p=replace(p, fineness_ratio=float(fr)))
+        cd0_sweep.append(f_i.CD0_fus)
+        mshell_sweep.append(f_i.m_shell_kg)
+    return cd0_sweep, mshell_sweep
