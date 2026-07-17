@@ -9,6 +9,14 @@ is tagged.
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-07-17
+
+Minor release: the wing is re-sized to the selected airfoil's real
+CL_max — a design-point change (wing geometry, MAC, CFD references),
+hence the minor bump. Ships on top of the v0.4.5 content (Li-ion
+freeze, thin notebooks, pack-transient check), now merged to main
+(PR #18).
+
 ### Fixed
 
 - **Stall-speed consistency** (from the 2026-07 external aero review by
