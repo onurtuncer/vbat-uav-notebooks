@@ -14,8 +14,33 @@
 # TR sourcing: 6S packs in the 4-5 Ah class are stock items at Turkish
 # hobby retailers (robotus, oyuncakhobi, robolinkmarket); mind that
 # stock rotates quickly -- re-check the url at procurement.
+#
+# Li-ion cylindrical packs (21700 cells) are a second pack class: ~40%
+# better pack-level specific energy than the LiPo bricks (108 Wh at
+# 450 g vs 88.8 Wh at 613 g for the Gens Ace), at the cost of a lower
+# C-rating -- viable here only because the P50B is a high-power cell
+# (60 A cont) whose 1P current still clears the ESC's margined hover
+# draw. Note the chemistry nominal is 3.6 V/cell vs the 3.7 V/cell in
+# config/electrical.yaml (21.6 V vs 22.2 V bus) -- a ~3% bus-voltage
+# overestimate in the wiring/current laws, acceptable at this margin
+# but worth revisiting if a Li-ion pack is frozen at procurement.
 
 batteries:
+  - id: molicel_p50b_6s1p_5000
+    name: Molicel P50B 6S1P 5000 mAh Li-ion (21700)
+    mass_g: 450.0           # vendor-listed built-pack mass (wrekd.com)
+    dims_mm: [139.0, 25.0, 72.0]   # single-row 6-cell stick (wrekd.com)
+    shape: box
+    capacity_mah: 5000.0
+    s_cells: 6
+    c_rate_cont: 10.0       # conservative pack rating (50 A); the cell
+                            # itself is datasheet-rated 60 A continuous
+    # No TR-stocked built pack found (2026-07): built 6S1P packs are
+    # import (wrekd.com, nexusbatterysystems.com, upgradeenergytech.com,
+    # danenergy.com). Bare P50B cells ARE TR-stocked (elektrodepo.com,
+    # pilburada.com, trendyol, hepsiburada; pilpaketi.com listed but out
+    # of stock) -- a local spot-welded 6S1P build is the in-country route.
+    url: https://wrekd.com/products/6s1p-21-6v-molicel-p50b-5000mah-li-ion-battery-pack
   - id: gens_ace_6s_4000_30c
     name: Gens Ace 4000 mAh 6S 30C LiPo
     mass_g: 613.0           # retailer-listed pack mass (robotus.net)

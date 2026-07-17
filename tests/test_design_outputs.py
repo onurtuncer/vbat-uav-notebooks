@@ -223,7 +223,7 @@ class TestCotsSelection:
         assert sel["propeller"]["id"] == "ma_3blade_8x6"   # ADR-0003 amendment
         assert sel["propeller"]["frozen"] is True          # pinned, not auto
         assert sel["servo"]["id"] == "kst_x08_v6"
-        assert sel["battery"]["id"] == "gens_ace_6s_4000_30c"
+        assert sel["battery"]["id"] == "molicel_p50b_6s1p_5000"
 
     def test_requirements_derived_from_design_point(self, components):
         req = components["requirements"]
@@ -251,10 +251,11 @@ class TestCotsSelection:
         assert b["avionics_bay"]["within"] is False
         assert b["motor_fan"]["within"] is False
         assert b["motor_fan"]["actual_g"] < 2 * b["motor_fan"]["alloc_g"]
-        # COTS capacity quantisation: the pack lands a little over the
-        # sized battery mass, but bounded (< 15%).
-        assert b["battery"]["within"] is False
-        assert b["battery"]["actual_g"] < 1.15 * b["battery"]["alloc_g"]
+        # The Li-ion 21700 pack (Molicel P50B 6S1P) beats the sized LiPo
+        # mass outright -- its pack-level specific energy wins back the
+        # capacity-quantisation penalty and then some (~-105 g).
+        assert b["battery"]["within"] is True
+        assert b["battery"]["actual_g"] > 0.75 * b["battery"]["alloc_g"]
         assert components["all_within_allocations"] is False
 
     def test_heavy_fan_rejected_only_on_diameter(self, components):
@@ -379,12 +380,15 @@ class TestAsSelectedFuselage:
 
     def test_as_selected_mass_rollup(self, fuselage_cots):
         # the all-up delta IS the sum of the freeze's standing mass
-        # findings; pin its state (positive, bounded) like the thermal pin
+        # findings; pin its state like the thermal pin. Since the Li-ion
+        # Molicel pack entered the catalog its ~-105 g vs the sized LiPo
+        # outweighs the avionics/motor overruns: the delta is now
+        # slightly NEGATIVE (as-selected all-up under the closure MTOW).
         s = fuselage_cots["as_selected"]
         assert s["m_items_total_kg"] == pytest.approx(
             s["m_closure_mtow_kg"] + s["m_delta_kg"], rel=1e-3)
-        assert 0.0 < s["m_delta_kg"] < 0.2
-        assert s["m_delta_kg"] == pytest.approx(0.1246, rel=5e-2)
+        assert -0.1 < s["m_delta_kg"] < 0.0
+        assert s["m_delta_kg"] == pytest.approx(-0.0384, rel=5e-2)
 
     def test_structure_over_budget_is_pinned_finding(self, fuselage_cots):
         # KNOWN finding (ADR-0012): the hull that holds the real hardware
