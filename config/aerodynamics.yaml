@@ -19,18 +19,18 @@
 #             0.80 is representative for a straight, unswept, untapered wing.
 #
 # CL_max    : maximum lift coefficient (3D wing) [-]
-#             1.2186 = the selected NACA 2412 wing's CL_max_3D from the
-#             NB2 airfoil selection (Raymer 3-8: 0.9 x Cl_max_2D 1.354,
-#             unswept). The former 1.4 was a pre-selection "NACA 00xx"
-#             placeholder; the 2026-07 external aero review (C. Ucler)
-#             showed the stall line computed from it (11.98 m/s) was
-#             inconsistent with the selected airfoil (true ~12.8 m/s at
-#             the old wing loading). This value MUST track the NB2
-#             selection: change the airfoil -> update CL_max here in the
-#             same commit (the regression pins catch drift). Note the
-#             wing sits at Re ~ 1.4e5 near stall, where CL_max erodes
-#             with roughness/transition -- the stall-limited wing sizing
-#             this value drives is the margin against that.
+#             1.4886 = the selected NACA 4412 wing's CL_max_3D from the
+#             NB2 airfoil selection (Raymer 3-8: 0.9 x Cl_max_2D 1.654,
+#             unswept; ADR-0015 re-selection after the v0.5.0
+#             stall-consistency fix -- the 2412's 1.2186 before that,
+#             and a pre-selection 1.4 placeholder originally, which the
+#             2026-07 external aero review flagged as inconsistent).
+#             This value MUST track the NB2 selection: change the
+#             airfoil -> update CL_max here in the same commit (the
+#             regression pins catch drift). Note the wing sits at
+#             Re ~ 1.4e5 near stall, where a cambered section's Cl_max
+#             is empirical and erodes with roughness/transition --
+#             validate CL_max by test before freezing wing tooling.
 #
 # V_stall   : required stall speed [m/s]
 #             12.0 m/s bounds the transition envelope (wing-borne at
@@ -52,7 +52,7 @@ LD: 8.0
 CD0: 0.025
 AR: 6.0
 e: 0.80
-CL_max: 1.2186
+CL_max: 1.4886
 V_stall: 12.0
 V_max: 35.0
 ddot_min_deg_s2: 30.0

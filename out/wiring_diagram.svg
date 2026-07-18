@@ -189,13 +189,13 @@
     <rect class="box" x="680" y="820" width="140" height="75" rx="2"/>
     <text class="ref" x="696" y="847">S-AL</text>
     <text class="name" x="696" y="863">Aileron Servo &#183; L</text>
-    <text class="spec" x="696" y="877">&#8805;93 g&#183;cm, PWM</text>
+    <text class="spec" x="696" y="877">&#8805;69 g&#183;cm, PWM</text>
   </g>
   <g>
     <rect class="box" x="840" y="820" width="140" height="75" rx="2"/>
     <text class="ref" x="856" y="847">S-AR</text>
     <text class="name" x="856" y="863">Aileron Servo &#183; R</text>
-    <text class="spec" x="856" y="877">&#8805;93 g&#183;cm, PWM</text>
+    <text class="spec" x="856" y="877">&#8805;69 g&#183;cm, PWM</text>
   </g>
   <text class="spec" x="40" y="920">T/B/L/R = aft-view labels, matching vehicle_assembly.py VANE_ANGLES &#183; torque from out/control_vanes.yaml</text>
   <text class="spec" x="40" y="933">S-AL/S-AR = outboard aileron servos (out/aileron.yaml), cruise-phase roll backup to the jet vanes</text>

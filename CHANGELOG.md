@@ -9,6 +9,21 @@ is tagged.
 
 ## [Unreleased]
 
+### Changed
+
+- **NACA 4412 wing** (ADR-0015): airfoil re-selected 2412 → 4412 after
+  the v0.5.0 stall-consistency fix made section lift buy wing area
+  directly. W/S 107.2 → 131.2 N/m², S 0.2107 → 0.1722 m², b 1.124 →
+  1.016 m (smaller than the pre-fix wing), MAC 0.187 → 0.169 m, cruise
+  CL 0.535 near the polar optimum, L/D 12.76 → 13.35, V_MD ≈ 18.5 m/s
+  so the 20 m/s cruise is within ~2% of max L/D. A V_cruise change was
+  studied (16–22 m/s through the closure) and rejected: the fixed-range
+  mission energy is nearly V-independent under the configured constant
+  L/D. MTOW / hover power / battery point unchanged. Watch items
+  (ADR-0015): un-modelled 4412 nose-down Cm0 (cruise trim) and the
+  empirical Cl_max at Re ≈ 1.4e5 near stall. Pins, `Allrun.case`, and
+  CAD updated in the same change.
+
 ## [0.5.0] — 2026-07-17
 
 Minor release: the wing is re-sized to the selected airfoil's real

@@ -17,19 +17,19 @@ delta_max_deg: 20.0
 delta_stall_deg: 15.0
 delta_design_deg: 10.0
 F_vane_design_N: 0.6970548552981054
-M_pitch_design_Nm: 0.17243553958906424
-M_yaw_design_Nm: 0.17243553958906424
+M_pitch_design_Nm: 0.15586597431296656
+M_yaw_design_Nm: 0.15586597431296656
 M_roll_design_Nm: 0.19810298987572156
-ddot_pitch_deg_s2: 608.2562681981937
-ddot_yaw_deg_s2: 608.2562681981937
+ddot_pitch_deg_s2: 617.2799207350214
+ddot_yaw_deg_s2: 617.2799207350214
 ddot_roll_deg_s2: 867.9872126108369
 ddot_min_deg_s2: 30.0
 M_hinge_max_Nmm: 14.433217833802571
 servo_torque_req_gcm: 441.5335869171195
-L_CG_m: 0.12368864392696881
+L_CG_m: 0.11180323408428756
 L_roll_m: 0.07105
-I_pitch_kgm2: 0.01624287191611015
-I_yaw_kgm2: 0.01624287191611015
+I_pitch_kgm2: 0.014467443695873997
+I_yaw_kgm2: 0.014467443695873997
 I_roll_kgm2: 0.013076765491349143
 mixing_matrix:
 - - 1.0
