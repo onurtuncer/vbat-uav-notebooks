@@ -5,30 +5,30 @@
 axis_convention: body FRD (x fwd, y right, z down); stations from nose, +aft; x_body
   = -station
 m_total_kg: 2.30252
-x_CG_m: 0.23675
-x_CG_nb4_m: 0.23675
-x_CG_as_packaged_m: 0.23678
-x_battery_trim_m: -0.00012
+x_CG_m: 0.23655
+x_CG_nb4_m: 0.23655
+x_CG_as_packaged_m: 0.23657
+x_battery_trim_m: -0.0001
 battery_tray_travel_m: 0.025
 battery_trim_within_travel: true
 static_margin_refined: 0.05
-static_margin_as_packaged: 0.0498
+static_margin_as_packaged: 0.0499
 static_margin_nb4: 0.05
 r_CG_body_m:
-- -0.23675
+- -0.23655
 - 0.0
 - 0.0
 inertia_about_CG_body_FRD:
-  Ixx_kgm2: 0.025553
-  Iyy_kgm2: 0.040513
-  Izz_kgm2: 0.055191
+  Ixx_kgm2: 0.019756
+  Iyy_kgm2: 0.04002
+  Izz_kgm2: 0.050395
   Ixy_kgm2: 0.0
   Ixz_kgm2: 0.0
   Iyz_kgm2: 0.0
 radii_of_gyration_m:
-  k_x: 0.10535
-  k_y: 0.13265
-  k_z: 0.15482
+  k_x: 0.09263
+  k_y: 0.13184
+  k_z: 0.14794
 components:
 - name: payload
   primitive: solid cylinder
@@ -47,14 +47,14 @@ components:
 - name: battery
   primitive: solid cylinder
   mass_kg: 0.5546
-  x_cg_m: 0.26402
+  x_cg_m: 0.26404
   Ixx_kgm2: 0.0003679
   Iyy_kgm2: 0.0005475
   Izz_kgm2: 0.0005475
 - name: battery_tray
   primitive: solid cylinder
   mass_kg: 0.015
-  x_cg_m: 0.26402
+  x_cg_m: 0.26404
   Ixx_kgm2: 1.0e-05
   Iyy_kgm2: 5.0e-06
   Izz_kgm2: 5.0e-06
@@ -81,18 +81,18 @@ components:
   Izz_kgm2: 0.0003409
 - name: shell_struct
   primitive: shell of revolution
-  mass_kg: 0.3273
+  mass_kg: 0.3475
   x_cg_m: 0.21522
-  Ixx_kgm2: 0.0006771
-  Iyy_kgm2: 0.0060909
-  Izz_kgm2: 0.0060909
+  Ixx_kgm2: 0.0007189
+  Iyy_kgm2: 0.0064668
+  Izz_kgm2: 0.0064668
 - name: wing
   primitive: flat plate
-  mass_kg: 0.1265
-  x_cg_m: 0.23675
-  Ixx_kgm2: 0.0133339
-  Iyy_kgm2: 0.0003756
-  Izz_kgm2: 0.0136988
+  mass_kg: 0.1085
+  x_cg_m: 0.23655
+  Ixx_kgm2: 0.0093443
+  Iyy_kgm2: 0.0002632
+  Izz_kgm2: 0.0096
 - name: vanes (4x)
   primitive: radial cluster
   mass_kg: 0.01372
@@ -117,10 +117,10 @@ components:
 - name: aileron_hw (2x)
   primitive: radial cluster
   mass_kg: 0.03
-  x_cg_m: 0.23675
-  Ixx_kgm2: 0.0083791
-  Iyy_kgm2: 0.0041895
-  Izz_kgm2: 0.0041895
+  x_cg_m: 0.23655
+  Ixx_kgm2: 0.0068459
+  Iyy_kgm2: 0.003423
+  Izz_kgm2: 0.003423
 - name: isolation_hw
   primitive: solid cylinder
   mass_kg: 0.032
@@ -137,11 +137,11 @@ components:
   Izz_kgm2: 4.5e-06
 - name: spar_hw
   primitive: spanwise rod
-  mass_kg: 0.0357
-  x_cg_m: 0.23675
-  Ixx_kgm2: 0.0013542
+  mass_kg: 0.0335
+  x_cg_m: 0.23655
+  Ixx_kgm2: 0.0010382
   Iyy_kgm2: 0.0
-  Izz_kgm2: 0.0013542
+  Izz_kgm2: 0.0010382
 - name: misc (rem.)
   primitive: solid cylinder
   mass_kg: 0.1462

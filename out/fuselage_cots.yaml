@@ -16,7 +16,7 @@ f_tail: 0.3
 fineness: 5.0
 active_constraint: packaging
 S_wet_m2: 0.16614
-CD0_fus: 0.0055
+CD0_fus: 0.00673
 m_shell_kg: 0.3768
 t_shell_m: 0.0008
 construction_method: segmented_fdm
@@ -28,19 +28,19 @@ semimono_members_kg:
   total: 0.37675
 m_semimono_fdm_kg: 0.37675
 m_semimono_cfrp_kg: 0.25674
-m_struct_pool_kg: 0.43074
-m_struct_carved_kg: 0.10346
+m_struct_pool_kg: 0.4487
+m_struct_carved_kg: 0.10118
 m_avionics_budget_kg: 0.208
 m_avionics_carved_kg: 0.0694
 m_avionics_net_kg: 0.1386
 m_misc_budget_kg: 0.16118
 m_misc_carved_kg: 0.015
 m_misc_net_kg: 0.14618
-x_CG_m: 0.25609
-x_wing_LE_m: 0.21861
-x_wing_AC_m: 0.26546
+x_CG_m: 0.25593
+x_wing_LE_m: 0.22205
+x_wing_AC_m: 0.2644
 x_vane_m: 0.5583
-L_vane_arm_m: 0.30221
+L_vane_arm_m: 0.30237
 static_margin: 0.05
 x_battery_trim_m: 0.0
 battery_tray_travel_m: 0.025
@@ -51,10 +51,10 @@ frame_profile_side_m: 0.008
 n_crossbeams: 3
 spar_od_m: 0.008
 spar_chord_frac: 0.3
-spar_length_m: 0.67467
-m_spar_kg: 0.02374
+spar_length_m: 0.60984
+m_spar_kg: 0.02146
 m_joint_hw_kg: 0.02
-m_spar_hw_kg: 0.03574
+m_spar_hw_kg: 0.03346
 duct_chord_m: 0.09135
 D_duct_inner_m: 0.209
 D_duct_outer_m: 0.225
@@ -90,7 +90,7 @@ layout:
   length_m: 0.0
   x_cg_m: 0.50668
 - name: shell_struct
-  mass_kg: 0.3273
+  mass_kg: 0.3475
   x_start_m: 0.23983
   length_m: 0.0
   x_cg_m: 0.23983
@@ -120,20 +120,20 @@ layout:
   length_m: 0.0
   x_cg_m: 0.21318
 - name: wing
-  mass_kg: 0.1265
-  x_start_m: 0.25609
+  mass_kg: 0.1085
+  x_start_m: 0.25593
   length_m: 0.0
-  x_cg_m: 0.25609
+  x_cg_m: 0.25593
 - name: aileron_hw
   mass_kg: 0.0238
-  x_start_m: 0.25609
+  x_start_m: 0.25593
   length_m: 0.0
-  x_cg_m: 0.25609
+  x_cg_m: 0.25593
 - name: spar_hw
-  mass_kg: 0.0357
-  x_start_m: 0.25609
+  mass_kg: 0.0335
+  x_start_m: 0.25593
   length_m: 0.0
-  x_cg_m: 0.25609
+  x_cg_m: 0.25593
 as_selected:
   m_items_total_kg: 2.26422
   m_closure_mtow_kg: 2.30261
@@ -173,7 +173,7 @@ bay_fit:
 delta_vs_conceptual:
   D_fus_mm: 10.94
   L_fus_mm: 54.68
-  x_CG_mm: 19.34
+  x_CG_mm: 19.38
   S_wet_m2: 0.03054
-  CD0_fus: 0.00086
-  L_vane_arm_mm: 35.34
+  CD0_fus: 0.00106
+  L_vane_arm_mm: 35.29

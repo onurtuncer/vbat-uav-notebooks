@@ -31,6 +31,16 @@
 #
 # n_coords     : number of coordinate points per surface for the .dat file.
 
-designation: NACA 2412
+# Selected 2026-07-18 (ADR-0015): NACA 4412. After the v0.5.0 CL_max
+# consistency fix the stall-limited wing sizing rewards section lift
+# directly: the 4412's CL_max_3D 1.489 shrinks the wing back to
+# ~0.172 m^2 / b ~1.016 m (smaller than the pre-fix 2412 wing), puts
+# cruise CL 0.535 near the polar optimum (L/D 13.35, V_MD ~18.5 m/s vs
+# the 20 m/s cruise), and the mission is cruise-dominated -- exactly the
+# "endurance priority" case above. Watch items: larger nose-down Cm
+# (trim, not modelled at this stage) and the empirical Cl_max at
+# Re ~ 1.4e5 near stall (low-Re erosion -- validate before freezing
+# the wing tooling).
+designation: NACA 4412
 CD0_fuselage: 0.010
 n_coords: 200

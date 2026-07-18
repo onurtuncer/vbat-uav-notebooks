@@ -3,12 +3,12 @@
 # Input  : config/airfoil_selection.yaml
 # Regen  : re-run the airfoil selection notebook cell.
 
-designation: NACA 2412
+designation: NACA 4412
 tc_ratio: 0.12
-Cl_max_2D: 1.354
-CL_max_3D: 1.2186
+Cl_max_2D: 1.654
+CL_max_3D: 1.4886
 Cd0_section: 0.0126
-alpha_L0_deg: -1.375
-LD_cruise: 12.76
+alpha_L0_deg: -2.75
+LD_cruise: 13.35
 e_oswald: 0.8691
 k_induced: 0.061041

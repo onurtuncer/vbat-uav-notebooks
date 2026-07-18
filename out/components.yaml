@@ -28,7 +28,7 @@ requirements:
   servo:
     stall_torque_min_gcm: 662.3
     tau_vane_req_gcm: 441.534
-    tau_aileron_req_gcm: 93.29
+    tau_aileron_req_gcm: 68.89
   battery:
     capacity_min_ah: 3.497
     series_cells: 6

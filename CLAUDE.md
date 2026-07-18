@@ -185,16 +185,23 @@ standing finding collected programmatically from the handoffs.
   2-ply CFRP ~242 g later) on every run. `t_shell_m` remains ONLY the
   packaging wall — decoupled from the structural skin.
 - **Wing sized to the real airfoil CL_max** (2026-07 external aero
-  review, C. Ucler): `config/aerodynamics.yaml` CL_max re-baselined
-  1.4 (pre-selection placeholder) → **1.2186**, the selected NACA 2412
-  wing's CL_max_3D — the old wing card claimed V_stall 11.98 m/s that
-  the real airfoil couldn't deliver (true ~12.8). The stall-limited
-  W/S drops 123.2 → 107.2 N/m² (S 0.1834 → 0.2107 m², b 1.049 →
-  1.124 m, MAC 0.175 → 0.187 m); MTOW/hover power are unchanged (the
-  closure carries wing mass inside the fractions). V_stall 12.0 m/s is
-  now genuinely met; cruise L/D 13.22 → 12.76 (CL 0.437, slightly off
-  the polar optimum). CL_max must track the NB2 airfoil selection —
-  change the airfoil, update CL_max in the same commit.
+  review, C. Ucler; v0.5.0): `config/aerodynamics.yaml` CL_max is the
+  selected wing's CL_max_3D, not a placeholder — the old card claimed
+  V_stall 11.98 m/s the NACA 2412 couldn't deliver (true ~12.8).
+  CL_max must track the NB2 airfoil selection: change the airfoil,
+  update CL_max in the same commit. MTOW/hover power never move with
+  the wing (the closure carries wing mass inside the fractions, and
+  cruise power uses the conservative config `LD: 8.0`).
+- **NACA 4412 wing** (ADR-0015, 2026-07-18): with the stall-limited
+  sizing now honest, section lift buys wing area directly, and the
+  4412 (CL_max_3D 1.489) dominates the candidate trade: W/S 131.2
+  N/m², S 0.1722 m², b 1.016 m (smaller than the pre-fix 2412 wing),
+  cruise CL 0.535 near the polar optimum, L/D 13.35, V_MD ≈ 18.5 m/s
+  so the 20 m/s cruise is back within ~2% of max L/D (a V_cruise
+  change was studied and rejected — the fixed-range closure is nearly
+  V-independent). Watch items: un-modelled nose-down Cm0 (cruise trim)
+  and the empirical Cl_max at Re ≈ 1.4e5 near stall — validate before
+  wing tooling.
 - Design point ≈ 2.30 kg MTOW, ~652 W hover electrical, ~8.4C peak
   (segmented-FDM, k=1.1, fs_base re-baselined 0.25→0.22 to the
   ADR-0010 semi-monocoque member model — lighter than the original
