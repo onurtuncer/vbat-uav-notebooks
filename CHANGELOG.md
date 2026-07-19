@@ -11,6 +11,13 @@ is tagged.
 
 ### Changed
 
+- **Aeolion handoff schema 1.2.0**: optional `body` block — the
+  fuselage as a body of revolution ({x, radius} stations sampled from
+  the same 3-segment meridian the CAD revolve uses, cosine-spaced at
+  the fixed `n_body_stations` count, body x = −station in
+  `aetherion_body_frd`). Never bound to a lifting lattice; intended
+  for slender-body/Munk trim corrections and duct-jet context. 1.0.0
+  and 1.1.0 documents remain valid; the exporter stamps 1.2.0.
 - **Aeolion handoff schema 1.1.0** (from the Aeolion-side integration
   review): `control_surfaces` entries carry an explicit `surface`
   binding — `wing` (eta = semispan fraction) or `duct_jet` (all-moving

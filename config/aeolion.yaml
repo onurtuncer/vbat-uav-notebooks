@@ -2,7 +2,7 @@
 #
 # These drive out/cad/aeolion_geometry.json, the parametric geometry
 # contract consumed by the Aeolion VLM/BEMT adjoint loop
-# (schemas/vbat-aeolion-geometry-handoff.schema.json, schema 1.0.0).
+# (schemas/vbat-aeolion-geometry-handoff.schema.json, schema 1.2.0).
 #
 # EVERYTHING here is discretization/parameterization structure, NOT a
 # design variable: the schema requires station counts, CST order, and
@@ -36,6 +36,13 @@
 #                       n_sections in config/prop_geometry.yaml so BEMT
 #                       and the CAD rotor sample the same chord/twist
 #                       law at comparable resolution.
+# n_body_stations     : axial stations in body.stations (schema 1.2.0),
+#                       nose tip -> tail base, cosine-spaced so the
+#                       elliptical nose and the tail cone are resolved
+#                       where curvature is highest. 25 samples the
+#                       3-segment meridian (fuselage_design.
+#                       fuselage_radius — the same law the CAD
+#                       revolve uses) to well under a millimetre.
 
 n_planform_stations: 5
 cst_order: 6
@@ -43,3 +50,4 @@ chordwise_panels: 8
 spanwise_panels_per_section: 6
 wake_model: frozen
 bemt_stations: 13
+n_body_stations: 25

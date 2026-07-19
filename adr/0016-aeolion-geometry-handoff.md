@@ -44,6 +44,17 @@ contract as a JSON Schema (2020-12, `additionalProperties: false`).
   plate rotating about its `hinge_xc` line. The vane CFD → DAVE-ML
   path still characterizes the jet-wash aerodynamics; carrying the
   geometry here lets Aeolion model the jet directly.
+- **Body block (schema 1.2.0, 2026-07-19)**: the fuselage rides in the
+  contract as a body of revolution — `body.stations` of {x, radius}
+  sampled from the same 3-segment meridian the CAD revolve is built
+  from (`fuselage_design.fuselage_radius`: elliptical nose, cylinder,
+  tail cone to the hub radius), cosine-spaced nose → tail at a fixed
+  count (`n_body_stations`, config/aeolion.yaml), body x = −station
+  (0 at the nose tip, negative aft, consistent with
+  `aetherion_body_frd`). Optional in the schema (1.0.0/1.1.0 documents
+  stay valid); never bound to a lifting lattice — intended for
+  slender-body/Munk trim corrections and duct-jet context. One
+  meridian law, two consumers (CAD revolve, handoff).
 - **Surface binding (schema 1.1.0, 2026-07-19, from the Aeolion-side
   review)**: control-surface entries carry an explicit `surface` field
   — `wing` (eta = semispan fraction of the planform) or `duct_jet` (an

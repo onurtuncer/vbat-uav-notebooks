@@ -17,6 +17,12 @@ executable geometry contract for the Aeolion VLM/BEMT adjoint loop:
   the jet directly;
 - BEMT blade stations sampled from the SAME chord/twist law that
   builds the CAD rotor (prop_geometry.PropGeometry);
+- the fuselage as a body of revolution (schema 1.2.0): radius stations
+  sampled from the SAME 3-segment meridian the CAD revolve uses
+  (fuselage_design.fuselage_radius), cosine-spaced nose -> tail, body
+  x = -station (0 at the nose tip, negative aft). Not bound to any
+  lifting lattice -- for slender-body/Munk trim corrections and
+  duct-jet context;
 - static mesh-topology directives (config/aeolion.yaml, not design
   variables).
 
@@ -46,9 +52,10 @@ import numpy as np
 import yaml
 
 from .airfoil_selection import naca4_coordinates, parse_naca4
+from .fuselage_design import fuselage_radius
 from .prop_geometry import PropGeometry
 
-SCHEMA_VERSION = "1.1.0"
+SCHEMA_VERSION = "1.2.0"
 REFERENCE_FRAME = "aetherion_body_frd"
 
 # Kulfan class-function exponents: round nose (N1 = 0.5), sharp
@@ -69,6 +76,7 @@ class AeolionMeshConfig:
     spanwise_panels_per_section: int
     wake_model: str
     bemt_stations: int
+    n_body_stations: int
 
     @classmethod
     def from_yaml(cls, path) -> "AeolionMeshConfig":
@@ -81,6 +89,7 @@ class AeolionMeshConfig:
             spanwise_panels_per_section = int(data["spanwise_panels_per_section"]),
             wake_model                  = str(data["wake_model"]),
             bemt_stations               = int(data["bemt_stations"]),
+            n_body_stations             = int(data["n_body_stations"]),
         )
 
     def validate(self) -> None:
@@ -97,6 +106,8 @@ class AeolionMeshConfig:
             raise ValueError("wake_model must be 'frozen' or 'relaxed'")
         if self.bemt_stations < 2:
             raise ValueError("bemt_stations must be at least 2")
+        if self.n_body_stations < 2:
+            raise ValueError("n_body_stations must be at least 2")
 
 
 def _bernstein(x: np.ndarray, order: int) -> np.ndarray:
@@ -162,6 +173,7 @@ def build_aeolion_geometry(
     airfoil: str,
     ail: Mapping[str, Any],
     vanes: Mapping[str, Any],
+    fus: Mapping[str, Any],
     rotor_D_m: float,
     prop: PropGeometry,
     f_shaft_hz: float,
@@ -170,13 +182,17 @@ def build_aeolion_geometry(
     """Build the schema-1.0.0 Aeolion geometry document.
 
     span_m/chord_m come from the converged sizing result, `ail` from
-    out/aileron.yaml, `vanes` from out/control_vanes.yaml,
-    `f_shaft_hz` (hover 1/rev) from out/vibration.yaml. eta is the
-    semispan fraction (0 root, 1 tip); the wing is currently
-    rectangular and untwisted, so every station carries the same chord
-    and the same CST section -- the fixed station count is the
-    contract for future twist/taper variables. Vane entries reuse eta
-    as the duct-exit radius fraction (see module docstring).
+    out/aileron.yaml, `vanes` from out/control_vanes.yaml, `fus` from
+    out/fuselage.yaml, `f_shaft_hz` (hover 1/rev) from
+    out/vibration.yaml. eta is the semispan fraction (0 root, 1 tip);
+    the wing is currently rectangular and untwisted, so every station
+    carries the same chord and the same CST section -- the fixed
+    station count is the contract for future twist/taper variables.
+    Vane entries reuse eta as the duct-exit radius fraction (see
+    module docstring). The body block (schema 1.2.0) samples the same
+    3-segment meridian the CAD revolve is built from
+    (fuselage_design.fuselage_radius), cosine-spaced nose -> tail and
+    mapped to body x = -station.
     """
     if span_m <= 0 or chord_m <= 0:
         raise ValueError("wing span and chord must be positive")
@@ -186,6 +202,8 @@ def build_aeolion_geometry(
         raise ValueError("shaft frequency must be positive")
     if not 0.0 < float(vanes["R_hub_m"]) < float(vanes["R_tip_m"]):
         raise ValueError("vane radii must satisfy 0 < R_hub < R_tip")
+    if float(fus["D_fus_m"]) <= 0 or float(fus["L_fus_m"]) <= 0:
+        raise ValueError("fuselage diameter and length must be positive")
     mesh.validate()
 
     n = mesh.n_planform_stations
@@ -205,6 +223,20 @@ def build_aeolion_geometry(
             "chord": prop.chord_ratio(prop.loft_fraction(r_over_R)) * R,
             "twist": prop.twist_deg(r_over_R),
         })
+
+    # Body of revolution: sample the 3-segment meridian (the SAME law
+    # the CAD revolve uses) cosine-spaced from nose tip to tail base so
+    # the elliptical nose and the tail cone are resolved where the
+    # curvature lives. Station x_s (from nose, +aft) -> body x = -x_s.
+    L_fus = float(fus["L_fus_m"])
+    nbdy = mesh.n_body_stations
+    body_stations = []
+    for i in range(nbdy):
+        x_s = 0.5 * L_fus * (1.0 - math.cos(math.pi * i / (nbdy - 1)))
+        r = fuselage_radius(x_s, float(fus["D_fus_m"]), L_fus,
+                            float(fus["f_nose"]), float(fus["f_tail"]),
+                            float(fus["r_hub_m"]))
+        body_stations.append({"x": round(-x_s, 12) + 0.0, "radius": r})
 
     payload: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -251,6 +283,10 @@ def build_aeolion_geometry(
             }
             for axis in _vane_hinge_axes(int(vanes["n_vanes"]))
         ],
+        "body": {
+            "length": L_fus,
+            "stations": body_stations,
+        },
         "propulsion_bemt": {
             "disk_radius": R,
             "reference_rpm": float(f_shaft_hz) * 60.0,
