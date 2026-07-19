@@ -16,7 +16,7 @@ f_tail: 0.3
 fineness: 5.0
 active_constraint: packaging
 S_wet_m2: 0.16614
-CD0_fus: 0.00673
+CD0_fus: 0.00616
 m_shell_kg: 0.3768
 t_shell_m: 0.0008
 construction_method: segmented_fdm
@@ -28,19 +28,19 @@ semimono_members_kg:
   total: 0.37675
 m_semimono_fdm_kg: 0.37675
 m_semimono_cfrp_kg: 0.25674
-m_struct_pool_kg: 0.4487
-m_struct_carved_kg: 0.10118
+m_struct_pool_kg: 0.48802
+m_struct_carved_kg: 0.10216
 m_avionics_budget_kg: 0.208
 m_avionics_carved_kg: 0.0694
 m_avionics_net_kg: 0.1386
-m_misc_budget_kg: 0.16118
+m_misc_budget_kg: 0.17626
 m_misc_carved_kg: 0.015
-m_misc_net_kg: 0.14618
-x_CG_m: 0.25593
-x_wing_LE_m: 0.22205
-x_wing_AC_m: 0.2644
+m_misc_net_kg: 0.16126
+x_CG_m: 0.25591
+x_wing_LE_m: 0.22048
+x_wing_AC_m: 0.26477
 x_vane_m: 0.5583
-L_vane_arm_m: 0.30237
+L_vane_arm_m: 0.30239
 static_margin: 0.05
 x_battery_trim_m: 0.0
 battery_tray_travel_m: 0.025
@@ -51,10 +51,10 @@ frame_profile_side_m: 0.008
 n_crossbeams: 3
 spar_od_m: 0.008
 spar_chord_frac: 0.3
-spar_length_m: 0.60984
-m_spar_kg: 0.02146
+spar_length_m: 0.63773
+m_spar_kg: 0.02244
 m_joint_hw_kg: 0.02
-m_spar_hw_kg: 0.03346
+m_spar_hw_kg: 0.03444
 duct_chord_m: 0.09135
 D_duct_inner_m: 0.209
 D_duct_outer_m: 0.225
@@ -85,12 +85,12 @@ layout:
   length_m: 0.0
   x_cg_m: 0.49297
 - name: duct
-  mass_kg: 0.0518
+  mass_kg: 0.0567
   x_start_m: 0.50668
   length_m: 0.0
   x_cg_m: 0.50668
 - name: shell_struct
-  mass_kg: 0.3475
+  mass_kg: 0.3859
   x_start_m: 0.23983
   length_m: 0.0
   x_cg_m: 0.23983
@@ -115,29 +115,29 @@ layout:
   length_m: 0.0
   x_cg_m: 0.18653
 - name: misc
-  mass_kg: 0.1462
+  mass_kg: 0.1613
   x_start_m: 0.21318
   length_m: 0.0
   x_cg_m: 0.21318
 - name: wing
-  mass_kg: 0.1085
-  x_start_m: 0.25593
+  mass_kg: 0.1213
+  x_start_m: 0.25591
   length_m: 0.0
-  x_cg_m: 0.25593
+  x_cg_m: 0.25591
 - name: aileron_hw
   mass_kg: 0.0238
-  x_start_m: 0.25593
+  x_start_m: 0.25591
   length_m: 0.0
-  x_cg_m: 0.25593
+  x_cg_m: 0.25591
 - name: spar_hw
-  mass_kg: 0.0335
-  x_start_m: 0.25593
+  mass_kg: 0.0344
+  x_start_m: 0.25591
   length_m: 0.0
-  x_cg_m: 0.25593
+  x_cg_m: 0.25591
 as_selected:
-  m_items_total_kg: 2.26422
-  m_closure_mtow_kg: 2.30261
-  m_delta_kg: -0.03838
+  m_items_total_kg: 2.33629
+  m_closure_mtow_kg: 2.51806
+  m_delta_kg: -0.18177
   rho_battery_eff_kgm3: 1798.6
   battery_id: molicel_p50b_6s1p_5000
   fc_id: pixhawk_6c
@@ -171,9 +171,9 @@ bay_fit:
   have_mm: 81.2
   ok: true
 delta_vs_conceptual:
-  D_fus_mm: 10.94
-  L_fus_mm: 54.68
-  x_CG_mm: 19.38
-  S_wet_m2: 0.03054
-  CD0_fus: 0.00106
-  L_vane_arm_mm: 35.29
+  D_fus_mm: 8.39
+  L_fus_mm: 41.96
+  x_CG_mm: 13.61
+  S_wet_m2: 0.02372
+  CD0_fus: 0.00075
+  L_vane_arm_mm: 28.34

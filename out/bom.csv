@@ -1,23 +1,23 @@
 part_no,item,qty,material_spec,unit_mass_kg,x_cg_mm,total_mass_kg
-VBT-STR-001,Fuselage semi-monocoque,1,segmented_fdm skin + longeron frame + rings (ADR-0010),0.3475,215.2,0.3475
-VBT-STR-002,"Wing, constant chord",1,"CFRP skin/foam core, NACA 4412",0.1085,236.6,0.1085
-VBT-PRP-001,EDF motor + fan rotor,1,"D = 203 mm EDF, BLDC outrunner",0.2072,442.4,0.2072
-VBT-PRP-002,Duct / shroud annulus,1,"CFRP wound annulus, 8 mm wall",0.0518,456.1,0.0518
-VBT-PWR-001,Battery pack,1,"LiPo, 140 Wh/kg pack-level",0.5546,264.0,0.5546
-VBT-PWR-002,ESC,1,sized to hover power; incl. inflow-washed cold-plate (NB7),0.0863,239.1,0.0863
-VBT-AVI-001,Avionics stack,1,FC + GPS + RX + telemetry,0.0962,198.4,0.0962
-VBT-PLD-001,Payload (EO sensor + mount),1,"requirement, 0.5 kg",0.5,101.7,0.5
-VBT-CTL-001,Jet control vane,4,"CFRP flat plate 2 mm, c=20.7 mm, h=51.8 mm",0.003429907488,503.6,0.013719629952
-VBT-CTL-002,"Vane servo, 9g-class",4,"~1800 g-cm >= req 442 g-cm, recessed in hub, shaft on hinge line",0.012,498.5,0.048
-VBT-CTL-003,Hinge + pushrod set,4,pin hinge + wire pushrod per vane,0.003,498.5,0.012
-VBT-CTL-004,"Aileron servo, 9g-class",2,">= req 69 g-cm, on wing at y_arm=478 mm",0.012,236.6,0.024
-VBT-CTL-005,Aileron hinge + pushrod set,2,pin hinge + wire pushrod per aileron,0.003,236.6,0.006
-VBT-STR-092,Vibration isolators,8,"FC/IMU + payload soft mounts, f_n=56 Hz, 90% 1/rev cut, 0.8 mm sway",0.004,150.0,0.032
-VBT-STR-093,Lid hinge strip,1,"piano hinge along one longeron, lid [0, 335] mm",0.012,167.4,0.012
-VBT-STR-094,Lid latches,1,2x quarter-turn on the opposite longeron + reinforcement,0.008,167.4,0.008
-VBT-STR-095,Wing carry-through spar,1,CFRP tube d8 x 610 mm (computed geometry),0.021500000000000002,236.6,0.021500000000000002
-VBT-STR-096,Wing root fitting,2,printed socket + retention screw per side,0.006,236.6,0.012
-VBT-STR-091,"Battery tray, adjustable rail",1,"sliding rail, +/-25 mm travel, trimmed -0.1 mm",0.015,264.0,0.015
-VBT-STR-090,"Misc: harness, fasteners, bonding, margin",1,allocation (remainder),0.1462,191.3,0.1462
-VBT-STR-010,Duct support strut,4,"flat plate, min 2 mm (in structure)",,456.1,
-VBT-GEA-001,Landing leg / skid,4,"on duct, tail-sitter stance (in structure)",,503.6,
+VBT-STR-001,Fuselage semi-monocoque,1,segmented_fdm skin + longeron frame + rings (ADR-0010),0.3859,221.0,0.3859
+VBT-STR-002,"Wing, constant chord",1,"CFRP skin/foam core, NACA 4412",0.1213,242.3,0.1213
+VBT-PRP-001,EDF motor + fan rotor,1,"D = 203 mm EDF, BLDC outrunner",0.2266,454.2,0.2266
+VBT-PRP-002,Duct / shroud annulus,1,"CFRP wound annulus, 8 mm wall",0.0567,467.9,0.0567
+VBT-PWR-001,Battery pack,1,"LiPo, 140 Wh/kg pack-level",0.6533,267.0,0.6533
+VBT-PWR-002,ESC,1,sized to hover power; incl. inflow-washed cold-plate (NB7),0.0944,245.5,0.0944
+VBT-AVI-001,Avionics stack,1,FC + GPS + RX + telemetry,0.1134,193.8,0.1134
+VBT-PLD-001,Payload (EO sensor + mount),1,"requirement, 0.5 kg",0.5,98.5,0.5
+VBT-CTL-001,Jet control vane,4,"CFRP flat plate 2 mm, c=20.7 mm, h=51.8 mm",0.003429907488,516.3,0.013719629952
+VBT-CTL-002,"Vane servo, 9g-class",4,"~1800 g-cm >= req 483 g-cm, recessed in hub, shaft on hinge line",0.012,511.2,0.048
+VBT-CTL-003,Hinge + pushrod set,4,pin hinge + wire pushrod per vane,0.003,511.2,0.012
+VBT-CTL-004,"Aileron servo, 9g-class",2,">= req 79 g-cm, on wing at y_arm=500 mm",0.012,242.3,0.024
+VBT-CTL-005,Aileron hinge + pushrod set,2,pin hinge + wire pushrod per aileron,0.003,242.3,0.006
+VBT-STR-092,Vibration isolators,8,"FC/IMU + payload soft mounts, f_n=56 Hz, 90% 1/rev cut, 0.8 mm sway",0.004,146.1,0.032
+VBT-STR-093,Lid hinge strip,1,"piano hinge along one longeron, lid [0, 344] mm",0.012,171.8,0.012
+VBT-STR-094,Lid latches,1,2x quarter-turn on the opposite longeron + reinforcement,0.008,171.8,0.008
+VBT-STR-095,Wing carry-through spar,1,CFRP tube d8 x 638 mm (computed geometry),0.0224,242.3,0.0224
+VBT-STR-096,Wing root fitting,2,printed socket + retention screw per side,0.006,242.3,0.012
+VBT-STR-091,"Battery tray, adjustable rail",1,"sliding rail, +/-25 mm travel, trimmed -0.1 mm",0.015,267.0,0.015
+VBT-STR-090,"Misc: harness, fasteners, bonding, margin",1,allocation (remainder),0.1613,196.4,0.1613
+VBT-STR-010,Duct support strut,4,"flat plate, min 2 mm (in structure)",,467.9,
+VBT-GEA-001,Landing leg / skid,4,"on duct, tail-sitter stance (in structure)",,516.3,

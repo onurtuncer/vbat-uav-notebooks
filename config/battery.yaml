@@ -11,13 +11,17 @@
 #   and avoids cell damage at the low end.
 #
 # eta_bat : battery discharge efficiency [-]
-#   0.97 accounts for internal resistance losses during discharge.
-#   NOTE (ADR-0014): at the ~29 A hover current 0.97 implies a ~23 mOhm
-#   pack; a realistic 6S1P 21700 pack is ~60-120 mOhm, i.e. hover-phase
-#   efficiency nearer 0.88-0.92. Mission energy is cruise-dominated so
-#   the closure impact is small (a few %), but revisit this value with
-#   the measured pack DCIR after procurement (deliberate next-iteration
-#   change -- it moves the design point and the regression pins).
+#   0.916 = mission-averaged I^2*R efficiency at the NOMINAL pack
+#   resistance (90 mOhm, config/thermal.yaml R_pack_mohm) on the 6S
+#   bus, iterated to the closure fixed point: the heavier battery
+#   raises hover current, which lowers the efficiency again (hover legs
+#   ~0.86 at ~33 A, cruise ~0.98 at ~4.6 A, energy-weighted over the
+#   160 s vertical + 900 s cruise mission). Replaces the former 0.97
+#   constant, which implied an unrealistic ~23 mOhm pack (ADR-0014
+#   amendment, 2026-07-18); the honest accounting costs ~+215 g MTOW
+#   through the closure. Re-derive from the MEASURED pack DCIR at
+#   procurement (a 60-70 mOhm build claws most of it back); keep in
+#   sync with the R_pack_mohm nominal case.
 #
 # c_rate_max : maximum continuous discharge C-rate [1/h]
 #   25C continuous is a routine rating for hobby LiPo packs.
@@ -26,5 +30,5 @@
 
 specific_energy: 140.0
 usable_fraction: 0.85
-eta_bat: 0.97
+eta_bat: 0.916
 c_rate_max: 25.0

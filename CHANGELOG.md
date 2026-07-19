@@ -9,8 +9,44 @@ is tagged.
 
 ## [Unreleased]
 
+### Added
+
+- **Aeolion geometry handoff** (ADR-0016): NB8 exports
+  `out/cad/aeolion_geometry.json` beside the STEP files, conforming to
+  the Aeolion-side pinned 1.0.0 JSON Schema
+  (`schemas/vbat-aeolion-geometry-handoff.schema.json`, 2020-12,
+  `additionalProperties: false`, stored verbatim and validated in
+  tests): planform stations + Kulfan CST airfoil sections aligned 1:1
+  by eta at fixed counts (`config/aeolion.yaml` — structural constants
+  of the optimization, not design variables), control surfaces (the
+  aileron plus the four jet vanes as all-moving plates on the duct-exit
+  radius with radial hinge axes), BEMT blade stations, static mesh topology,
+  and a `design_id` sha256 of the canonical payload (byte-stable per
+  design point). JSON is the differentiable-analysis contract; STEP
+  stays the exact-CAD traceability artifact, off the derivative path.
+  New CadQuery-free `prop_geometry.py` is the single source of truth
+  for the blade chord/twist laws, shared by the CAD rotor and the BEMT
+  handoff.
+
 ### Changed
 
+- **Battery internal-resistance accounting made consistent (ADR-0014
+  amendment)**: `eta_bat` 0.97 → 0.916, the mission-averaged I²R
+  efficiency of the nominal 90 mΩ pack iterated to the closure fixed
+  point (the old 0.97 implied an unrealistic ~23 mΩ pack), and the
+  battery-bay vent load now uses the same I²R law as the mission
+  transient. The honest accounting costs **+215 g: MTOW 2.303 →
+  2.518 kg** (hover 743 W, 8.1C peak; wing S 0.1883 m², b 1.063 m).
+  Standing findings move with it: the nominal-pack mission transient
+  worsens to ~65 °C vs the 60 °C limit, ESC cold-plate load rises to
+  ~37 W (still marginal), the margined ESC current requirement rises to
+  ~54 A (still within the APD 80F3[x]), the frozen 450 g Molicel pack
+  now undercuts the sized pack by ~203 g (as-selected all-up 2.336 kg =
+  closure −182 g) — and the ADR-0012 structure-over-budget finding is
+  **resolved** (the larger structural pool covers the packaging-floored
+  shell with ~9 g margin). Measured pack DCIR at procurement remains the
+  lever: a 60–70 mΩ build claws most of the mass back. Pins,
+  `Allrun.case`, and all `out/` artifacts updated in the same change.
 - **NACA 4412 wing** (ADR-0015): airfoil re-selected 2412 → 4412 after
   the v0.5.0 stall-consistency fix made section lift buy wing area
   directly. W/S 107.2 → 131.2 N/m², S 0.2107 → 0.1722 m², b 1.124 →

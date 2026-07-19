@@ -70,10 +70,11 @@ class TestAirfoil:
 class TestFuselage:
     def test_design_point(self, fuselage):
         # 203 mm COTS 3-blade prop-in-duct design point (ADR-0003 as
-        # amended 2026-07-12; MTOW 2.303 kg, hover ~652 W)
-        assert fuselage["D_fus_m"] == pytest.approx(0.09565, rel=1e-2)
-        assert fuselage["L_fus_m"] == pytest.approx(0.47827, rel=1e-2)
-        assert fuselage["x_CG_m"] == pytest.approx(0.23655, rel=1e-2)
+        # amended 2026-07-12), at the ADR-0014-amended battery accounting
+        # (eta_bat 0.916: MTOW 2.518 kg, hover ~743 W)
+        assert fuselage["D_fus_m"] == pytest.approx(0.0982, rel=1e-2)
+        assert fuselage["L_fus_m"] == pytest.approx(0.49099, rel=1e-2)
+        assert fuselage["x_CG_m"] == pytest.approx(0.2423, rel=1e-2)
         assert fuselage["static_margin"] == pytest.approx(0.05, rel=1e-2)
 
     def test_internal_consistency(self, fuselage):
@@ -91,16 +92,16 @@ class TestFuselage:
         # Rectangular wing: x_AC - x_LE = MAC/4. This MAC feeds the CFD
         # force-coefficient setup, so pin it explicitly.
         mac = 4.0 * (fuselage["x_wing_AC_m"] - fuselage["x_wing_LE_m"])
-        # 0.16940 since the NACA 4412 re-selection (ADR-0015): the
-        # stall limit rises to 131.2 N/m^2 -> S 0.1722 m^2, b 1.016 m.
-        assert mac == pytest.approx(0.16940, rel=1e-2)
+        # NACA 4412 wing (ADR-0015, W/S 131.2 N/m^2) at the ADR-0014
+        # amended MTOW 2.518 kg: S 0.1883 m^2, b 1.063 m.
+        assert mac == pytest.approx(0.17712, rel=1e-2)
 
 
 class TestControlVanes:
     def test_design_point(self, vanes):
         assert vanes["n_vanes"] == 4
         assert vanes["AR_vane"] == pytest.approx(2.5, rel=1e-3)
-        assert vanes["servo_torque_req_gcm"] == pytest.approx(441.5, rel=2e-2)
+        assert vanes["servo_torque_req_gcm"] == pytest.approx(482.8, rel=2e-2)
 
     def test_deflection_ordering(self, vanes):
         assert vanes["delta_design_deg"] < vanes["delta_stall_deg"] <= vanes["delta_max_deg"]
@@ -149,7 +150,7 @@ class TestAileron:
         assert aileron["n_ailerons"] == 2
         assert aileron["span_frac_wing"] == pytest.approx(0.12, rel=1e-3)
         assert aileron["chord_frac"] == pytest.approx(0.12, rel=1e-3)
-        assert aileron["servo_torque_req_gcm"] == pytest.approx(68.9, rel=2e-2)
+        assert aileron["servo_torque_req_gcm"] == pytest.approx(78.8, rel=2e-2)
 
     def test_cruise_roll_authority(self, aileron):
         # The whole point of NB4: combined (aileron + residual jet-vane)
@@ -186,10 +187,12 @@ class TestVibration:
 
 class TestThermal:
     def test_heat_loads_derived_and_sane(self, thermal):
-        # Heat loads follow from hover power and the efficiencies; pin
-        # them at the 2.303 kg / ~652 W prop-in-duct point.
-        assert thermal["esc"]["Q_W"] == pytest.approx(32.6, rel=5e-2)
-        assert thermal["battery"]["Q_W"] == pytest.approx(20.2, rel=5e-2)
+        # Heat loads at the 2.518 kg / ~743 W point: ESC loss from
+        # eta_esc, battery loss from the ADR-0014 I^2*R law at the
+        # nominal 90 mOhm pack (the amendment replaced the old
+        # eta_bat-derived vent load, hence the ~5x jump vs pre-amendment).
+        assert thermal["esc"]["Q_W"] == pytest.approx(37.2, rel=5e-2)
+        assert thermal["battery"]["Q_W"] == pytest.approx(100.8, rel=5e-2)
 
     def test_battery_bay_vents_comfortably(self, thermal):
         b = thermal["battery"]
@@ -205,7 +208,7 @@ class TestThermal:
         assert e["ok"] is False
         assert e["mass_within_alloc"] is False    # plate heavier than ESC alloc
         assert 0.0 < e["temp_margin_C"] < 20.0     # positive but modest
-        assert e["A_req_cm2"] == pytest.approx(212.9, rel=5e-2)
+        assert e["A_req_cm2"] == pytest.approx(246.2, rel=5e-2)
 
     def test_battery_pack_transient_finding_pinned(self, thermal):
         # KNOWN finding (ADR-0014, external battery-thermal review
@@ -217,9 +220,12 @@ class TestThermal:
         assert bt["ok_nominal"] is False
         assert bt["cases"]["optimistic"]["ok"] is True
         assert bt["cases"]["conservative"]["ok"] is False
-        assert bt["cases"]["nominal"]["T_final_C"] == pytest.approx(62.5, abs=1.5)
-        # the I^2 R nominal heat load is ~4x the eta_bat-derived vent load
-        assert bt["cases"]["nominal"]["Q_hover_W"] > 3.0 * thermal["battery"]["Q_W"]
+        assert bt["cases"]["nominal"]["T_final_C"] == pytest.approx(65.2, abs=1.5)
+        # since the ADR-0014 amendment the vent load and the transient
+        # use the SAME I^2*R law at the nominal pack resistance -- pin
+        # the consistency (pre-amendment they disagreed ~4x)
+        assert bt["cases"]["nominal"]["Q_hover_W"] == pytest.approx(
+            thermal["battery"]["Q_W"], rel=1e-3)
 
 
 @pytest.fixture(scope="module")
@@ -246,10 +252,10 @@ class TestCotsSelection:
 
     def test_requirements_derived_from_design_point(self, components):
         req = components["requirements"]
-        assert req["esc"]["i_cont_min_a"] == pytest.approx(47.0, rel=2e-2)
+        assert req["esc"]["i_cont_min_a"] == pytest.approx(53.6, rel=2e-2)
         assert req["propeller"]["d_rotor_mm"] == pytest.approx(203.0, rel=1e-3)
-        assert req["servo"]["stall_torque_min_gcm"] == pytest.approx(662.3, rel=2e-2)
-        assert req["battery"]["capacity_min_ah"] == pytest.approx(3.50, rel=2e-2)
+        assert req["servo"]["stall_torque_min_gcm"] == pytest.approx(724.3, rel=2e-2)
+        assert req["battery"]["capacity_min_ah"] == pytest.approx(4.12, rel=2e-2)
 
     def test_selected_parts_meet_their_requirements(self, components):
         sel, req = components["selected"], components["requirements"]
@@ -271,10 +277,11 @@ class TestCotsSelection:
         assert b["motor_fan"]["within"] is False
         assert b["motor_fan"]["actual_g"] < 2 * b["motor_fan"]["alloc_g"]
         # The Li-ion 21700 pack (Molicel P50B 6S1P) beats the sized LiPo
-        # mass outright -- its pack-level specific energy wins back the
-        # capacity-quantisation penalty and then some (~-105 g).
+        # mass outright -- and the ADR-0014 amendment widened the gap:
+        # the honest eta_bat grows the sized pack to ~653 g while the
+        # frozen 450 g pack stays fixed (~-203 g under allocation).
         assert b["battery"]["within"] is True
-        assert b["battery"]["actual_g"] > 0.75 * b["battery"]["alloc_g"]
+        assert b["battery"]["actual_g"] > 0.65 * b["battery"]["alloc_g"]
         assert components["all_within_allocations"] is False
 
     def test_heavy_fan_rejected_only_on_diameter(self, components):
@@ -399,24 +406,28 @@ class TestAsSelectedFuselage:
 
     def test_as_selected_mass_rollup(self, fuselage_cots):
         # the all-up delta IS the sum of the freeze's standing mass
-        # findings; pin its state like the thermal pin. Since the Li-ion
-        # Molicel pack entered the catalog its ~-105 g vs the sized LiPo
-        # outweighs the avionics/motor overruns: the delta is now
-        # slightly NEGATIVE (as-selected all-up under the closure MTOW).
+        # findings; pin its state like the thermal pin. The Molicel
+        # Li-ion pack (450 g, fixed) undercuts the sized pack, and the
+        # ADR-0014 amendment's honest eta_bat grew the sized pack to
+        # ~653 g -- so the delta deepened to ~-182 g (the closure is
+        # carrying battery mass the frozen hardware doesn't need).
         s = fuselage_cots["as_selected"]
         assert s["m_items_total_kg"] == pytest.approx(
             s["m_closure_mtow_kg"] + s["m_delta_kg"], rel=1e-3)
-        assert -0.1 < s["m_delta_kg"] < 0.0
-        assert s["m_delta_kg"] == pytest.approx(-0.0384, rel=5e-2)
+        assert -0.25 < s["m_delta_kg"] < 0.0
+        assert s["m_delta_kg"] == pytest.approx(-0.1818, rel=5e-2)
 
-    def test_structure_over_budget_is_pinned_finding(self, fuselage_cots):
-        # KNOWN finding (ADR-0012): the hull that holds the real hardware
-        # outgrows the structural fraction at the closure MTOW. Pin the
-        # state so a change either way is caught.
+    def test_structure_fits_budget_but_tight(self, fuselage_cots):
+        # RESOLVED finding (was: ADR-0012 hull outgrows the structural
+        # fraction): the ADR-0014 amendment's +215 g MTOW grew the
+        # structural pool while the packaging-floored hull stayed put,
+        # so the as-selected shell now FITS -- with only ~9 g margin.
+        # Pin the state (fits, but >90% utilised) so a change either
+        # way is caught.
         budget = (fuselage_cots["m_struct_pool_kg"]
                   - fuselage_cots["m_struct_carved_kg"])
-        assert fuselage_cots["m_shell_kg"] > budget
-        assert fuselage_cots["m_shell_kg"] < 1.25 * budget   # over, but bounded
+        assert fuselage_cots["m_shell_kg"] < budget
+        assert fuselage_cots["m_shell_kg"] > 0.90 * budget   # fits, barely
 
 
 class TestCrossFileConsistency:

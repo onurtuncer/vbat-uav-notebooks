@@ -681,7 +681,7 @@ def print_thermal_sizing(res, tp, m_esc_alloc) -> None:
     print(f"  verdict             : {'OK' if e.ok else 'MARGINAL / INFEASIBLE -- see finding below'}")
     print()
     print("VENTED BATTERY BAY")
-    print(f"  heat load Q         : {b.Q_W:5.1f} W   (P_hover x (1/eta_bat - 1))")
+    print(f"  heat load Q         : {b.Q_W:5.1f} W   (I_hover^2 x R_pack nominal)")
     print(f"  through-vent airflow: {b.V_vent_ms:5.1f} m/s  ({tp.vent_inflow_frac:.2f} x v_h)")
     print(f"  required vent area  : {b.A_req_m2*1e4:5.1f} cm^2")
     print(f"  available wall area : {b.A_avail_m2*1e4:5.0f} cm^2  (headroom {b.area_headroom:.1f}x)")

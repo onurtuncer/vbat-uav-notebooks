@@ -4,35 +4,35 @@
 # Regen  : re-run notebooks/cots_selection.ipynb
 
 design_point:
-  MTOW_kg: 2.3026
-  P_hover_W: 651.7
-  P_design_W: 651.7
+  MTOW_kg: 2.5181
+  P_hover_W: 743.1
+  P_design_W: 743.1
   pack: 6S
   D_rotor_mm: 203.0
-  esc_rating_req_a: 46.97
-  servo_torque_req_gcm: 441.53
+  esc_rating_req_a: 53.56
+  servo_torque_req_gcm: 482.85
 requirements:
   flight_controller:
     px4_required: true
     min_imu_count: 2
   esc:
-    i_cont_min_a: 46.969
+    i_cont_min_a: 53.557
     series_cells: 6
     telemetry_required: true
   edf_motor:
-    p_max_min_w: 782.028
+    p_max_min_w: 891.729
     series_cells: 6
   propeller:
     d_rotor_mm: 203.0
-    p_max_min_w: 782.028
+    p_max_min_w: 891.729
   servo:
-    stall_torque_min_gcm: 662.3
-    tau_vane_req_gcm: 441.534
-    tau_aileron_req_gcm: 68.89
+    stall_torque_min_gcm: 724.271
+    tau_vane_req_gcm: 482.847
+    tau_aileron_req_gcm: 78.79
   battery:
-    capacity_min_ah: 3.497
+    capacity_min_ah: 4.12
     series_cells: 6
-    i_dis_min_a: 46.969
+    i_dis_min_a: 53.557
 selected:
   flight_controller:
     id: pixhawk_6c
@@ -174,14 +174,14 @@ selected:
     ratings:
       capacity_mah: 5000.0
       s_cells: 6
-      c_rate_cont: 10.0
+      c_rate_cont: 12.0
     feasible_alternatives:
-    - gens_ace_6s_4000_30c
     - tattu_6s_4500_25c
     - leopard_6s_5200_40c
     - profuse_6s_8000_65c
     rejected:
-      leopard_6s_3300_40c: 3.30 Ah < required 3.50 Ah mission capacity
+      gens_ace_6s_4000_30c: 4.00 Ah < required 4.12 Ah mission capacity
+      leopard_6s_3300_40c: 3.30 Ah < required 4.12 Ah mission capacity
 supporting_avionics:
 - name: GPS/compass (Holybro M9N class)
   mass_g: 32.0
@@ -198,19 +198,19 @@ supporting_avionics:
 budgets:
   avionics_bay:
     actual_g: 138.6
-    alloc_g: 96.21
-    margin_g: -42.39
+    alloc_g: 113.44
+    margin_g: -25.16
     within: false
     note: FC + supporting avionics vs the net avionics-bay budget
   esc:
     actual_g: 30.0
-    alloc_g: 86.3
-    margin_g: 56.3
+    alloc_g: 94.4
+    margin_g: 64.4
     within: true
   motor_fan:
     actual_g: 306.0
-    alloc_g: 207.2
-    margin_g: -98.8
+    alloc_g: 226.6
+    margin_g: -79.4
     within: false
     note: EDF motor + fan/prop unit vs the motor_fan layout allocation
   servo_each:
@@ -221,8 +221,8 @@ budgets:
     note: per servo, x6 installed
   battery:
     actual_g: 450.0
-    alloc_g: 554.59
-    margin_g: 104.59
+    alloc_g: 653.27
+    margin_g: 203.27
     within: true
     note: COTS pack vs the mass-closure battery mass (capacity quantisation makes
       a small overshoot expected)

@@ -8,9 +8,9 @@
 #      carries battery discharge heat out of the bay.
 #
 # The heat LOADS are derived, not configured: ESC loss = P_hover*(1-eta_esc)
-# and battery loss = P_hover*(1/eta_bat - 1), from the propulsion/battery
-# efficiencies and the hover power. Only the limits and the cooling-airflow
-# assumptions live here.
+# and battery loss = I_hover^2 * R_pack (nominal case below) -- the same
+# I^2 R law as the ADR-0014 mission transient, at the wiring-law hover
+# current. Only the limits and the cooling-airflow assumptions live here.
 #
 # --- Temperatures ----------------------------------------------------
 # T_ambient_C   : design ambient air temperature [degC]. 40 C is a hot-day
