@@ -25,74 +25,19 @@ toward +x (into the inflow). Geometry is built in MILLIMETRES.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 
 import cadquery as cq
-import yaml
 
+from ..prop_geometry import PropGeometry
 from .fuselage_body import MM
 from .wing_profile import naca4_points
+
+__all__ = ["PropGeometry", "build_prop_rotor", "export_prop_rotor"]
 
 # OCCT cannot loft to a zero-chord section: the tip-rounding planform
 # factor sqrt(1 - f^m) is 0 exactly at f = 1, so the last station is
 # clamped to this chord [mm] -- a tessellation guard, not geometry.
 MIN_TIP_CHORD_MM = 2.0
-
-
-@dataclass
-class PropGeometry:
-    """Non-dimensional prop-rotor geometry (config/prop_geometry.yaml)."""
-    n_blades:         int
-    hub_radius_ratio: float
-    hub_length_ratio: float
-    spinner_ratio:    float
-    pitch_ratio:      float
-    c_root_ratio:     float
-    c_peak_ratio:     float
-    f_peak:           float
-    c_tip_ratio:      float
-    tip_round_expo:   float
-    camber_M:         float
-    camber_P:         float
-    tc_root:          float
-    tc_tip:           float
-    n_sections:       int
-
-    @classmethod
-    def from_yaml(cls, path) -> "PropGeometry":
-        with open(path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
-        return cls(
-            n_blades         = int(data["n_blades"]),
-            hub_radius_ratio = float(data["hub_radius_ratio"]),
-            hub_length_ratio = float(data["hub_length_ratio"]),
-            spinner_ratio    = float(data["spinner_ratio"]),
-            pitch_ratio      = float(data["pitch_ratio"]),
-            c_root_ratio     = float(data["c_root_ratio"]),
-            c_peak_ratio     = float(data["c_peak_ratio"]),
-            f_peak           = float(data["f_peak"]),
-            c_tip_ratio      = float(data["c_tip_ratio"]),
-            tip_round_expo   = float(data["tip_round_expo"]),
-            camber_M         = float(data["camber_M"]),
-            camber_P         = float(data["camber_P"]),
-            tc_root          = float(data["tc_root"]),
-            tc_tip           = float(data["tc_tip"]),
-            n_sections       = int(data["n_sections"]),
-        )
-
-    def chord_ratio(self, f: float) -> float:
-        """Blade chord / tip radius at span fraction f (0 root, 1 tip).
-
-        Piecewise-linear root -> peak -> tip planform (real 8x6-class
-        3-blades carry their maximum chord around 35% span), multiplied
-        by the tip-rounding factor sqrt(1 - f^m)."""
-        if f <= self.f_peak:
-            base = self.c_root_ratio + (self.c_peak_ratio - self.c_root_ratio) * (
-                f / self.f_peak)
-        else:
-            base = self.c_peak_ratio + (self.c_tip_ratio - self.c_peak_ratio) * (
-                (f - self.f_peak) / (1.0 - self.f_peak))
-        return base * math.sqrt(max(1.0 - f ** self.tip_round_expo, 0.0))
 
 
 def _naca_designation(M: float, P: float, tc: float) -> str:

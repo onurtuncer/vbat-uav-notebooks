@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vbat-aeolion-geometry-handoff.schema.json",
+  "title": "VBAT → Aeolion Parametric Geometry Handoff",
+  "type": "object",
+  "required": ["schema_version", "design_id", "units", "reference_frame", "planform", "airfoil_sections", "mesh_topology"],
+  "properties": {
+
+    "schema_version": { "type": "string", "const": "1.0.0" },
+    "design_id": {
+      "type": "string",
+      "description": "Hash or UUID tying this parameter set to a specific notebook run for adjoint-loop traceability"
+    },
+    "units": {
+      "type": "object",
+      "required": ["length", "angle"],
+      "properties": {
+        "length": { "const": "m" },
+        "angle":  { "const": "deg" }
+      }
+    },
+    "reference_frame": {
+      "type": "string",
+      "enum": ["aetherion_body_frd"],
+      "description": "Must match Aetherion/BEMT convention to avoid an undifferentiated transform seam"
+    },
+
+    "planform": {
+      "type": "object",
+      "required": ["span", "stations"],
+      "properties": {
+        "span": { "type": "number", "exclusiveMinimum": 0 },
+        "stations": {
+          "type": "array",
+          "minItems": 2,
+          "description": "Fixed-length array across the whole design space — count must never change between runs",
+          "items": {
+            "type": "object",
+            "required": ["eta", "chord", "twist", "sweep_qc", "dihedral"],
+            "properties": {
+              "eta":        { "type": "number", "minimum": 0, "maximum": 1 },
+              "chord":      { "type": "number", "exclusiveMinimum": 0 },
+              "twist":      { "type": "number" },
+              "sweep_qc":   { "type": "number" },
+              "dihedral":   { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+
+    "airfoil_sections": {
+      "type": "array",
+      "minItems": 2,
+      "description": "Must align 1:1 with planform.stations by eta — same count, fixed",
+      "items": {
+        "type": "object",
+        "required": ["eta", "parameterization", "coefficients_upper", "coefficients_lower"],
+        "properties": {
+          "eta": { "type": "number", "minimum": 0, "maximum": 1 },
+          "parameterization": { "const": "CST" },
+          "coefficients_upper": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 8,
+            "items": { "type": "number" }
+          },
+          "coefficients_lower": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 8,
+            "items": { "type": "number" }
+          }
+        }
+      }
+    },
+
+    "control_surfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "eta_start", "eta_end", "chord_fraction", "hinge_axis"],
+        "properties": {
+          "name": { "type": "string", "enum": ["vane", "aileron", "rudder"] },
+          "eta_start": { "type": "number" },
+          "eta_end":   { "type": "number" },
+          "chord_fraction": { "type": "number", "minimum": 0, "maximum": 1 },
+          "hinge_axis": {
+            "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3
+          }
+        }
+      }
+    },
+
+    "propulsion_bemt": {
+      "type": "object",
+      "properties": {
+        "disk_radius":      { "type": "number", "exclusiveMinimum": 0 },
+        "reference_rpm":    { "type": "number" },
+        "blade_stations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["r_over_R", "chord", "twist"],
+            "properties": {
+              "r_over_R": { "type": "number", "minimum": 0, "maximum": 1 },
+              "chord":    { "type": "number" },
+              "twist":    { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+
+    "mesh_topology": {
+      "type": "object",
+      "description": "Static discretization directives — NOT design variables, must stay constant across the entire optimization to preserve gradient continuity",
+      "required": ["chordwise_panels", "spanwise_panels_per_section"],
+      "properties": {
+        "chordwise_panels": { "type": "integer", "minimum": 4 },
+        "spanwise_panels_per_section": { "type": "integer", "minimum": 1 },
+        "wake_model": { "type": "string", "enum": ["frozen", "relaxed"] }
+      }
+    }
+  },
+
+  "additionalProperties": false
+}
