@@ -111,7 +111,8 @@
         1.0,
         0.0
       ],
-      "name": "aileron"
+      "name": "aileron",
+      "surface": "wing"
     },
     {
       "chord_fraction": 1.0,
@@ -122,7 +123,8 @@
         0.0,
         1.0
       ],
-      "name": "vane"
+      "name": "vane",
+      "surface": "duct_jet"
     },
     {
       "chord_fraction": 1.0,
@@ -133,7 +135,8 @@
         -1.0,
         0.0
       ],
-      "name": "vane"
+      "name": "vane",
+      "surface": "duct_jet"
     },
     {
       "chord_fraction": 1.0,
@@ -144,7 +147,8 @@
         0.0,
         -1.0
       ],
-      "name": "vane"
+      "name": "vane",
+      "surface": "duct_jet"
     },
     {
       "chord_fraction": 1.0,
@@ -155,10 +159,11 @@
         1.0,
         0.0
       ],
-      "name": "vane"
+      "name": "vane",
+      "surface": "duct_jet"
     }
   ],
-  "design_id": "sha256:2732d99b6276483926f2a4047cf3dc0be31699a3aad09c93d3dddf516ec24a63",
+  "design_id": "sha256:64c65d4008e224fa5c50a33a49e534435a960e334b2d1f29156a57c75d943d78",
   "mesh_topology": {
     "chordwise_panels": 8,
     "spanwise_panels_per_section": 6,
@@ -276,7 +281,7 @@
     "reference_rpm": 12211.259999999998
   },
   "reference_frame": "aetherion_body_frd",
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "units": {
     "angle": "deg",
     "length": "m"

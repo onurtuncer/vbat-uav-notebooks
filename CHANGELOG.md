@@ -9,6 +9,19 @@ is tagged.
 
 ## [Unreleased]
 
+### Changed
+
+- **Aeolion handoff schema 1.1.0** (from the Aeolion-side integration
+  review): `control_surfaces` entries carry an explicit `surface`
+  binding — `wing` (eta = semispan fraction) or `duct_jet` (all-moving
+  plate in the jet, eta = duct-exit radius fraction, never bound to a
+  lifting-surface lattice) — removing the ambiguity of the wing aileron
+  and the four cruciform vanes sharing one planform's eta space. The
+  field is optional in the schema so 1.0.0 documents stay valid (bind
+  by `name` when absent); the exporter always emits it and stamps
+  `schema_version: 1.1.0`. ADR-0016 updated with the binding
+  convention and the consumer-side frame-conversion note.
+
 ## [0.5.1] — 2026-07-19
 
 Patch release: the NACA 4412 wing re-selection, the ADR-0014 amendment

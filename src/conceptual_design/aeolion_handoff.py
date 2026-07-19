@@ -48,7 +48,7 @@ import yaml
 from .airfoil_selection import naca4_coordinates, parse_naca4
 from .prop_geometry import PropGeometry
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
 REFERENCE_FRAME = "aetherion_body_frd"
 
 # Kulfan class-function exponents: round nose (N1 = 0.5), sharp
@@ -231,6 +231,7 @@ def build_aeolion_geometry(
                 # outboard TE aileron (out/aileron.yaml); eta on the
                 # semispan, hinge line spanwise (+y, FRD)
                 "name": "aileron",
+                "surface": "wing",
                 "eta_start": 1.0 - float(ail["span_frac_wing"]),
                 "eta_end": 1.0,
                 "chord_fraction": float(ail["chord_frac"]),
@@ -242,6 +243,7 @@ def build_aeolion_geometry(
                 # plates in the duct jet, eta on the duct-exit radius
                 # (hub collar -> duct wall), radial hinge axes
                 "name": "vane",
+                "surface": "duct_jet",
                 "eta_start": float(vanes["R_hub_m"]) / float(vanes["R_tip_m"]),
                 "eta_end": 1.0,
                 "chord_fraction": 1.0,

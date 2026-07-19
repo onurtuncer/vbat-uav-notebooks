@@ -121,6 +121,7 @@ class TestControlsAndBemt:
     def test_aileron_mapping(self, geometry):
         aileron, *rest = geometry["control_surfaces"]
         assert aileron["name"] == "aileron"
+        assert aileron["surface"] == "wing"
         assert aileron["eta_start"] == pytest.approx(0.88)
         assert aileron["eta_end"] == 1.0
         assert aileron["chord_fraction"] == pytest.approx(0.25)
@@ -134,6 +135,7 @@ class TestControlsAndBemt:
         vanes = [c for c in geometry["control_surfaces"] if c["name"] == "vane"]
         assert len(vanes) == VANES["n_vanes"]
         for v in vanes:
+            assert v["surface"] == "duct_jet"    # never the wing lattice
             assert v["eta_start"] == pytest.approx(
                 VANES["R_hub_m"] / VANES["R_tip_m"])
             assert v["eta_end"] == 1.0

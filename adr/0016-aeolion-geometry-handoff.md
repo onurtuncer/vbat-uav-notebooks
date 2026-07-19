@@ -44,6 +44,16 @@ contract as a JSON Schema (2020-12, `additionalProperties: false`).
   plate rotating about its `hinge_xc` line. The vane CFD → DAVE-ML
   path still characterizes the jet-wash aerodynamics; carrying the
   geometry here lets Aeolion model the jet directly.
+- **Surface binding (schema 1.1.0, 2026-07-19, from the Aeolion-side
+  review)**: control-surface entries carry an explicit `surface` field
+  — `wing` (eta = semispan fraction of the planform) or `duct_jet` (an
+  all-moving plate in the jet, eta = duct-exit radius fraction, never
+  bound to a lifting-surface lattice). The field is optional so 1.0.0
+  documents stay valid; when absent the binding convention is by
+  `name`: `aileron`/`rudder` → `wing`, `vane` → `duct_jet`. The
+  exporter always emits it. Frame conversion remains the consumer's
+  explicit job at ingest (the contract states `aetherion_body_frd`
+  once; a z-up VLM flips x and z — a proper rotation about y).
 - **`design_id`** is `sha256:<hex>` over the canonical JSON of every
   other field: byte-stable when the design point is unchanged (clean
   regression diffs), guaranteed to move when any parameter moves —
