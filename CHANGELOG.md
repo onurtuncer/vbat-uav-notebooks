@@ -12,14 +12,20 @@ is tagged.
 ### Added
 
 - **Aeolion geometry handoff** (ADR-0016): NB8 exports
-  `out/cad/aeolion_geometry.json` beside the STEP files — a versioned,
-  SI-unit, solver-native lifting-surface contract (planform, controls,
-  cosine discretization, declared design variables) for the external
-  Aeolion VLM, schema-validated (`schemas/`) and deliberately free of
-  CAD booleans/tessellation so a future CppAD adjoint path has stable
-  independent variables. STEP stays the exact-CAD traceability artifact.
-  New CadQuery-free `prop_geometry.py` is the single source of truth for
-  the blade chord/twist laws, shared by the CAD rotor and the BEMT
+  `out/cad/aeolion_geometry.json` beside the STEP files, conforming to
+  the Aeolion-side pinned 1.0.0 JSON Schema
+  (`schemas/vbat-aeolion-geometry-handoff.schema.json`, 2020-12,
+  `additionalProperties: false`, stored verbatim and validated in
+  tests): planform stations + Kulfan CST airfoil sections aligned 1:1
+  by eta at fixed counts (`config/aeolion.yaml` — structural constants
+  of the optimization, not design variables), aileron control surface
+  (jet vanes deliberately excluded — they act on the jet and belong to
+  the vane DAVE-ML path), BEMT blade stations, static mesh topology,
+  and a `design_id` sha256 of the canonical payload (byte-stable per
+  design point). JSON is the differentiable-analysis contract; STEP
+  stays the exact-CAD traceability artifact, off the derivative path.
+  New CadQuery-free `prop_geometry.py` is the single source of truth
+  for the blade chord/twist laws, shared by the CAD rotor and the BEMT
   handoff.
 
 ### Changed
