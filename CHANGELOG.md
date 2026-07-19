@@ -9,6 +9,14 @@ is tagged.
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-07-19
+
+Patch release: the NACA 4412 wing re-selection, the ADR-0014 amendment
+folding the pack's internal resistance into the closure honestly
+(design point moves to **2.518 kg MTOW / 743 W hover**), and the
+versioned Aeolion geometry handoff (ADR-0016) — the parametric contract
+for the external VLM/BEMT adjoint loop, jet vanes included.
+
 ### Added
 
 - **Aeolion geometry handoff** (ADR-0016): NB8 exports
@@ -519,6 +527,13 @@ converged conceptual design point.
   design point and cross-check `cfd/vehicle/Allrun.case`; `tests/test_geometry.py`
   guards the exported STL (watertight, mm units, span).
 
+[0.5.1]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.5.1
+[0.5.0]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.5.0
+[0.4.5]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.4.5
+[0.4.4]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.4.4
+[0.4.3]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.4.3
+[0.4.2]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.4.2
+[0.4.1]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.4.1
 [0.4.0]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.4.0
 [0.3.0]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.3.0
 [0.2.1]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.2.1
