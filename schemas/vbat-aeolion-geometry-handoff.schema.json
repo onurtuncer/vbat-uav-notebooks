@@ -6,7 +6,11 @@
   "required": ["schema_version", "design_id", "units", "reference_frame", "planform", "airfoil_sections", "mesh_topology"],
   "properties": {
 
-    "schema_version": { "type": "string", "const": "1.0.0" },
+    "schema_version": {
+      "type": "string",
+      "enum": ["1.0.0", "1.1.0"],
+      "description": "1.1.0 adds the optional control_surfaces[].surface binding field; 1.0.0 documents remain valid (bind by name)"
+    },
     "design_id": {
       "type": "string",
       "description": "Hash or UUID tying this parameter set to a specific notebook run for adjoint-loop traceability"
@@ -82,6 +86,11 @@
         "required": ["name", "eta_start", "eta_end", "chord_fraction", "hinge_axis"],
         "properties": {
           "name": { "type": "string", "enum": ["vane", "aileron", "rudder"] },
+          "surface": {
+            "type": "string",
+            "enum": ["wing", "duct_jet"],
+            "description": "Lattice binding (1.1.0): the geometric surface this entry belongs to. wing: eta is the semispan fraction of the planform. duct_jet: an all-moving plate in the duct jet, eta is the duct-exit radius fraction -- never bound to a lifting-surface lattice. When absent (1.0.0), bind by name: aileron/rudder -> wing, vane -> duct_jet."
+          },
           "eta_start": { "type": "number" },
           "eta_end":   { "type": "number" },
           "chord_fraction": { "type": "number", "minimum": 0, "maximum": 1 },
