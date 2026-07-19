@@ -4,71 +4,71 @@
 # Regen  : re-run notebooks/thermal_design.ipynb
 
 T_ambient_C: 40.0
-v_h_ms: 16.8751
+v_h_ms: 17.6469
 esc:
-  Q_W: 32.585
-  V_cool_ms: 8.4375
-  A_req_cm2: 212.883
-  plate_side_mm: 145.91
+  Q_W: 37.155
+  V_cool_ms: 8.8235
+  A_req_cm2: 246.154
+  plate_side_mm: 156.89
   plate_thickness_mm: 2.0
   plate_material: Al 6061
-  plate_mass_g: 114.96
-  A_avail_cm2: 339.152
-  area_headroom: 1.593
+  plate_mass_g: 132.92
+  A_avail_cm2: 357.618
+  area_headroom: 1.453
   T_esc_max_C: 90.0
-  T_at_avail_C: 75.26
-  temp_margin_C: 14.74
+  T_at_avail_C: 77.78
+  temp_margin_C: 12.22
   mass_within_alloc: false
   ok: false
 battery:
-  Q_W: 20.155
-  V_vent_ms: 5.0625
-  A_req_cm2: 1.617
-  A_avail_cm2: 65.512
-  area_headroom: 40.517
+  Q_W: 100.842
+  V_vent_ms: 5.2941
+  A_req_cm2: 7.736
+  A_avail_cm2: 75.141
+  area_headroom: 9.713
   T_batt_max_C: 60.0
-  T_at_avail_C: 40.49
-  temp_margin_C: 19.51
+  T_at_avail_C: 42.06
+  temp_margin_C: 17.94
   ok: true
 all_ok: false
 battery_transient:
-  I_hover_A: 29.36
-  I_cruise_A: 4.39
-  C_th_J_K: 499.1
+  I_hover_A: 33.47
+  I_cruise_A: 4.74
+  C_th_J_K: 587.9
   UA_W_K: 0.282
-  tau_s: 1770.0
+  tau_s: 2085.0
   t_leg_s: 80.0
   t_cruise_s: 900.0
   T_batt_max_C: 60.0
   cases:
     optimistic:
       R_pack_mohm: 60.0
-      Q_hover_W: 51.7
-      Q_cruise_W: 1.158
-      dT_leg_C: 8.29
-      T_after_leg1_C: 48.29
-      T_after_cruise_C: 46.62
-      T_final_C: 54.91
-      temp_margin_C: 5.09
+      Q_hover_W: 67.23
+      Q_cruise_W: 1.349
+      dT_leg_C: 9.15
+      T_after_leg1_C: 49.15
+      T_after_cruise_C: 47.62
+      T_final_C: 56.76
+      temp_margin_C: 3.24
       ok: true
     nominal:
       R_pack_mohm: 90.0
-      Q_hover_W: 77.56
-      Q_cruise_W: 1.737
-      dT_leg_C: 12.43
-      T_after_leg1_C: 52.43
-      T_after_cruise_C: 49.93
-      T_final_C: 62.36
-      temp_margin_C: -2.36
+      Q_hover_W: 100.84
+      Q_cruise_W: 2.023
+      dT_leg_C: 13.72
+      T_after_leg1_C: 53.72
+      T_after_cruise_C: 51.43
+      T_final_C: 65.15
+      temp_margin_C: -5.15
       ok: false
     conservative:
       R_pack_mohm: 120.0
-      Q_hover_W: 103.41
-      Q_cruise_W: 2.316
-      dT_leg_C: 16.57
-      T_after_leg1_C: 56.57
-      T_after_cruise_C: 53.24
-      T_final_C: 69.82
-      temp_margin_C: -9.82
+      Q_hover_W: 134.46
+      Q_cruise_W: 2.698
+      dT_leg_C: 18.3
+      T_after_leg1_C: 58.3
+      T_after_cruise_C: 55.23
+      T_final_C: 73.53
+      temp_margin_C: -13.53
       ok: false
   ok_nominal: false

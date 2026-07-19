@@ -33,8 +33,17 @@ batteries:
     shape: box
     capacity_mah: 5000.0
     s_cells: 6
-    c_rate_cont: 10.0       # conservative pack rating (50 A); the cell
-                            # itself is datasheet-rated 60 A continuous
+    c_rate_cont: 12.0       # = the P50B cell's 60 A continuous datasheet
+                            # rating: a 1P stick's continuous limit is the
+                            # cell's, provided the build uses adequate
+                            # busbars (copper-sandwich / thick nickel --
+                            # spec this for the local spot-weld build).
+                            # Was 10.0 (a self-imposed 50 A derate) until
+                            # the ADR-0014 amendment's honest IR
+                            # accounting pushed the margined ESC current
+                            # to ~54 A; the actual mission draw is ~33 A
+                            # (6.7C) -- the 1.6x ESC margin is the
+                            # conservative part, not the pack.
     # No TR-stocked built pack found (2026-07): built 6S1P packs are
     # import (wrekd.com, nexusbatterysystems.com, upgradeenergytech.com,
     # danenergy.com). Bare P50B cells ARE TR-stocked (elektrodepo.com,

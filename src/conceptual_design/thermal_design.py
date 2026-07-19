@@ -21,7 +21,11 @@ shell is frozen.  This module puts a first-order number on both.
 HEAT LOADS  (derived, not configured)
 -------------------------------------
     Q_esc  = P_hover * (1 - eta_esc)          switching/conduction loss
-    Q_batt = P_hover * (1/eta_bat - 1)        pack IR loss in hover
+    Q_batt = I_hover^2 * R_pack_nominal       pack IR loss in hover
+(Q_batt used P_hover*(1/eta_bat - 1) before the ADR-0014 amendment; the
+I^2 R law at the nominal pack resistance is the same one the mission
+transient uses, so the vent sizing and the transient see the same
+hover heat.)
 
 COOLING AIRFLOW
 ---------------
@@ -55,9 +59,9 @@ the cruise leg can reject it.  ``battery_pack_transient`` reproduces
 that lumped-capacitance model: adiabatic hover+transition legs, then
 exponential cruise cooling off the exposed pack surface, evaluated for
 the configured optimistic/nominal/conservative pack-resistance cases.
-Note the I^2 R heat load at the nominal resistance is ~4x the
-eta_bat-derived Q_batt above (eta_bat 0.97 implies ~23 mOhm; a real
-6S1P 21700 pack is ~60-120 mOhm) -- see config/battery.yaml.
+Since the ADR-0014 amendment the vent model above uses the same
+nominal-R I^2 R law, and the closure's eta_bat is the mission-averaged
+efficiency of that resistance -- see config/battery.yaml.
 
 References
 ----------
@@ -277,7 +281,7 @@ def battery_pack_transient(
 def size_thermal(
     P_hover_W:        float,
     eta_esc:          float,
-    eta_bat:          float,
+    I_hover_A:        float,   # wiring-law hover current (P_hover / V_pack)
     MTOW_kg:          float,
     D_rotor_m:        float,
     rho:              float,   # ambient air density [kg/m^3]
@@ -322,7 +326,7 @@ def size_thermal(
     )
 
     # ---- vented battery bay --------------------------------------------
-    Q_batt = P_hover_W * (1.0 / eta_bat - 1.0)
+    Q_batt = I_hover_A ** 2 * p.R_pack_ohm["nominal"]
     V_vent = p.vent_inflow_frac * v_h
     mdot_req = Q_batt / (CP_AIR * dT_batt)
     A_req_vent = mdot_req / (rho * V_vent)

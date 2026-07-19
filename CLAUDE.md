@@ -23,7 +23,7 @@ that the next one reads:
 5. `vibration_isolation` — FC/IMU + payload soft mounts → `out/vibration.yaml`
 6. `fuselage_design` — layout, CG, drag → `out/fuselage.yaml`
 7. `thermal_design` — ESC cold-plate + vented battery bay → `out/thermal.yaml`
-8. `vehicle_solid_model` — CadQuery CAD → `out/cad/` (STEP/STL, per-part + fused + prop rotor)
+8. `vehicle_solid_model` — CadQuery CAD → `out/cad/` (STEP/STL, per-part + fused + prop rotor) + `out/cad/aeolion_geometry.json` (ADR-0016 VLM handoff)
 9. `mass_properties` — inertia tensor, BOM → `out/mass_properties.yaml`, `out/bom.csv`
 10. `wiring_diagram` — electrical block diagram → `out/wiring_diagram.svg`, `out/electrical.yaml`
 11. `cots_selection` — COTS FC/ESC/EDF-motor/propeller/servo/battery freeze → `out/components.yaml`
@@ -65,21 +65,25 @@ packaging-constrained fuselage.
 `thermal_design` sizes the two hover heat paths as structure (ADR-0009):
 an ESC cold-plate on the inflow-washed inner wall (forced convection) and
 a vented battery bay. Heat loads are derived (`P_hover·(1−eta_esc)` and
-`P_hover·(1/eta_bat−1)`), not configured. It does **not** change the mass
+`I_hover²·R_pack` at the nominal pack resistance), not configured. It does **not** change the mass
 model — the cold-plate is absorbed into the ESC/propulsion "mounts"
 allocation and its two CAD parts are assembly-only (excluded from the
-fused STL). It reports margins honestly: at the current 2.30 kg / ~0.65 kW-
+fused STL). It reports margins honestly: at the current 2.52 kg / ~0.74 kW-
 hover point the battery bay vents comfortably, but the ESC cold-plate is
-**marginal** (its ~33 W load needs a plate heavier than the ESC allocation
+**marginal** (its ~37 W load needs a plate heavier than the ESC allocation
 with only a few °C margin) — a standing finding, not a hard failure.
 NB7 also runs the **battery pack mission transient** (ADR-0014, from an
 external review): lumped-capacitance `I²R_pack` heating through the two
 vertical legs with cruise cooling between, at 60/90/120 mΩ pack-resistance
 cases. At the 40 °C design ambient the nominal 90 mΩ case ends the mission
-~2 °C over the 60 °C pack limit — a second standing finding (the vent
-check is air-side only and cannot see it; `eta_bat: 0.97` implies an
-unrealistically low ~23 mΩ pack). Measure the built pack's DCIR at
-procurement, collapse the cases to it, and re-pin.
+~5 °C over the 60 °C pack limit — a second standing finding (the vent
+check is air-side only and cannot see it). Since the ADR-0014 amendment
+the pack resistance is folded in consistently: `eta_bat` is the
+mission-averaged I²R efficiency of the nominal 90 mΩ pack (0.916,
+iterated to the closure fixed point — the honest accounting costs
+~+215 g MTOW) and the vent load uses the same I²R law. Measure the
+built pack's DCIR at procurement, then update `eta_bat` + `R_pack_mohm`
+together and re-pin — a 60–70 mΩ build is worth ~150 g of MTOW.
 
 `wiring_diagram` is generated, not hand-drawn: box positions/wiring
 topology are a fixed layout in `electrical_diagram.py`, but every label
@@ -100,11 +104,11 @@ from the NB3/NB4 hinge moments, battery capacity/discharge from the
 wiring module's operating point) — only the margins are configured; the
 lightest feasible candidate wins, deterministically. Mass-allocation fit is *reported, never
 filtered on*: at the current design point the ESC and servos fit; the
-avionics bay (~-42 g) and the motor (~-99 g of the motor_fan line, all
+avionics bay (~-25 g) and the motor (~-79 g of the motor_fan line, all
 motor) are over — standing findings against the weight fractions, same
 status as the thermal cold-plate. The battery line flipped sign when the
 Li-ion 21700 class entered the catalog: the Molicel P50B 6S1P (450 g,
-108 Wh) undercuts the sized LiPo pack by ~105 g (its pack-level specific
+108 Wh) undercuts the sized LiPo pack by ~203 g (its pack-level specific
 energy beats the config/battery.yaml LiPo density; note its 3.6 V/cell
 nominal vs the configured 3.7 — see batteries.yaml). The propeller is
 **pinned** via `selection.frozen` to the 3-blade 8×6 of the ADR-0003
@@ -127,8 +131,10 @@ physical-fit report. They write parallel `*_cots.yaml` handoffs (same
 schemas, via `cots_integration.py`) and NEVER touch the conceptual
 outputs — no back-edge: CAD/CFD and `Allrun.case` stay on the conceptual
 geometry, and the deltas are pinned standing findings (as-selected all-up
-2.264 kg = closure −38 g since the Li-ion Molicel battery won the freeze;
-hull grows to ⌀107×533 mm; structure model ~33 g over its budget), folded
+2.336 kg = closure −182 g since the Li-ion Molicel battery won the freeze
+and the ADR-0014 amendment grew the closure; hull stays ⌀107×533 mm; the
+old structure-over-budget finding is RESOLVED — the amended MTOW's larger
+pool now covers the packaging-floored shell with ~9 g margin), folded
 into `config/` only as a deliberate next-iteration change after
 procurement. `design_summary` (NB15, last) is
 a pure reader: design point, margins table, frozen hardware, and every
@@ -195,14 +201,14 @@ standing finding collected programmatically from the handoffs.
 - **NACA 4412 wing** (ADR-0015, 2026-07-18): with the stall-limited
   sizing now honest, section lift buys wing area directly, and the
   4412 (CL_max_3D 1.489) dominates the candidate trade: W/S 131.2
-  N/m², S 0.1722 m², b 1.016 m (smaller than the pre-fix 2412 wing),
+  N/m², S 0.1883 m², b 1.063 m at the ADR-0014-amended MTOW,
   cruise CL 0.535 near the polar optimum, L/D 13.35, V_MD ≈ 18.5 m/s
   so the 20 m/s cruise is back within ~2% of max L/D (a V_cruise
   change was studied and rejected — the fixed-range closure is nearly
   V-independent). Watch items: un-modelled nose-down Cm0 (cruise trim)
   and the empirical Cl_max at Re ≈ 1.4e5 near stall — validate before
   wing tooling.
-- Design point ≈ 2.30 kg MTOW, ~652 W hover electrical, ~8.4C peak
+- Design point ≈ 2.52 kg MTOW, ~743 W hover electrical, ~8.1C peak
   (segmented-FDM, k=1.1, fs_base re-baselined 0.25→0.22 to the
   ADR-0010 semi-monocoque member model — lighter than the original
   2.5 kg monocoque baseline; the FDM print penalty is more than paid

@@ -1,7 +1,7 @@
 # ADR-0014: Battery pack mission-transient thermal check
 
 Date: 2026-07-17
-Status: Accepted
+Status: Accepted (amended 2026-07-18 — see Amendment below)
 
 ## Context
 
@@ -91,3 +91,38 @@ regression pins). The gap is documented in `config/battery.yaml`.
   value and re-pin.
 - The model is a spatial average; cell cores and busbars run 5–10 °C
   hotter until validated by test.
+
+## Amendment (2026-07-18): internal resistance folded into the model
+
+The original decision left `eta_bat: 0.97` and the vent model's
+`Q_batt = P_hover·(1/eta_bat−1)` unchanged, deferring the fold-in.
+That deferral is now closed — the pack internal resistance is treated
+consistently everywhere:
+
+- **Mass closure**: `eta_bat` re-derived as the mission-averaged I²R
+  efficiency at the nominal 90 mΩ pack on the 6S bus, **iterated to
+  the closure fixed point → 0.916** (the heavier battery raises hover
+  current, which lowers the efficiency again; hover legs ~0.86 at
+  ~33 A, cruise ~0.98). The honest accounting moves the design point:
+  **MTOW 2.303 → 2.518 kg, hover 652 → 743 W, sized pack 555 → 653 g
+  (4.12 Ah)** — the true cost of a 90 mΩ pack, previously hidden by
+  the 0.97 constant. A measured 60–70 mΩ build claws most of it back;
+  that measurement is now worth ~150 g of MTOW, which is the whole
+  argument for the review's §13 ground test.
+- **Battery freeze consequence**: the margined ESC current
+  (1.6 × 33.5 A = 53.6 A) outgrew the Molicel catalog entry's
+  self-imposed 50 A derate — the freeze failed loudly, as designed.
+  Resolution: the catalog rating is updated to the P50B cell's 60 A
+  continuous datasheet value (`c_rate_cont: 12`) — a 1P stick's
+  continuous limit is the cell's, provided the build specs adequate
+  busbars. The actual mission draw is ~33 A (6.7C); the 1.6× ESC
+  margin is the conservative element, not the pack.
+- **Vent model (ADR-0009 path)**: `Q_batt = I_hover²·R_pack_nominal`,
+  the same law as the mission transient, at the wiring-law hover
+  current. The vent check and the transient now see the same hover
+  heat (~80 W, not the old 20 W); the bay still vents with wide
+  air-side headroom.
+- The keep-in-sync rule: `eta_bat` (config/battery.yaml) and the
+  `R_pack_mohm` nominal case (config/thermal.yaml) describe the same
+  pack — when the DCIR is measured at procurement, update both from
+  the measurement in one commit.
