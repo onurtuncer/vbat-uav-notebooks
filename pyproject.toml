@@ -21,7 +21,7 @@ dependencies = [
 [project.optional-dependencies]
 cad = ["cadquery>=2.3"]
 notebooks = ["jupyter>=1.0"]
-dev = ["pytest>=7.4", "ruff>=0.4", "trimesh>=4.0"]
+dev = ["pytest>=7.4", "ruff>=0.4", "trimesh>=4.0", "jsonschema>=4.18"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -1,0 +1,45 @@
+# Aeolion geometry-handoff parameters (ADR-0016).
+#
+# These drive out/cad/aeolion_geometry.json, the parametric geometry
+# contract consumed by the Aeolion VLM/BEMT adjoint loop
+# (schemas/vbat-aeolion-geometry-handoff.schema.json, schema 1.0.0).
+#
+# EVERYTHING here is discretization/parameterization structure, NOT a
+# design variable: the schema requires station counts, CST order, and
+# mesh topology to stay CONSTANT across the whole design space so the
+# optimizer sees a fixed-length design vector and gradient continuity
+# is preserved. Changing any value below is an outer-loop remeshing
+# event and must be a deliberate commit, never a per-run knob.
+#
+# n_planform_stations : spanwise stations in planform.stations and
+#                       airfoil_sections (aligned 1:1 by eta). 5 spans
+#                       root/quarter/mid/three-quarter/tip — enough to
+#                       carry future twist/taper design variables while
+#                       staying small; the current wing is rectangular
+#                       and untwisted, so all stations repeat the same
+#                       chord/section today.
+# cst_order           : Kulfan CST (Bernstein) coefficients per surface
+#                       (schema allows 4-8). 6 reconstructs the NACA
+#                       4412 to well under 1e-3 c RMS — tighter than
+#                       the section's own low-Re empirical uncertainty
+#                       (ADR-0015 watch item).
+# chordwise_panels    : VLM chordwise panels (schema minimum 4).
+# spanwise_panels_per_section : VLM spanwise panels between adjacent
+#                       planform stations (4 stations gaps x 6 = 24
+#                       per semispan, the resolution the aileron-
+#                       authority checks were run at).
+# wake_model          : 'frozen' — a relaxed wake is a solver-side
+#                       upgrade, not a geometry property; keep the
+#                       handoff at the conservative default.
+# bemt_stations       : radial stations in propulsion_bemt.blade_stations,
+#                       spanning hub_radius_ratio -> 1.0. 13 matches
+#                       n_sections in config/prop_geometry.yaml so BEMT
+#                       and the CAD rotor sample the same chord/twist
+#                       law at comparable resolution.
+
+n_planform_stations: 5
+cst_order: 6
+chordwise_panels: 8
+spanwise_panels_per_section: 6
+wake_model: frozen
+bemt_stations: 13
