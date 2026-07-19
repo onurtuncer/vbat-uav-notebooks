@@ -7,9 +7,14 @@ executable geometry contract for the Aeolion VLM/BEMT adjoint loop:
 - planform stations + CST airfoil sections, aligned 1:1 by eta, with a
   FIXED count across the whole design space (config/aeolion.yaml) so
   the optimizer sees a constant-length design vector;
-- control surfaces (the aileron; the jet vanes are deliberately NOT
-  emitted -- they act on the jet, not the lifting surface, and are
-  covered by the vane DAVE-ML path, see ADR-0016);
+- control surfaces: the aileron AND the four jet vanes. Vane entries
+  are all-moving flat plates in the duct jet: eta is measured on the
+  duct-exit radius (hub collar -> duct wall), the hinge axes are the
+  radial vane directions (CAD angle convention: about +x, 0 deg = +z),
+  and chord_fraction 1.0 marks the whole chord rotating about the
+  hinge_xc line. The vane DAVE-ML path still characterizes the
+  jet-wash aerodynamics; the geometry rides here so Aeolion can model
+  the jet directly;
 - BEMT blade stations sampled from the SAME chord/twist law that
   builds the CAD rotor (prop_geometry.PropGeometry);
 - static mesh-topology directives (config/aeolion.yaml, not design
@@ -136,12 +141,27 @@ def cst_sections_from_naca4(designation: str, order: int) -> dict[str, list[floa
     }
 
 
+def _vane_hinge_axes(n_vanes: int) -> list[list[float]]:
+    """Radial unit vectors of the vane hinge lines (FRD body axes).
+
+    Same convention as the CAD `_radial_plate`: angle about +x with
+    0 deg = +z, so four vanes land on +z, -y, -z, +y (T, R, B, L)."""
+    axes = []
+    for k in range(n_vanes):
+        ang = 2.0 * math.pi * k / n_vanes
+        axes.append([0.0,
+                     round(-math.sin(ang), 12) + 0.0,
+                     round(math.cos(ang), 12) + 0.0])
+    return axes
+
+
 def build_aeolion_geometry(
     *,
     span_m: float,
     chord_m: float,
     airfoil: str,
     ail: Mapping[str, Any],
+    vanes: Mapping[str, Any],
     rotor_D_m: float,
     prop: PropGeometry,
     f_shaft_hz: float,
@@ -150,11 +170,13 @@ def build_aeolion_geometry(
     """Build the schema-1.0.0 Aeolion geometry document.
 
     span_m/chord_m come from the converged sizing result, `ail` from
-    out/aileron.yaml, `f_shaft_hz` (hover 1/rev) from
-    out/vibration.yaml. eta is the semispan fraction (0 root, 1 tip);
-    the wing is currently rectangular and untwisted, so every station
-    carries the same chord and the same CST section -- the fixed
-    station count is the contract for future twist/taper variables.
+    out/aileron.yaml, `vanes` from out/control_vanes.yaml,
+    `f_shaft_hz` (hover 1/rev) from out/vibration.yaml. eta is the
+    semispan fraction (0 root, 1 tip); the wing is currently
+    rectangular and untwisted, so every station carries the same chord
+    and the same CST section -- the fixed station count is the
+    contract for future twist/taper variables. Vane entries reuse eta
+    as the duct-exit radius fraction (see module docstring).
     """
     if span_m <= 0 or chord_m <= 0:
         raise ValueError("wing span and chord must be positive")
@@ -162,6 +184,8 @@ def build_aeolion_geometry(
         raise ValueError("rotor diameter must be positive")
     if f_shaft_hz <= 0:
         raise ValueError("shaft frequency must be positive")
+    if not 0.0 < float(vanes["R_hub_m"]) < float(vanes["R_tip_m"]):
+        raise ValueError("vane radii must satisfy 0 < R_hub < R_tip")
     mesh.validate()
 
     n = mesh.n_planform_stations
@@ -212,6 +236,18 @@ def build_aeolion_geometry(
                 "chord_fraction": float(ail["chord_frac"]),
                 "hinge_axis": [0.0, 1.0, 0.0],
             },
+        ] + [
+            {
+                # jet vanes (out/control_vanes.yaml): all-moving flat
+                # plates in the duct jet, eta on the duct-exit radius
+                # (hub collar -> duct wall), radial hinge axes
+                "name": "vane",
+                "eta_start": float(vanes["R_hub_m"]) / float(vanes["R_tip_m"]),
+                "eta_end": 1.0,
+                "chord_fraction": 1.0,
+                "hinge_axis": axis,
+            }
+            for axis in _vane_hinge_axes(int(vanes["n_vanes"]))
         ],
         "propulsion_bemt": {
             "disk_radius": R,

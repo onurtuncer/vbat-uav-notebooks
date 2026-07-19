@@ -32,6 +32,7 @@ SCHEMA = json.loads(
 )
 
 AIL = {"span_frac_wing": 0.12, "chord_frac": 0.25}
+VANES = {"n_vanes": 4, "R_hub_m": 0.0406, "R_tip_m": 0.1015}
 
 
 @pytest.fixture(scope="module")
@@ -47,7 +48,7 @@ def prop():
 @pytest.fixture(scope="module")
 def geometry(mesh, prop):
     return build_aeolion_geometry(
-        span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL,
+        span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL, vanes=VANES,
         rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
     )
 
@@ -118,12 +119,28 @@ class TestCstFit:
 
 class TestControlsAndBemt:
     def test_aileron_mapping(self, geometry):
-        (aileron,) = geometry["control_surfaces"]
+        aileron, *rest = geometry["control_surfaces"]
         assert aileron["name"] == "aileron"
         assert aileron["eta_start"] == pytest.approx(0.88)
         assert aileron["eta_end"] == 1.0
         assert aileron["chord_fraction"] == pytest.approx(0.25)
         assert aileron["hinge_axis"] == [0.0, 1.0, 0.0]
+
+    def test_vane_mapping(self, geometry):
+        # four all-moving jet vanes: eta on the duct-exit radius (hub
+        # collar -> duct wall), radial hinge axes on the CAD's +z/-y/
+        # -z/+y pattern (angle about +x, 0 deg = +z), whole chord
+        # rotating about the hinge_xc line.
+        vanes = [c for c in geometry["control_surfaces"] if c["name"] == "vane"]
+        assert len(vanes) == VANES["n_vanes"]
+        for v in vanes:
+            assert v["eta_start"] == pytest.approx(
+                VANES["R_hub_m"] / VANES["R_tip_m"])
+            assert v["eta_end"] == 1.0
+            assert v["chord_fraction"] == 1.0
+        axes = {tuple(v["hinge_axis"]) for v in vanes}
+        assert axes == {(0.0, 0.0, 1.0), (0.0, -1.0, 0.0),
+                        (0.0, 0.0, -1.0), (0.0, 1.0, 0.0)}
 
     def test_bemt_matches_cad_blade_law(self, geometry, prop):
         bemt = geometry["propulsion_bemt"]
@@ -145,14 +162,14 @@ class TestControlsAndBemt:
 class TestDesignId:
     def test_deterministic_across_reruns(self, geometry, mesh, prop):
         again = build_aeolion_geometry(
-            span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL,
+            span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL, vanes=VANES,
             rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
         )
         assert again == geometry
 
     def test_moves_with_the_design_point(self, geometry, mesh, prop):
         perturbed = build_aeolion_geometry(
-            span_m=1.017, chord_m=0.1695, airfoil="NACA 4412", ail=AIL,
+            span_m=1.017, chord_m=0.1695, airfoil="NACA 4412", ail=AIL, vanes=VANES,
             rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
         )
         assert perturbed["design_id"] != geometry["design_id"]
@@ -162,7 +179,7 @@ class TestGuards:
     def test_rejects_nonpositive_dimensions(self, mesh, prop):
         with pytest.raises(ValueError, match="positive"):
             build_aeolion_geometry(
-                span_m=0.0, chord_m=0.2, airfoil="NACA 4412", ail=AIL,
+                span_m=0.0, chord_m=0.2, airfoil="NACA 4412", ail=AIL, vanes=VANES,
                 rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
             )
 
@@ -175,6 +192,6 @@ class TestGuards:
         )
         with pytest.raises(ValueError, match="4..8"):
             build_aeolion_geometry(
-                span_m=1.0, chord_m=0.2, airfoil="NACA 4412", ail=AIL,
+                span_m=1.0, chord_m=0.2, airfoil="NACA 4412", ail=AIL, vanes=VANES,
                 rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=bad,
             )

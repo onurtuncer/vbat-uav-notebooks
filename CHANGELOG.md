@@ -18,9 +18,9 @@ is tagged.
   `additionalProperties: false`, stored verbatim and validated in
   tests): planform stations + Kulfan CST airfoil sections aligned 1:1
   by eta at fixed counts (`config/aeolion.yaml` — structural constants
-  of the optimization, not design variables), aileron control surface
-  (jet vanes deliberately excluded — they act on the jet and belong to
-  the vane DAVE-ML path), BEMT blade stations, static mesh topology,
+  of the optimization, not design variables), control surfaces (the
+  aileron plus the four jet vanes as all-moving plates on the duct-exit
+  radius with radial hinge axes), BEMT blade stations, static mesh topology,
   and a `design_id` sha256 of the canonical payload (byte-stable per
   design point). JSON is the differentiable-analysis contract; STEP
   stays the exact-CAD traceability artifact, off the derivative path.

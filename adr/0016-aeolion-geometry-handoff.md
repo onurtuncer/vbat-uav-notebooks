@@ -36,10 +36,14 @@ contract as a JSON Schema (2020-12, `additionalProperties: false`).
   imports without CadQuery): r/R from the hub collar to the tip, exact
   constant-geometric-pitch twist, `reference_rpm` from the NB5 hover
   1/rev. One law, three consumers (CAD, BEMT, vibration-forcing).
-- **Controls**: only the aileron is emitted. The jet vanes act on the
-  duct jet, not the lifting surface — they are characterized by the
-  vane CFD → DAVE-ML path; the schema's `vane` enum value is reserved
-  for when Aeolion models the jet directly.
+- **Controls**: the aileron and the four jet vanes are emitted. Vane
+  entries reuse the schema's control-surface shape for the duct jet:
+  eta is the duct-exit radius fraction (hub collar → duct wall), the
+  hinge axes are the radial vane directions (CAD angle convention:
+  about +x, 0° = +z), and `chord_fraction: 1.0` marks the all-moving
+  plate rotating about its `hinge_xc` line. The vane CFD → DAVE-ML
+  path still characterizes the jet-wash aerodynamics; carrying the
+  geometry here lets Aeolion model the jet directly.
 - **`design_id`** is `sha256:<hex>` over the canonical JSON of every
   other field: byte-stable when the design point is unchanged (clean
   regression diffs), guaranteed to move when any parameter moves —

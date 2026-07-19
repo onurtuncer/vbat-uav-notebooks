@@ -112,9 +112,53 @@
         0.0
       ],
       "name": "aileron"
+    },
+    {
+      "chord_fraction": 1.0,
+      "eta_end": 1.0,
+      "eta_start": 0.4,
+      "hinge_axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "name": "vane"
+    },
+    {
+      "chord_fraction": 1.0,
+      "eta_end": 1.0,
+      "eta_start": 0.4,
+      "hinge_axis": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "name": "vane"
+    },
+    {
+      "chord_fraction": 1.0,
+      "eta_end": 1.0,
+      "eta_start": 0.4,
+      "hinge_axis": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "name": "vane"
+    },
+    {
+      "chord_fraction": 1.0,
+      "eta_end": 1.0,
+      "eta_start": 0.4,
+      "hinge_axis": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "name": "vane"
     }
   ],
-  "design_id": "sha256:9b08a36c7a4bbe53590c9f37382052d32722560351a10dee57f9e3b0a224b768",
+  "design_id": "sha256:2732d99b6276483926f2a4047cf3dc0be31699a3aad09c93d3dddf516ec24a63",
   "mesh_topology": {
     "chordwise_panels": 8,
     "spanwise_panels_per_section": 6,
