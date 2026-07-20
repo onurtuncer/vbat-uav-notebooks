@@ -33,6 +33,8 @@ SCHEMA = json.loads(
 
 AIL = {"span_frac_wing": 0.12, "chord_frac": 0.25}
 VANES = {"n_vanes": 4, "R_hub_m": 0.0406, "R_tip_m": 0.1015}
+FUS = {"D_fus_m": 0.0982, "L_fus_m": 0.49099, "f_nose": 0.22,
+       "f_tail": 0.3, "r_hub_m": 0.0406}
 
 
 @pytest.fixture(scope="module")
@@ -48,7 +50,7 @@ def prop():
 @pytest.fixture(scope="module")
 def geometry(mesh, prop):
     return build_aeolion_geometry(
-        span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL, vanes=VANES,
+        span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL, vanes=VANES, fus=FUS,
         rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
     )
 
@@ -161,17 +163,38 @@ class TestControlsAndBemt:
         assert stations[-1]["twist"] == pytest.approx(13.43, abs=0.01)
 
 
+class TestBody:
+    def test_body_of_revolution_samples_the_cad_meridian(self, geometry):
+        # body x = -station: 0 at the nose tip, -L at the tail base;
+        # radius 0 at the tip, D/2 on the cylindrical mid, hub radius
+        # at the tail base -- the same 3-segment law the CAD revolves.
+        body = geometry["body"]
+        assert body["length"] == pytest.approx(FUS["L_fus_m"])
+        st = body["stations"]
+        assert st[0]["x"] == 0.0
+        assert st[0]["radius"] == 0.0
+        assert st[-1]["x"] == pytest.approx(-FUS["L_fus_m"])
+        assert st[-1]["radius"] == pytest.approx(FUS["r_hub_m"])
+        xs = [s["x"] for s in st]
+        assert xs == sorted(xs, reverse=True)          # nose -> tail
+        assert max(s["radius"] for s in st) == pytest.approx(
+            FUS["D_fus_m"] / 2.0)
+
+    def test_station_count_comes_from_config(self, geometry, mesh):
+        assert len(geometry["body"]["stations"]) == mesh.n_body_stations
+
+
 class TestDesignId:
     def test_deterministic_across_reruns(self, geometry, mesh, prop):
         again = build_aeolion_geometry(
-            span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL, vanes=VANES,
+            span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL, vanes=VANES, fus=FUS,
             rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
         )
         assert again == geometry
 
     def test_moves_with_the_design_point(self, geometry, mesh, prop):
         perturbed = build_aeolion_geometry(
-            span_m=1.017, chord_m=0.1695, airfoil="NACA 4412", ail=AIL, vanes=VANES,
+            span_m=1.017, chord_m=0.1695, airfoil="NACA 4412", ail=AIL, vanes=VANES, fus=FUS,
             rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
         )
         assert perturbed["design_id"] != geometry["design_id"]
@@ -181,7 +204,7 @@ class TestGuards:
     def test_rejects_nonpositive_dimensions(self, mesh, prop):
         with pytest.raises(ValueError, match="positive"):
             build_aeolion_geometry(
-                span_m=0.0, chord_m=0.2, airfoil="NACA 4412", ail=AIL, vanes=VANES,
+                span_m=0.0, chord_m=0.2, airfoil="NACA 4412", ail=AIL, vanes=VANES, fus=FUS,
                 rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
             )
 
@@ -191,9 +214,10 @@ class TestGuards:
             chordwise_panels=mesh.chordwise_panels,
             spanwise_panels_per_section=mesh.spanwise_panels_per_section,
             wake_model=mesh.wake_model, bemt_stations=mesh.bemt_stations,
+            n_body_stations=mesh.n_body_stations,
         )
         with pytest.raises(ValueError, match="4..8"):
             build_aeolion_geometry(
-                span_m=1.0, chord_m=0.2, airfoil="NACA 4412", ail=AIL, vanes=VANES,
+                span_m=1.0, chord_m=0.2, airfoil="NACA 4412", ail=AIL, vanes=VANES, fus=FUS,
                 rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=bad,
             )

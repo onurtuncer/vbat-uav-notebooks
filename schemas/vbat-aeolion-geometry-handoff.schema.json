@@ -8,8 +8,8 @@
 
     "schema_version": {
       "type": "string",
-      "enum": ["1.0.0", "1.1.0"],
-      "description": "1.1.0 adds the optional control_surfaces[].surface binding field; 1.0.0 documents remain valid (bind by name)"
+      "enum": ["1.0.0", "1.1.0", "1.2.0"],
+      "description": "1.1.0 adds the optional control_surfaces[].surface binding field (1.0.0 documents bind by name); 1.2.0 adds the optional body block"
     },
     "design_id": {
       "type": "string",
@@ -96,6 +96,27 @@
           "chord_fraction": { "type": "number", "minimum": 0, "maximum": 1 },
           "hinge_axis": {
             "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3
+          }
+        }
+      }
+    },
+
+    "body": {
+      "type": "object",
+      "description": "Optional (1.2.0): the fuselage as a body of revolution in the declared reference frame -- x = 0 at the nose tip, negative aft, stations span [-length, 0], nose -> tail. Fixed station count across the design space (remeshing is an outer-loop event). radius is 0 at the nose tip; the aft-most station carries the tail-base (hub) radius. Not bound to any lifting lattice -- intended for slender-body/Munk trim corrections and duct-jet context.",
+      "required": ["length", "stations"],
+      "properties": {
+        "length": { "type": "number", "exclusiveMinimum": 0 },
+        "stations": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["x", "radius"],
+            "properties": {
+              "x":      { "type": "number", "maximum": 0 },
+              "radius": { "type": "number", "minimum": 0 }
+            }
           }
         }
       }
