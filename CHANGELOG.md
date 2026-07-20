@@ -9,6 +9,15 @@ is tagged.
 
 ## [Unreleased]
 
+### Added
+
+- **Aeolion handoff schema 1.4.0**: `control_surfaces` entries carry
+  `deflection_limits_deg` (`min`/`max`, the symmetric mechanical range
+  about `hinge_axis` from `±delta_max_deg`) so a CFD/VLM deflection
+  sweep stays within the physical actuator/plate range. Vane entries
+  additionally carry `deflection_soft_limit_deg` (the flat-plate
+  stall onset, informational). 1.0.0–1.3.0 documents remain valid.
+
 ### Fixed
 
 - **Aeolion handoff schema 1.3.0**: `propulsion_bemt.n_blades` was

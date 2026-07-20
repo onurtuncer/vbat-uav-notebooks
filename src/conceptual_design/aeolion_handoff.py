@@ -14,7 +14,12 @@ executable geometry contract for the Aeolion VLM/BEMT adjoint loop:
   and chord_fraction 1.0 marks the whole chord rotating about the
   hinge_xc line. The vane DAVE-ML path still characterizes the
   jet-wash aerodynamics; the geometry rides here so Aeolion can model
-  the jet directly;
+  the jet directly. Every entry carries deflection_limits_deg -- the
+  symmetric mechanical range about hinge_axis (+-delta_max_deg from
+  out/aileron.yaml / out/control_vanes.yaml) -- so a CFD/VLM sweep
+  never asks for a deflection the physical actuator/plate cannot
+  reach; vanes additionally carry deflection_soft_limit_deg (the
+  flat-plate stall onset), informational, not a hard bound;
 - BEMT blade count and blade stations sampled from the SAME chord/twist
   law that builds the CAD rotor (prop_geometry.PropGeometry) -- solidity
   and thrust need the count, not just one blade's planform;
@@ -56,7 +61,7 @@ from .airfoil_selection import naca4_coordinates, parse_naca4
 from .fuselage_design import fuselage_radius
 from .prop_geometry import PropGeometry
 
-SCHEMA_VERSION = "1.3.0"
+SCHEMA_VERSION = "1.4.0"
 REFERENCE_FRAME = "aetherion_body_frd"
 
 # Kulfan class-function exponents: round nose (N1 = 0.5), sharp
@@ -205,6 +210,8 @@ def build_aeolion_geometry(
         raise ValueError("vane radii must satisfy 0 < R_hub < R_tip")
     if float(fus["D_fus_m"]) <= 0 or float(fus["L_fus_m"]) <= 0:
         raise ValueError("fuselage diameter and length must be positive")
+    if float(ail["delta_max_deg"]) <= 0 or float(vanes["delta_max_deg"]) <= 0:
+        raise ValueError("control-surface delta_max_deg must be positive")
     mesh.validate()
 
     n = mesh.n_planform_stations
@@ -269,6 +276,10 @@ def build_aeolion_geometry(
                 "eta_end": 1.0,
                 "chord_fraction": float(ail["chord_frac"]),
                 "hinge_axis": [0.0, 1.0, 0.0],
+                "deflection_limits_deg": {
+                    "min": -float(ail["delta_max_deg"]),
+                    "max": float(ail["delta_max_deg"]),
+                },
             },
         ] + [
             {
@@ -281,6 +292,11 @@ def build_aeolion_geometry(
                 "eta_end": 1.0,
                 "chord_fraction": 1.0,
                 "hinge_axis": axis,
+                "deflection_limits_deg": {
+                    "min": -float(vanes["delta_max_deg"]),
+                    "max": float(vanes["delta_max_deg"]),
+                },
+                "deflection_soft_limit_deg": float(vanes["delta_stall_deg"]),
             }
             for axis in _vane_hinge_axes(int(vanes["n_vanes"]))
         ],

@@ -31,8 +31,9 @@ SCHEMA = json.loads(
     )
 )
 
-AIL = {"span_frac_wing": 0.12, "chord_frac": 0.25}
-VANES = {"n_vanes": 4, "R_hub_m": 0.0406, "R_tip_m": 0.1015}
+AIL = {"span_frac_wing": 0.12, "chord_frac": 0.25, "delta_max_deg": 20.0}
+VANES = {"n_vanes": 4, "R_hub_m": 0.0406, "R_tip_m": 0.1015,
+         "delta_max_deg": 20.0, "delta_stall_deg": 15.0}
 FUS = {"D_fus_m": 0.0982, "L_fus_m": 0.49099, "f_nose": 0.22,
        "f_tail": 0.3, "r_hub_m": 0.0406}
 
@@ -128,6 +129,8 @@ class TestControlsAndBemt:
         assert aileron["eta_end"] == 1.0
         assert aileron["chord_fraction"] == pytest.approx(0.25)
         assert aileron["hinge_axis"] == [0.0, 1.0, 0.0]
+        assert aileron["deflection_limits_deg"] == {"min": -20.0, "max": 20.0}
+        assert "deflection_soft_limit_deg" not in aileron
 
     def test_vane_mapping(self, geometry):
         # four all-moving jet vanes: eta on the duct-exit radius (hub
@@ -142,6 +145,8 @@ class TestControlsAndBemt:
                 VANES["R_hub_m"] / VANES["R_tip_m"])
             assert v["eta_end"] == 1.0
             assert v["chord_fraction"] == 1.0
+            assert v["deflection_limits_deg"] == {"min": -20.0, "max": 20.0}
+            assert v["deflection_soft_limit_deg"] == pytest.approx(15.0)
         axes = {tuple(v["hinge_axis"]) for v in vanes}
         assert axes == {(0.0, 0.0, 1.0), (0.0, -1.0, 0.0),
                         (0.0, 0.0, -1.0), (0.0, 1.0, 0.0)}
@@ -206,6 +211,14 @@ class TestGuards:
         with pytest.raises(ValueError, match="positive"):
             build_aeolion_geometry(
                 span_m=0.0, chord_m=0.2, airfoil="NACA 4412", ail=AIL, vanes=VANES, fus=FUS,
+                rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
+            )
+
+    def test_rejects_nonpositive_deflection_limit(self, mesh, prop):
+        bad_ail = {**AIL, "delta_max_deg": 0.0}
+        with pytest.raises(ValueError, match="delta_max_deg must be positive"):
+            build_aeolion_geometry(
+                span_m=1.0, chord_m=0.2, airfoil="NACA 4412", ail=bad_ail, vanes=VANES, fus=FUS,
                 rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
             )
 
