@@ -9,6 +9,14 @@ is tagged.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Aeolion handoff schema 1.3.0**: `propulsion_bemt.n_blades` was
+  missing — BEMT solidity/thrust are per-blade quantities scaled by
+  count, and `blade_stations` alone only describes one blade's
+  chord/twist law. Added from the same `prop_geometry.PropGeometry`
+  the blade stations sample; 1.0.0–1.2.0 documents remain valid.
+
 ### Changed
 
 - **Aeolion handoff schema 1.2.0**: optional `body` block — the
