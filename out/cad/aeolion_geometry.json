@@ -209,6 +209,10 @@
   "control_surfaces": [
     {
       "chord_fraction": 0.12,
+      "deflection_limits_deg": {
+        "max": 20.0,
+        "min": -20.0
+      },
       "eta_end": 1.0,
       "eta_start": 0.88,
       "hinge_axis": [
@@ -221,6 +225,11 @@
     },
     {
       "chord_fraction": 1.0,
+      "deflection_limits_deg": {
+        "max": 20.0,
+        "min": -20.0
+      },
+      "deflection_soft_limit_deg": 15.0,
       "eta_end": 1.0,
       "eta_start": 0.4,
       "hinge_axis": [
@@ -233,6 +242,11 @@
     },
     {
       "chord_fraction": 1.0,
+      "deflection_limits_deg": {
+        "max": 20.0,
+        "min": -20.0
+      },
+      "deflection_soft_limit_deg": 15.0,
       "eta_end": 1.0,
       "eta_start": 0.4,
       "hinge_axis": [
@@ -245,6 +259,11 @@
     },
     {
       "chord_fraction": 1.0,
+      "deflection_limits_deg": {
+        "max": 20.0,
+        "min": -20.0
+      },
+      "deflection_soft_limit_deg": 15.0,
       "eta_end": 1.0,
       "eta_start": 0.4,
       "hinge_axis": [
@@ -257,6 +276,11 @@
     },
     {
       "chord_fraction": 1.0,
+      "deflection_limits_deg": {
+        "max": 20.0,
+        "min": -20.0
+      },
+      "deflection_soft_limit_deg": 15.0,
       "eta_end": 1.0,
       "eta_start": 0.4,
       "hinge_axis": [
@@ -268,7 +292,7 @@
       "surface": "duct_jet"
     }
   ],
-  "design_id": "sha256:fd6a4f391152fb314a4e34aed9970cc35e394ea57018c1d91e032c6866898e74",
+  "design_id": "sha256:cd257610fe8ffe2a2151ec7703183751090ea9b29f1db4ae9ff9f3865ffa3cd8",
   "mesh_topology": {
     "chordwise_panels": 8,
     "spanwise_panels_per_section": 6,
@@ -387,7 +411,7 @@
     "reference_rpm": 12211.259999999998
   },
   "reference_frame": "aetherion_body_frd",
-  "schema_version": "1.3.0",
+  "schema_version": "1.4.0",
   "units": {
     "angle": "deg",
     "length": "m"

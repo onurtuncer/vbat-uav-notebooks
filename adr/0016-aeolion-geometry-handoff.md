@@ -44,6 +44,15 @@ contract as a JSON Schema (2020-12, `additionalProperties: false`).
   plate rotating about its `hinge_xc` line. The vane CFD → DAVE-ML
   path still characterizes the jet-wash aerodynamics; carrying the
   geometry here lets Aeolion model the jet directly.
+- **Deflection range (schema 1.4.0, 2026-07-20)**: every
+  `control_surfaces` entry carries `deflection_limits_deg` — the
+  symmetric mechanical range about `hinge_axis` (`±delta_max_deg` from
+  `out/aileron.yaml` / `out/control_vanes.yaml`), so a CFD/VLM
+  deflection sweep never asks for an angle the physical actuator/plate
+  cannot reach. Vane entries additionally carry
+  `deflection_soft_limit_deg` (the flat-plate stall onset,
+  `delta_stall_deg`) — informational, not a hard bound, since sweeping
+  past it is a legitimate (if off-design) query.
 - **Blade count (schema 1.3.0, 2026-07-20, missing field caught in
   review)**: `propulsion_bemt.n_blades` (from the same
   `prop_geometry.PropGeometry` the blade stations sample). BEMT
