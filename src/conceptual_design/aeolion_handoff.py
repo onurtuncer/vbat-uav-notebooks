@@ -15,8 +15,9 @@ executable geometry contract for the Aeolion VLM/BEMT adjoint loop:
   hinge_xc line. The vane DAVE-ML path still characterizes the
   jet-wash aerodynamics; the geometry rides here so Aeolion can model
   the jet directly;
-- BEMT blade stations sampled from the SAME chord/twist law that
-  builds the CAD rotor (prop_geometry.PropGeometry);
+- BEMT blade count and blade stations sampled from the SAME chord/twist
+  law that builds the CAD rotor (prop_geometry.PropGeometry) -- solidity
+  and thrust need the count, not just one blade's planform;
 - the fuselage as a body of revolution (schema 1.2.0): radius stations
   sampled from the SAME 3-segment meridian the CAD revolve uses
   (fuselage_design.fuselage_radius), cosine-spaced nose -> tail, body
@@ -55,7 +56,7 @@ from .airfoil_selection import naca4_coordinates, parse_naca4
 from .fuselage_design import fuselage_radius
 from .prop_geometry import PropGeometry
 
-SCHEMA_VERSION = "1.2.0"
+SCHEMA_VERSION = "1.3.0"
 REFERENCE_FRAME = "aetherion_body_frd"
 
 # Kulfan class-function exponents: round nose (N1 = 0.5), sharp
@@ -290,6 +291,7 @@ def build_aeolion_geometry(
         "propulsion_bemt": {
             "disk_radius": R,
             "reference_rpm": float(f_shaft_hz) * 60.0,
+            "n_blades": int(prop.n_blades),
             "blade_stations": blade_stations,
         },
         "mesh_topology": {

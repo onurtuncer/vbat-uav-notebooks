@@ -8,8 +8,8 @@
 
     "schema_version": {
       "type": "string",
-      "enum": ["1.0.0", "1.1.0", "1.2.0"],
-      "description": "1.1.0 adds the optional control_surfaces[].surface binding field (1.0.0 documents bind by name); 1.2.0 adds the optional body block"
+      "enum": ["1.0.0", "1.1.0", "1.2.0", "1.3.0"],
+      "description": "1.1.0 adds the optional control_surfaces[].surface binding field (1.0.0 documents bind by name); 1.2.0 adds the optional body block; 1.3.0 adds propulsion_bemt.n_blades"
     },
     "design_id": {
       "type": "string",
@@ -127,6 +127,11 @@
       "properties": {
         "disk_radius":      { "type": "number", "exclusiveMinimum": 0 },
         "reference_rpm":    { "type": "number" },
+        "n_blades": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Blade count (1.3.0). Required for solidity/thrust in BEMT; blade_stations alone describes one blade's chord/twist law, not the rotor."
+        },
         "blade_stations": {
           "type": "array",
           "items": {

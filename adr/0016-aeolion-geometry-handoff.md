@@ -44,6 +44,13 @@ contract as a JSON Schema (2020-12, `additionalProperties: false`).
   plate rotating about its `hinge_xc` line. The vane CFD → DAVE-ML
   path still characterizes the jet-wash aerodynamics; carrying the
   geometry here lets Aeolion model the jet directly.
+- **Blade count (schema 1.3.0, 2026-07-20, missing field caught in
+  review)**: `propulsion_bemt.n_blades` (from the same
+  `prop_geometry.PropGeometry` the blade stations sample). BEMT
+  solidity and thrust are per-blade quantities scaled by blade count —
+  `blade_stations` alone describes one blade's chord/twist law, not
+  the rotor, so the count was a load-bearing gap, not an
+  optional refinement.
 - **Body block (schema 1.2.0, 2026-07-19)**: the fuselage rides in the
   contract as a body of revolution — `body.stations` of {x, radius}
   sampled from the same 3-segment meridian the CAD revolve is built

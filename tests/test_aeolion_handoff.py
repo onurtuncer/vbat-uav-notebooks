@@ -150,6 +150,7 @@ class TestControlsAndBemt:
         bemt = geometry["propulsion_bemt"]
         assert bemt["disk_radius"] == pytest.approx(0.1015)
         assert bemt["reference_rpm"] == pytest.approx(203.5 * 60.0)
+        assert bemt["n_blades"] == prop.n_blades
         stations = bemt["blade_stations"]
         assert stations[0]["r_over_R"] == pytest.approx(prop.hub_radius_ratio)
         assert stations[-1]["r_over_R"] == pytest.approx(1.0)
