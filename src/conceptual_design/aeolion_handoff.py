@@ -29,6 +29,11 @@ executable geometry contract for the Aeolion VLM/BEMT adjoint loop:
   x = -station (0 at the nose tip, negative aft). Not bound to any
   lifting lattice -- for slender-body/Munk trim corrections and
   duct-jet context;
+- planform.placement (schema 1.5.0): the wing root LE anchored in the
+  SAME body-frame convention as `body`, so a consumer can actually
+  place the two against each other instead of assuming the root sits
+  at the reference-frame origin (which puts the wing at the fuselage
+  nose -- see ADR-0016);
 - static mesh-topology directives (config/aeolion.yaml, not design
   variables).
 
@@ -61,7 +66,7 @@ from .airfoil_selection import naca4_coordinates, parse_naca4
 from .fuselage_design import fuselage_radius
 from .prop_geometry import PropGeometry
 
-SCHEMA_VERSION = "1.4.0"
+SCHEMA_VERSION = "1.5.0"
 REFERENCE_FRAME = "aetherion_body_frd"
 
 # Kulfan class-function exponents: round nose (N1 = 0.5), sharp
@@ -212,6 +217,11 @@ def build_aeolion_geometry(
         raise ValueError("fuselage diameter and length must be positive")
     if float(ail["delta_max_deg"]) <= 0 or float(vanes["delta_max_deg"]) <= 0:
         raise ValueError("control-surface delta_max_deg must be positive")
+    if not 0.0 < float(fus["x_wing_LE_m"]) < float(fus["L_fus_m"]):
+        raise ValueError(
+            "wing LE station must sit strictly between the nose tip and "
+            "the tail base (0 < x_wing_LE_m < L_fus_m)"
+        )
     mesh.validate()
 
     n = mesh.n_planform_stations
@@ -251,6 +261,19 @@ def build_aeolion_geometry(
         "units": {"length": "m", "angle": "deg"},
         "reference_frame": REFERENCE_FRAME,
         "planform": {
+            # Root LE anchor (1.5.0): the SAME station and body-frame sign
+            # convention as `body` (x = -station, 0 at the nose tip). The
+            # wing chord datum sits at y=0/z=0 -- a through-fuselage wing
+            # on the ADR-0008 carry-through spar, not an incidental
+            # default -- so a consumer can place every planform station
+            # in the same frame `body` is already in and detect overlap.
+            "placement": {
+                "root_leading_edge": {
+                    "x": -float(fus["x_wing_LE_m"]),
+                    "y": 0.0,
+                    "z": 0.0,
+                },
+            },
             "span": float(span_m),
             "stations": [
                 {

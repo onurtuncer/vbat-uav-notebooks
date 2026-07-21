@@ -9,6 +9,23 @@ is tagged.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Aeolion handoff schema 1.5.0**: the planform had no stated
+  position relative to `body` — both implicitly started at the
+  reference-frame origin, so a consumer placed the wing root at the
+  fuselage nose (22/384 wing control points landed inside the body of
+  revolution in an Aeolion solver report). New `planform.placement.
+  root_leading_edge` anchor {x, y, z} in the same body-frame
+  convention as `body`, sourced from `x_wing_LE_m`: `[-x_wing_LE_m, 0,
+  0]` — the wing sits on the fuselage centerline (a through-fuselage
+  wing on the carry-through spar). **Required from 1.5.0 onward** via
+  a version-conditional schema constraint (not merely documented as
+  optional-but-always-present, unlike prior additions): 1.0.0–1.4.0
+  documents remain structurally valid without it, every 1.5.0+
+  document must carry it. New exporter guard: `0 < x_wing_LE_m <
+  L_fus_m`.
+
 ### Added
 
 - **Aeolion handoff schema 1.4.0**: `control_surfaces` entries carry

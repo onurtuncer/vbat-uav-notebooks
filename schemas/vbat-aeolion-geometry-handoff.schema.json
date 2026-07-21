@@ -8,8 +8,8 @@
 
     "schema_version": {
       "type": "string",
-      "enum": ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"],
-      "description": "1.1.0 adds the optional control_surfaces[].surface binding field (1.0.0 documents bind by name); 1.2.0 adds the optional body block; 1.3.0 adds propulsion_bemt.n_blades; 1.4.0 adds control_surfaces[].deflection_limits_deg"
+      "enum": ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0"],
+      "description": "1.1.0 adds the optional control_surfaces[].surface binding field (1.0.0 documents bind by name); 1.2.0 adds the optional body block; 1.3.0 adds propulsion_bemt.n_blades; 1.4.0 adds control_surfaces[].deflection_limits_deg; 1.5.0 adds planform.placement, REQUIRED from 1.5.0 onward (see the version-conditional constraint below) -- 1.0.0-1.4.0 documents carried no wing/body anchor and remain valid without it"
     },
     "design_id": {
       "type": "string",
@@ -33,6 +33,22 @@
       "type": "object",
       "required": ["span", "stations"],
       "properties": {
+        "placement": {
+          "type": "object",
+          "description": "Absolute position (1.5.0) of the eta=0 station's leading edge in the declared reference_frame -- the anchor every station's chord-relative offset (chord, twist, sweep_qc, dihedral) is measured from. Without it the planform has no stated relationship to `body`: a consumer that assumes the root sits at the reference-frame origin places the wing at the fuselage nose, an unphysical overlap with the body of revolution. Required from schema_version 1.5.0 onward (see the top-level version-conditional constraint); optional here only so pre-placement 1.0.0-1.4.0 documents remain structurally valid -- absence on any 1.5.0+ document is malformed, not a zero default.",
+          "required": ["root_leading_edge"],
+          "properties": {
+            "root_leading_edge": {
+              "type": "object",
+              "required": ["x", "y", "z"],
+              "properties": {
+                "x": { "type": "number" },
+                "y": { "type": "number" },
+                "z": { "type": "number" }
+              }
+            }
+          }
+        },
         "span": { "type": "number", "exclusiveMinimum": 0 },
         "stations": {
           "type": "array",
@@ -172,5 +188,23 @@
     }
   },
 
-  "additionalProperties": false
+  "additionalProperties": false,
+
+  "allOf": [
+    {
+      "description": "planform.placement became mandatory at 1.5.0: every schema_version NOT in the pre-placement list below must supply the wing/body anchor.",
+      "if": {
+        "properties": {
+          "schema_version": {
+            "not": { "enum": ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"] }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "planform": { "required": ["span", "stations", "placement"] }
+        }
+      }
+    }
+  ]
 }
