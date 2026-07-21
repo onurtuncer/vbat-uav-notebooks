@@ -34,6 +34,10 @@ executable geometry contract for the Aeolion VLM/BEMT adjoint loop:
   place the two against each other instead of assuming the root sits
   at the reference-frame origin (which puts the wing at the fuselage
   nose -- see ADR-0016);
+- moment_reference_point (schema 1.6.0): the vehicle CG, SAME source
+  and convention as cfd/vehicle/Allrun.case's CofR, so a consumer has
+  a physically meaningful centre for Cm/Cl/Cn instead of defaulting
+  to the coordinate-system origin;
 - static mesh-topology directives (config/aeolion.yaml, not design
   variables).
 
@@ -66,7 +70,7 @@ from .airfoil_selection import naca4_coordinates, parse_naca4
 from .fuselage_design import fuselage_radius
 from .prop_geometry import PropGeometry
 
-SCHEMA_VERSION = "1.5.0"
+SCHEMA_VERSION = "1.6.0"
 REFERENCE_FRAME = "aetherion_body_frd"
 
 # Kulfan class-function exponents: round nose (N1 = 0.5), sharp
@@ -222,6 +226,11 @@ def build_aeolion_geometry(
             "wing LE station must sit strictly between the nose tip and "
             "the tail base (0 < x_wing_LE_m < L_fus_m)"
         )
+    if not 0.0 < float(fus["x_CG_m"]) < float(fus["L_fus_m"]):
+        raise ValueError(
+            "CG station must sit strictly between the nose tip and the "
+            "tail base (0 < x_CG_m < L_fus_m)"
+        )
     mesh.validate()
 
     n = mesh.n_planform_stations
@@ -260,6 +269,16 @@ def build_aeolion_geometry(
         "schema_version": SCHEMA_VERSION,
         "units": {"length": "m", "angle": "deg"},
         "reference_frame": REFERENCE_FRAME,
+        # Vehicle CG (1.6.0), SAME source and sign convention as
+        # cfd/vehicle/Allrun.case's CofR (out/fuselage.yaml x_CG_m): the
+        # moment reference for any Cm/Cl/Cn a sweep of this geometry
+        # produces, so VLM/BEMT moments stay directly comparable to the
+        # project's CFD force/moment coefficients.
+        "moment_reference_point": {
+            "x": -float(fus["x_CG_m"]),
+            "y": 0.0,
+            "z": 0.0,
+        },
         "planform": {
             # Root LE anchor (1.5.0): the SAME station and body-frame sign
             # convention as `body` (x = -station, 0 at the nose tip). The

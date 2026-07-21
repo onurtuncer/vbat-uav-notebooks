@@ -8,8 +8,8 @@
 
     "schema_version": {
       "type": "string",
-      "enum": ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0"],
-      "description": "1.1.0 adds the optional control_surfaces[].surface binding field (1.0.0 documents bind by name); 1.2.0 adds the optional body block; 1.3.0 adds propulsion_bemt.n_blades; 1.4.0 adds control_surfaces[].deflection_limits_deg; 1.5.0 adds planform.placement, REQUIRED from 1.5.0 onward (see the version-conditional constraint below) -- 1.0.0-1.4.0 documents carried no wing/body anchor and remain valid without it"
+      "enum": ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0"],
+      "description": "1.1.0 adds the optional control_surfaces[].surface binding field (1.0.0 documents bind by name); 1.2.0 adds the optional body block; 1.3.0 adds propulsion_bemt.n_blades; 1.4.0 adds control_surfaces[].deflection_limits_deg; 1.5.0 adds planform.placement, REQUIRED from 1.5.0 onward; 1.6.0 adds moment_reference_point, REQUIRED from 1.6.0 onward (see the version-conditional constraints below) -- each is optional only for documents predating its own introduction"
     },
     "design_id": {
       "type": "string",
@@ -27,6 +27,17 @@
       "type": "string",
       "enum": ["aetherion_body_frd"],
       "description": "Must match Aetherion/BEMT convention to avoid an undifferentiated transform seam"
+    },
+
+    "moment_reference_point": {
+      "type": "object",
+      "description": "The vehicle CG (1.6.0) in the declared reference_frame -- the moment reference for any Cm/Cl/Cn a VLM/BEMT sweep of this geometry produces. Same convention as `body`/`planform.placement` (x = -station, 0 at the nose tip) and the SAME source `cfd/vehicle/Allrun.case`'s CofR uses (out/fuselage.yaml x_CG_m), so aero moments computed from this contract stay directly comparable to the project's CFD force/moment coefficients. Required from schema_version 1.6.0 onward (see the top-level version-conditional constraint); without it Cm has no stated centre and defaults to the coordinate-system origin, which is not a physically meaningful reference for a body whose CG sits well aft of the nose.",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
     },
 
     "planform": {
@@ -204,6 +215,21 @@
         "properties": {
           "planform": { "required": ["span", "stations", "placement"] }
         }
+      }
+    },
+    {
+      "description": "moment_reference_point became mandatory at 1.6.0: every schema_version NOT in the pre-1.6.0 list below must supply the CG/Cm reference.",
+      "if": {
+        "properties": {
+          "schema_version": {
+            "not": {
+              "enum": ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0"]
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["moment_reference_point"]
       }
     }
   ]
