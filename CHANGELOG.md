@@ -9,6 +9,15 @@ is tagged.
 
 ## [Unreleased]
 
+## [0.5.2] — 2026-07-21
+
+Patch release: five Aeolion handoff schema bumps (1.1.0 → 1.5.0),
+landed as separate reviewable PRs over three days — jet-vane control
+surfaces, wing/duct-jet lattice binding, the fuselage body of
+revolution, BEMT blade count, control-surface deflection ranges, and
+finally the wing/body placement anchor that fixed a real solver-side
+overlap bug. No VBAT design-point change; schema/exporter only.
+
 ### Fixed
 
 - **Aeolion handoff schema 1.5.0**: the planform had no stated
@@ -581,6 +590,7 @@ converged conceptual design point.
   design point and cross-check `cfd/vehicle/Allrun.case`; `tests/test_geometry.py`
   guards the exported STL (watertight, mm units, span).
 
+[0.5.2]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.5.2
 [0.5.1]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.5.1
 [0.5.0]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.5.0
 [0.4.5]: https://github.com/onurtuncer/vbat-uav-notebooks/releases/tag/v0.4.5
