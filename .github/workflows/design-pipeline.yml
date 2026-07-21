@@ -22,7 +22,7 @@ env:
   NOTEBOOK_ORDER: >-
     vbat_conceptual_design wing_design control_vane_design
     aileron_design vibration_isolation fuselage_design
-    thermal_design vehicle_solid_model mass_properties
+    thermal_design vehicle_solid_model aeolion_handoff mass_properties
     wiring_diagram cots_selection
     aileron_design_cots vibration_isolation_cots fuselage_design_cots
     design_summary

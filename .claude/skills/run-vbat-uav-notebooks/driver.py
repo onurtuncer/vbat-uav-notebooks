@@ -32,6 +32,7 @@ NOTEBOOKS = [
     "fuselage_design",
     "thermal_design",
     "vehicle_solid_model",   # CadQuery -- skipped when OCP is missing
+    "aeolion_handoff",       # no CadQuery -- runs fine even when NB8 is skipped
     "mass_properties",
     "wiring_diagram",
     "cots_selection",
