@@ -9,6 +9,21 @@ is tagged.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Aeolion handoff schema 1.6.0**: no moment reference point existed
+  in the contract, so a VLM/BEMT sweep's Cm/Cl/Cn had no stated
+  centre and defaulted to the coordinate-system origin — not
+  physically meaningful for a body whose CG sits well aft of the
+  nose. New top-level `moment_reference_point` {x, y, z}, sourced
+  from the SAME place `cfd/vehicle/Allrun.case`'s `CofR` is
+  (`out/fuselage.yaml` `x_CG_m`), so VLM/BEMT moments stay directly
+  comparable to the project's CFD force/moment coefficients.
+  **Required from 1.6.0 onward** via the same version-conditional
+  schema constraint used for `planform.placement`: 1.0.0–1.5.0
+  documents remain structurally valid without it. New exporter guard:
+  `0 < x_CG_m < L_fus_m`.
+
 ## [0.5.2] — 2026-07-21
 
 Patch release: five Aeolion handoff schema bumps (1.1.0 → 1.5.0),

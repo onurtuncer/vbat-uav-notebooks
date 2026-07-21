@@ -35,7 +35,8 @@ AIL = {"span_frac_wing": 0.12, "chord_frac": 0.25, "delta_max_deg": 20.0}
 VANES = {"n_vanes": 4, "R_hub_m": 0.0406, "R_tip_m": 0.1015,
          "delta_max_deg": 20.0, "delta_stall_deg": 15.0}
 FUS = {"D_fus_m": 0.0982, "L_fus_m": 0.49099, "f_nose": 0.22,
-       "f_tail": 0.3, "r_hub_m": 0.0406, "x_wing_LE_m": 0.20687}
+       "f_tail": 0.3, "r_hub_m": 0.0406, "x_wing_LE_m": 0.20687,
+       "x_CG_m": 0.24229}
 
 
 @pytest.fixture(scope="module")
@@ -228,51 +229,114 @@ class TestPlacement:
             )
 
 
+class TestMomentReferencePoint:
+    def test_matches_the_fuselage_cg_station(self, geometry):
+        # SAME body-frame sign convention as `body`/`placement`, and
+        # the SAME source Allrun.case's CofR uses (out/fuselage.yaml
+        # x_CG_m) -- VLM/BEMT moments stay comparable to project CFD.
+        mrp = geometry["moment_reference_point"]
+        assert mrp["x"] == pytest.approx(-FUS["x_CG_m"])
+        assert mrp["y"] == 0.0
+        assert mrp["z"] == 0.0
+
+    def test_cg_sits_inside_the_body(self, geometry):
+        mrp_x = geometry["moment_reference_point"]["x"]
+        body = geometry["body"]
+        assert -body["length"] < mrp_x < 0.0
+
+    def test_rejects_cg_outside_the_fuselage(self, mesh, prop):
+        bad_fus = {**FUS, "x_CG_m": 0.0}
+        with pytest.raises(ValueError, match="nose tip and the tail base"):
+            build_aeolion_geometry(
+                span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL,
+                vanes=VANES, fus=bad_fus, rotor_D_m=0.203, prop=prop,
+                f_shaft_hz=203.5, mesh=mesh,
+            )
+        bad_fus = {**FUS, "x_CG_m": FUS["L_fus_m"]}
+        with pytest.raises(ValueError, match="nose tip and the tail base"):
+            build_aeolion_geometry(
+                span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL,
+                vanes=VANES, fus=bad_fus, rotor_D_m=0.203, prop=prop,
+                f_shaft_hz=203.5, mesh=mesh,
+            )
+
+
+def _minimal_doc(schema_version: str, *, with_placement: bool,
+                 with_mrp: bool) -> dict:
+    planform = {
+        "span": 1.0,
+        "stations": [
+            {"eta": 0.0, "chord": 0.2, "twist": 0.0,
+             "sweep_qc": 0.0, "dihedral": 0.0},
+            {"eta": 1.0, "chord": 0.2, "twist": 0.0,
+             "sweep_qc": 0.0, "dihedral": 0.0},
+        ],
+    }
+    if with_placement:
+        planform["placement"] = {
+            "root_leading_edge": {"x": -0.2, "y": 0.0, "z": 0.0}
+        }
+    doc = {
+        "schema_version": schema_version,
+        "design_id": "sha256:0" * 8,
+        "units": {"length": "m", "angle": "deg"},
+        "reference_frame": "aetherion_body_frd",
+        "planform": planform,
+        "airfoil_sections": [
+            {"eta": 0.0, "parameterization": "CST",
+             "coefficients_upper": [0.1, 0.1, 0.1, 0.1],
+             "coefficients_lower": [-0.1, -0.1, -0.1, -0.1]},
+            {"eta": 1.0, "parameterization": "CST",
+             "coefficients_upper": [0.1, 0.1, 0.1, 0.1],
+             "coefficients_lower": [-0.1, -0.1, -0.1, -0.1]},
+        ],
+        "mesh_topology": {"chordwise_panels": 4,
+                          "spanwise_panels_per_section": 1},
+    }
+    if with_mrp:
+        doc["moment_reference_point"] = {"x": -0.24, "y": 0.0, "z": 0.0}
+    return doc
+
+
 class TestVersionConditionalPlacement:
     """The schema's own if/then: placement is required from 1.5.0
     onward but must not retroactively invalidate 1.0.0-1.4.0
     documents that never carried it."""
 
-    def _minimal_doc(self, schema_version: str, with_placement: bool) -> dict:
-        planform = {
-            "span": 1.0,
-            "stations": [
-                {"eta": 0.0, "chord": 0.2, "twist": 0.0,
-                 "sweep_qc": 0.0, "dihedral": 0.0},
-                {"eta": 1.0, "chord": 0.2, "twist": 0.0,
-                 "sweep_qc": 0.0, "dihedral": 0.0},
-            ],
-        }
-        if with_placement:
-            planform["placement"] = {
-                "root_leading_edge": {"x": -0.2, "y": 0.0, "z": 0.0}
-            }
-        return {
-            "schema_version": schema_version,
-            "design_id": "sha256:0" * 8,
-            "units": {"length": "m", "angle": "deg"},
-            "reference_frame": "aetherion_body_frd",
-            "planform": planform,
-            "airfoil_sections": [
-                {"eta": 0.0, "parameterization": "CST",
-                 "coefficients_upper": [0.1, 0.1, 0.1, 0.1],
-                 "coefficients_lower": [-0.1, -0.1, -0.1, -0.1]},
-                {"eta": 1.0, "parameterization": "CST",
-                 "coefficients_upper": [0.1, 0.1, 0.1, 0.1],
-                 "coefficients_lower": [-0.1, -0.1, -0.1, -0.1]},
-            ],
-            "mesh_topology": {"chordwise_panels": 4,
-                              "spanwise_panels_per_section": 1},
-        }
-
     def test_pre_1_5_0_documents_stay_valid_without_placement(self):
         for v in ("1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"):
-            jsonschema.validate(self._minimal_doc(v, with_placement=False), SCHEMA)
+            jsonschema.validate(
+                _minimal_doc(v, with_placement=False, with_mrp=False), SCHEMA)
 
     def test_1_5_0_document_requires_placement(self):
-        jsonschema.validate(self._minimal_doc("1.5.0", with_placement=True), SCHEMA)
+        jsonschema.validate(
+            _minimal_doc("1.5.0", with_placement=True, with_mrp=False), SCHEMA)
         with pytest.raises(jsonschema.ValidationError):
-            jsonschema.validate(self._minimal_doc("1.5.0", with_placement=False), SCHEMA)
+            jsonschema.validate(
+                _minimal_doc("1.5.0", with_placement=False, with_mrp=False), SCHEMA)
+
+
+class TestVersionConditionalMomentReference:
+    """Same pattern, one version later: moment_reference_point is
+    required from 1.6.0 onward but must not retroactively invalidate
+    1.0.0-1.5.0 documents that never carried it."""
+
+    def test_pre_1_6_0_documents_stay_valid_without_mrp(self):
+        # placement is required from 1.5.0 (a separate, earlier
+        # constraint) -- supply it for that one version so this test
+        # isolates the moment_reference_point constraint specifically.
+        for v in ("1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0"):
+            jsonschema.validate(
+                _minimal_doc(v, with_placement=(v == "1.5.0"), with_mrp=False),
+                SCHEMA,
+            )
+
+    def test_1_6_0_document_requires_mrp(self):
+        jsonschema.validate(
+            _minimal_doc("1.6.0", with_placement=True, with_mrp=True), SCHEMA)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _minimal_doc("1.6.0", with_placement=True, with_mrp=False), SCHEMA)
 
 
 class TestDesignId:

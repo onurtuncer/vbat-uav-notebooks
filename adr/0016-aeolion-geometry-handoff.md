@@ -44,6 +44,21 @@ contract as a JSON Schema (2020-12, `additionalProperties: false`).
   plate rotating about its `hinge_xc` line. The vane CFD → DAVE-ML
   path still characterizes the jet-wash aerodynamics; carrying the
   geometry here lets Aeolion model the jet directly.
+- **Moment reference point (schema 1.6.0, 2026-07-21, from an Aeolion
+  solver report)**: a new top-level `moment_reference_point` {x, y,
+  z} carries the vehicle CG, in the SAME body-frame convention and
+  from the SAME source (`out/fuselage.yaml` `x_CG_m`) as
+  `cfd/vehicle/Allrun.case`'s `CofR` — so VLM/BEMT moments computed
+  from this contract stay directly comparable to the project's CFD
+  force/moment coefficients, not an arbitrary second reference.
+  Without it, Cm/Cl/Cn have no stated centre and default to the
+  coordinate-system origin — not physically meaningful for a body
+  whose CG sits well aft of the nose. **Required from 1.6.0 onward**,
+  same discipline as `planform.placement`: a version-conditional
+  `if`/`then` (`schema_version` not in the pre-1.6.0 list ⇒
+  `moment_reference_point` required at the document root), so
+  1.0.0–1.5.0 documents remain structurally valid without it. New
+  exporter guard mirrors the placement guard: `0 < x_CG_m < L_fus_m`.
 - **Wing/body placement (schema 1.5.0, 2026-07-20, from an Aeolion
   solver-side bug report)**: `planform` gained a `placement.
   root_leading_edge` anchor {x, y, z} in the same body-frame

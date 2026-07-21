@@ -292,11 +292,16 @@
       "surface": "duct_jet"
     }
   ],
-  "design_id": "sha256:07890729101b69eea55adbf8e6cada6ba118ac8ba53fa9cd4c8d4c760e812269",
+  "design_id": "sha256:d13790547627b12986edd539d44044b809cb00549c884babe6c1cb4b413faae3",
   "mesh_topology": {
     "chordwise_panels": 8,
     "spanwise_panels_per_section": 6,
     "wake_model": "frozen"
+  },
+  "moment_reference_point": {
+    "x": -0.2423,
+    "y": 0.0,
+    "z": 0.0
   },
   "planform": {
     "placement": {
@@ -418,7 +423,7 @@
     "reference_rpm": 12211.259999999998
   },
   "reference_frame": "aetherion_body_frd",
-  "schema_version": "1.5.0",
+  "schema_version": "1.6.0",
   "units": {
     "angle": "deg",
     "length": "m"
