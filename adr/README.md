@@ -28,3 +28,4 @@ Format: one file per decision, `NNNN-kebab-title.md`, each with
 | [0015](0015-naca-4412-airfoil-reselection.md) | Airfoil re-selection: NACA 2412 → NACA 4412 | Accepted |
 | [0016](0016-aeolion-geometry-handoff.md) | Versioned JSON plus STEP for the Aeolion handoff | Accepted |
 | [0017](0017-prop-blade-clark-y-section-and-rotation-sense.md) | Propeller blade section (Clark Y) and rotation sense | Accepted |
+| [0018](0018-aeolion-handoff-own-notebook.md) | Aeolion handoff as its own pipeline notebook stage | Accepted |

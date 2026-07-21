@@ -23,16 +23,17 @@ that the next one reads:
 5. `vibration_isolation` — FC/IMU + payload soft mounts → `out/vibration.yaml`
 6. `fuselage_design` — layout, CG, drag → `out/fuselage.yaml`
 7. `thermal_design` — ESC cold-plate + vented battery bay → `out/thermal.yaml`
-8. `vehicle_solid_model` — CadQuery CAD → `out/cad/` (STEP/STL, per-part + fused + prop rotor) + `out/cad/aeolion_geometry.json` (ADR-0016 VLM handoff)
-9. `mass_properties` — inertia tensor, BOM → `out/mass_properties.yaml`, `out/bom.csv`
-10. `wiring_diagram` — electrical block diagram → `out/wiring_diagram.svg`, `out/electrical.yaml`
-11. `cots_selection` — COTS FC/ESC/EDF-motor/propeller/servo/battery freeze → `out/components.yaml`
-12. `aileron_design_cots` — NB4 re-solved with the frozen servo → `out/aileron_cots.yaml`
-13. `vibration_isolation_cots` — NB5 re-solved with the frozen FC → `out/vibration_cots.yaml`
-14. `fuselage_design_cots` — NB6 re-solved with as-selected masses/envelopes → `out/fuselage_cots.yaml`
-15. `design_summary` — final rollup, reads `out/` only, writes nothing
+8. `vehicle_solid_model` — CadQuery CAD → `out/cad/` (STEP/STL, per-part + fused + prop rotor)
+9. `aeolion_handoff` — Aeolion VLM/BEMT geometry contract (ADR-0016/0017) → `out/cad/aeolion_geometry.json`. No CadQuery dependency (`aeolion_handoff.py`/`prop_geometry.py` are deliberately CadQuery-free), so it runs in the local 3.14 venv even though it follows the CAD notebook in the pipeline order.
+10. `mass_properties` — inertia tensor, BOM → `out/mass_properties.yaml`, `out/bom.csv`
+11. `wiring_diagram` — electrical block diagram → `out/wiring_diagram.svg`, `out/electrical.yaml`
+12. `cots_selection` — COTS FC/ESC/EDF-motor/propeller/servo/battery freeze → `out/components.yaml`
+13. `aileron_design_cots` — NB4 re-solved with the frozen servo → `out/aileron_cots.yaml`
+14. `vibration_isolation_cots` — NB5 re-solved with the frozen FC → `out/vibration_cots.yaml`
+15. `fuselage_design_cots` — NB6 re-solved with as-selected masses/envelopes → `out/fuselage_cots.yaml`
+16. `design_summary` — final rollup, reads `out/` only, writes nothing
 
-NB2–NB15 re-run the sizing loop from `config/` to reconstruct the same
+NB2–NB16 re-run the sizing loop from `config/` to reconstruct the same
 design point, via `conceptual_design.design_point.solve_design_point` —
 a **single call site** (ADR-0013). Only NB8 (`vehicle_solid_model`)
 still carries an inline `run_sizing_loop` block (it only executes in
@@ -122,7 +123,7 @@ remaining ids (pins are re-validated every run — a design change that
 outgrows frozen hardware fails loudly), and update the regression pins in
 the same commit.
 
-NB12–NB14 are the **post-freeze as-selected re-solve** (ADR-0012): NB4–NB6
+NB13–NB15 are the **post-freeze as-selected re-solve** (ADR-0012): NB4–NB6
 re-solved with the frozen hardware — real servo/FC masses, the pack
 density derived from the battery's own envelope, bay lengths **floored at
 each rigid part's best-orientation axial length** (`part_clearance_m` in
@@ -136,7 +137,7 @@ and the ADR-0014 amendment grew the closure; hull stays ⌀107×533 mm; the
 old structure-over-budget finding is RESOLVED — the amended MTOW's larger
 pool now covers the packaging-floored shell with ~9 g margin), folded
 into `config/` only as a deliberate next-iteration change after
-procurement. `design_summary` (NB15, last) is
+procurement. `design_summary` (NB16, last) is
 a pure reader: design point, margins table, frozen hardware, and every
 standing finding collected programmatically from the handoffs.
 
@@ -221,7 +222,7 @@ standing finding collected programmatically from the handoffs.
 ## CI (GitHub Actions)
 
 - `ci.yml` — ruff, pytest (3.10/3.12/3.14), ShellCheck on `cfd/**/Allrun*`.
-- `design-pipeline.yml` — executes all fifteen notebooks on every PR, runs
+- `design-pipeline.yml` — executes all sixteen notebooks on every PR, runs
   design-regression + geometry tests, uploads `out/` artifacts; on main
   additionally: coarse OpenFOAM smoke run and GitHub Pages deploy
   (rendered notebooks, 3D viewer with exploded view, BOM page).
@@ -248,11 +249,12 @@ YAMLs). A span failure usually means `out/cad/` is stale, not wrong.
 - The local venv is Python 3.14: **CadQuery does not install there**,
   so NB8 (`vehicle_solid_model`, and thus `out/cad/`) can only be
   regenerated in CI (Python 3.12) or a separate 3.12 env. NB9
-  (`mass_properties`) has no CadQuery dependency of its own and *can*
-  run locally, but its BOM/CAD cross-check still lags until NB8 has
-  regenerated in CI. After a design change, the committed copies of
-  CadQuery-dependent outputs are stale until regenerated — CI validates
-  against fresh ones.
+  (`aeolion_handoff`) and NB10 (`mass_properties`) have no CadQuery
+  dependency of their own and *can* run locally, but NB9's
+  `out/cad/aeolion_geometry.json` and NB10's BOM/CAD cross-check still
+  lag until NB8 has regenerated in CI. After a design change, the
+  committed copies of CadQuery-dependent outputs are stale until
+  regenerated — CI validates against fresh ones.
 - Run tests with `pip install -e ".[dev]"` then `pytest`; lint with
   `ruff check src tests scripts printprep cfd`.
 - Notebook figures save to `notebooks/figures/` (`FIG_DIR`), design

@@ -44,7 +44,7 @@ C_rate_peak : 8.4
 wing        : S=0.1834 m^2  b=1.049 m
 ```
 
-`pipeline` executes the fifteen notebooks in dependency order (same order and
+`pipeline` executes the sixteen notebooks in dependency order (same order and
 mechanism as CI: `jupyter nbconvert --execute`, `MPLBACKEND=Agg`). Executed
 copies land in `executed/`, design outputs in `out/`, figures in
 `notebooks/figures/`. Takes ~4 min locally; `vehicle_solid_model` is
@@ -113,7 +113,7 @@ above; ruff clean.)
 ## Run (human path)
 
 Open any notebook under `notebooks/` in Jupyter (`.venv` has jupyterlab) and
-run cells top-to-bottom, respecting the fifteen-notebook order in `CLAUDE.md`.
+run cells top-to-bottom, respecting the sixteen-notebook order in `CLAUDE.md`.
 Agents should use the driver instead.
 
 ## Gotchas
@@ -123,8 +123,11 @@ Agents should use the driver instead.
   `ModuleNotFoundError: No module named 'OCP'` (no OCP wheel for 3.14).
   Don't trust `pip list`; the driver probes the actual import. NB8
   (`vehicle_solid_model`) and fresh `out/cad/` therefore only regenerate in
-  CI or a separate 3.12 env. `mass_properties` still runs locally against
-  the committed `out/cad/`.
+  CI or a separate 3.12 env. `aeolion_handoff` and `mass_properties` have
+  no CadQuery dependency and still run locally; `aeolion_handoff` writes
+  a fresh `out/cad/aeolion_geometry.json` even with a stale/skipped NB8,
+  but `mass_properties`'s BOM/CAD cross-check still runs against
+  whatever `out/cad/` is currently committed.
 - **Trust `config/` + the test pins over prose design-point numbers.**
   CLAUDE.md may quote a design point from an earlier baseline (e.g.
   ≈2.376 kg vs the ADR-0003-amendment 2.303 kg implied by

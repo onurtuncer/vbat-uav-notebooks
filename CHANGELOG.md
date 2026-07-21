@@ -9,6 +9,19 @@ is tagged.
 
 ## [Unreleased]
 
+### Changed
+
+- **Aeolion handoff moved to its own notebook** (ADR-0018): pipeline is
+  now sixteen notebooks — `aeolion_handoff` inserted as NB9,
+  `mass_properties` through `design_summary` renumbered NB10–NB16. The
+  handoff has no CadQuery dependency and never actually needed the CAD
+  build's outputs, so it now regenerates `out/cad/aeolion_geometry.json`
+  in the local Python 3.14 venv even when `vehicle_solid_model` (NB8)
+  is skipped. `vehicle_solid_model` keeps building/exporting the
+  parametric prop rotor and STEP/STL; only the trailing Aeolion-export
+  cell moved. Verified byte-identical output (including `design_id`)
+  before and after the split.
+
 ### Added
 
 - **Aeolion handoff schema 1.7.0** (ADR-0017): `propulsion_bemt` gains
