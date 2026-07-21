@@ -22,7 +22,9 @@ from conceptual_design.aeolion_handoff import (
     export_aeolion_geometry,
 )
 from conceptual_design.airfoil_selection import naca4_coordinates, parse_naca4
-from conceptual_design.prop_geometry import PropGeometry
+from conceptual_design.prop_geometry import (
+    ROTATION_AXIS_BODY_FRD, ClarkYSection, PropGeometry, clark_y_surfaces,
+)
 
 REPO = Path(__file__).resolve().parents[1]
 SCHEMA = json.loads(
@@ -50,10 +52,15 @@ def prop():
 
 
 @pytest.fixture(scope="module")
-def geometry(mesh, prop):
+def clarky():
+    return ClarkYSection.from_dat(REPO / "config" / "airfoils" / "clarky.dat")
+
+
+@pytest.fixture(scope="module")
+def geometry(mesh, prop, clarky):
     return build_aeolion_geometry(
         span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL, vanes=VANES, fus=FUS,
-        rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
+        rotor_D_m=0.203, prop=prop, clarky=clarky, f_shaft_hz=203.5, mesh=mesh,
     )
 
 
@@ -169,6 +176,50 @@ class TestControlsAndBemt:
         # exact 8x6 pitch law at the tip: atan(0.75/pi)
         assert stations[-1]["twist"] == pytest.approx(13.43, abs=0.01)
 
+    def test_rotation_axis_is_the_derived_constant(self, geometry):
+        # ADR-0017: numerically derived, not an assumed/guessed sign
+        assert geometry["propulsion_bemt"]["rotation_axis"] == list(
+            ROTATION_AXIS_BODY_FRD)
+
+    def test_bemt_airfoil_sections_align_with_blade_stations(self, geometry):
+        stations = geometry["propulsion_bemt"]["blade_stations"]
+        sections = geometry["propulsion_bemt"]["airfoil_sections"]
+        assert [s["r_over_R"] for s in stations] == [
+            a["r_over_R"] for a in sections]
+        for sec in sections:
+            assert sec["parameterization"] == "CST"
+            assert 4 <= len(sec["coefficients_upper"]) <= 8
+            assert 4 <= len(sec["coefficients_lower"]) <= 8
+
+    def test_bemt_sections_thickness_scale_root_to_tip(
+        self, geometry, prop, clarky,
+    ):
+        # root section must be measurably thicker than the tip section
+        # (tc_root=0.12 > tc_tip=0.06) -- reconstruct max thickness from
+        # the fitted CST coefficients via eval_cst and compare.
+        sections = geometry["propulsion_bemt"]["airfoil_sections"]
+        root, tip = sections[0], sections[-1]
+        x = np.linspace(0.0, 1.0, 200)
+        for sec, tc_expected in ((root, prop.tc_root), (tip, prop.tc_tip)):
+            yu = eval_cst(x, sec["coefficients_upper"])
+            yl = eval_cst(x, sec["coefficients_lower"])
+            assert float((yu - yl).max()) == pytest.approx(tc_expected, rel=0.1)
+
+    def test_reconstructs_clarky_surfaces(self, clarky):
+        # same fit-fidelity check as the wing's NACA CST fit, applied
+        # to the Clark Y reference at its own (unscaled) thickness
+        from conceptual_design.aeolion_handoff import cst_sections_from_clarky
+        order = 6
+        sec = cst_sections_from_clarky(clarky, clarky.tc_ref, order)
+        xu, yu, xl, yl = clark_y_surfaces(clarky, clarky.tc_ref, n=81)
+        for x, y, coeffs in (
+            (xu, yu, sec["coefficients_upper"]),
+            (xl, yl, sec["coefficients_lower"]),
+        ):
+            y_sharp = y - x * y[-1]
+            err = eval_cst(x, coeffs) - y_sharp
+            assert float(np.sqrt(np.mean(err**2))) < 1e-3
+
 
 class TestBody:
     def test_body_of_revolution_samples_the_cad_meridian(self, geometry):
@@ -212,19 +263,19 @@ class TestPlacement:
         body = geometry["body"]
         assert -body["length"] < rle_x < 0.0
 
-    def test_rejects_wing_le_outside_the_fuselage(self, mesh, prop):
+    def test_rejects_wing_le_outside_the_fuselage(self, mesh, prop, clarky):
         bad_fus = {**FUS, "x_wing_LE_m": 0.0}
         with pytest.raises(ValueError, match="nose tip and the tail base"):
             build_aeolion_geometry(
                 span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL,
-                vanes=VANES, fus=bad_fus, rotor_D_m=0.203, prop=prop,
+                vanes=VANES, fus=bad_fus, rotor_D_m=0.203, prop=prop, clarky=clarky,
                 f_shaft_hz=203.5, mesh=mesh,
             )
         bad_fus = {**FUS, "x_wing_LE_m": FUS["L_fus_m"]}
         with pytest.raises(ValueError, match="nose tip and the tail base"):
             build_aeolion_geometry(
                 span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL,
-                vanes=VANES, fus=bad_fus, rotor_D_m=0.203, prop=prop,
+                vanes=VANES, fus=bad_fus, rotor_D_m=0.203, prop=prop, clarky=clarky,
                 f_shaft_hz=203.5, mesh=mesh,
             )
 
@@ -244,25 +295,25 @@ class TestMomentReferencePoint:
         body = geometry["body"]
         assert -body["length"] < mrp_x < 0.0
 
-    def test_rejects_cg_outside_the_fuselage(self, mesh, prop):
+    def test_rejects_cg_outside_the_fuselage(self, mesh, prop, clarky):
         bad_fus = {**FUS, "x_CG_m": 0.0}
         with pytest.raises(ValueError, match="nose tip and the tail base"):
             build_aeolion_geometry(
                 span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL,
-                vanes=VANES, fus=bad_fus, rotor_D_m=0.203, prop=prop,
+                vanes=VANES, fus=bad_fus, rotor_D_m=0.203, prop=prop, clarky=clarky,
                 f_shaft_hz=203.5, mesh=mesh,
             )
         bad_fus = {**FUS, "x_CG_m": FUS["L_fus_m"]}
         with pytest.raises(ValueError, match="nose tip and the tail base"):
             build_aeolion_geometry(
                 span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL,
-                vanes=VANES, fus=bad_fus, rotor_D_m=0.203, prop=prop,
+                vanes=VANES, fus=bad_fus, rotor_D_m=0.203, prop=prop, clarky=clarky,
                 f_shaft_hz=203.5, mesh=mesh,
             )
 
 
 def _minimal_doc(schema_version: str, *, with_placement: bool,
-                 with_mrp: bool) -> dict:
+                 with_mrp: bool, propulsion_bemt: str | None = None) -> dict:
     planform = {
         "span": 1.0,
         "stations": [
@@ -295,6 +346,27 @@ def _minimal_doc(schema_version: str, *, with_placement: bool,
     }
     if with_mrp:
         doc["moment_reference_point"] = {"x": -0.24, "y": 0.0, "z": 0.0}
+    if propulsion_bemt in ("incomplete", "complete"):
+        bemt = {
+            "disk_radius": 0.1,
+            "reference_rpm": 12000.0,
+            "n_blades": 3,
+            "blade_stations": [
+                {"r_over_R": 0.4, "chord": 0.02, "twist": 30.0},
+                {"r_over_R": 1.0, "chord": 0.01, "twist": 10.0},
+            ],
+        }
+        if propulsion_bemt == "complete":
+            bemt["airfoil_sections"] = [
+                {"r_over_R": 0.4, "parameterization": "CST",
+                 "coefficients_upper": [0.1, 0.1, 0.1, 0.1],
+                 "coefficients_lower": [-0.1, -0.1, -0.1, -0.1]},
+                {"r_over_R": 1.0, "parameterization": "CST",
+                 "coefficients_upper": [0.1, 0.1, 0.1, 0.1],
+                 "coefficients_lower": [-0.1, -0.1, -0.1, -0.1]},
+            ]
+            bemt["rotation_axis"] = [1.0, 0.0, 0.0]
+        doc["propulsion_bemt"] = bemt
     return doc
 
 
@@ -339,39 +411,69 @@ class TestVersionConditionalMomentReference:
                 _minimal_doc("1.6.0", with_placement=True, with_mrp=False), SCHEMA)
 
 
+class TestVersionConditionalPropulsionBemt:
+    """Same pattern again: propulsion_bemt.airfoil_sections/rotation_axis
+    are required from 1.7.0 onward, but ONLY if propulsion_bemt itself
+    is present -- the block stays entirely optional at every version."""
+
+    def _kw(self, schema_version: str) -> dict:
+        return dict(schema_version=schema_version, with_placement=True,
+                   with_mrp=True)
+
+    def test_propulsion_bemt_remains_fully_optional_at_1_7_0(self):
+        # omitting propulsion_bemt altogether must still validate, even
+        # at 1.7.0 -- the constraint only bites when the block exists
+        jsonschema.validate(
+            _minimal_doc(**self._kw("1.7.0"), propulsion_bemt=None), SCHEMA)
+
+    def test_pre_1_7_0_documents_stay_valid_with_incomplete_bemt(self):
+        for v in ("1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0"):
+            jsonschema.validate(
+                _minimal_doc(**self._kw(v), propulsion_bemt="incomplete"), SCHEMA)
+
+    def test_1_7_0_document_requires_complete_bemt_if_present(self):
+        jsonschema.validate(
+            _minimal_doc(**self._kw("1.7.0"), propulsion_bemt="complete"), SCHEMA)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(
+                _minimal_doc(**self._kw("1.7.0"), propulsion_bemt="incomplete"),
+                SCHEMA,
+            )
+
+
 class TestDesignId:
-    def test_deterministic_across_reruns(self, geometry, mesh, prop):
+    def test_deterministic_across_reruns(self, geometry, mesh, prop, clarky):
         again = build_aeolion_geometry(
             span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL, vanes=VANES, fus=FUS,
-            rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
+            rotor_D_m=0.203, prop=prop, clarky=clarky, f_shaft_hz=203.5, mesh=mesh,
         )
         assert again == geometry
 
-    def test_moves_with_the_design_point(self, geometry, mesh, prop):
+    def test_moves_with_the_design_point(self, geometry, mesh, prop, clarky):
         perturbed = build_aeolion_geometry(
             span_m=1.017, chord_m=0.1695, airfoil="NACA 4412", ail=AIL, vanes=VANES, fus=FUS,
-            rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
+            rotor_D_m=0.203, prop=prop, clarky=clarky, f_shaft_hz=203.5, mesh=mesh,
         )
         assert perturbed["design_id"] != geometry["design_id"]
 
 
 class TestGuards:
-    def test_rejects_nonpositive_dimensions(self, mesh, prop):
+    def test_rejects_nonpositive_dimensions(self, mesh, prop, clarky):
         with pytest.raises(ValueError, match="positive"):
             build_aeolion_geometry(
                 span_m=0.0, chord_m=0.2, airfoil="NACA 4412", ail=AIL, vanes=VANES, fus=FUS,
-                rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
+                rotor_D_m=0.203, prop=prop, clarky=clarky, f_shaft_hz=203.5, mesh=mesh,
             )
 
-    def test_rejects_nonpositive_deflection_limit(self, mesh, prop):
+    def test_rejects_nonpositive_deflection_limit(self, mesh, prop, clarky):
         bad_ail = {**AIL, "delta_max_deg": 0.0}
         with pytest.raises(ValueError, match="delta_max_deg must be positive"):
             build_aeolion_geometry(
                 span_m=1.0, chord_m=0.2, airfoil="NACA 4412", ail=bad_ail, vanes=VANES, fus=FUS,
-                rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=mesh,
+                rotor_D_m=0.203, prop=prop, clarky=clarky, f_shaft_hz=203.5, mesh=mesh,
             )
 
-    def test_rejects_cst_order_outside_schema(self, mesh, prop):
+    def test_rejects_cst_order_outside_schema(self, mesh, prop, clarky):
         bad = AeolionMeshConfig(
             n_planform_stations=mesh.n_planform_stations, cst_order=3,
             chordwise_panels=mesh.chordwise_panels,
@@ -382,5 +484,5 @@ class TestGuards:
         with pytest.raises(ValueError, match="4..8"):
             build_aeolion_geometry(
                 span_m=1.0, chord_m=0.2, airfoil="NACA 4412", ail=AIL, vanes=VANES, fus=FUS,
-                rotor_D_m=0.203, prop=prop, f_shaft_hz=203.5, mesh=bad,
+                rotor_D_m=0.203, prop=prop, clarky=clarky, f_shaft_hz=203.5, mesh=bad,
             )

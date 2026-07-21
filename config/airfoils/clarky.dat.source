@@ -1,0 +1,17 @@
+Source: UIUC Airfoil Coordinates Database (Selig / UIUC Applied Aerodynamics
+Group), fetched verbatim on 2026-07-21:
+
+    https://m-selig.ae.illinois.edu/ads/coord/clarky.dat
+
+clarky.dat is stored byte-for-byte as fetched (Lednicer format: title line,
+"n_upper n_lower" counts, then two blocks of x/c, y/c pairs each running
+0 -> 1, upper first then lower). Verified with two independent fetches
+(identical) plus a sanity check against the published Clark Y
+characteristics: max thickness ~11.6% c near x/c = 0.36 and max camber
+~3.4% c near x/c = 0.42, both consistent with the commonly cited 11.7%/3.55%
+figures for this section (small cross-source digitization variance is
+expected). Do not hand-edit; re-fetch and diff if this file is ever
+regenerated.
+
+Used by src/conceptual_design/prop_geometry.py (adr/0017) as the reference
+propeller blade section, thickness-scaled per radial station.

@@ -8,8 +8,8 @@
 
     "schema_version": {
       "type": "string",
-      "enum": ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0"],
-      "description": "1.1.0 adds the optional control_surfaces[].surface binding field (1.0.0 documents bind by name); 1.2.0 adds the optional body block; 1.3.0 adds propulsion_bemt.n_blades; 1.4.0 adds control_surfaces[].deflection_limits_deg; 1.5.0 adds planform.placement, REQUIRED from 1.5.0 onward; 1.6.0 adds moment_reference_point, REQUIRED from 1.6.0 onward (see the version-conditional constraints below) -- each is optional only for documents predating its own introduction"
+      "enum": ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0"],
+      "description": "1.1.0 adds the optional control_surfaces[].surface binding field (1.0.0 documents bind by name); 1.2.0 adds the optional body block; 1.3.0 adds propulsion_bemt.n_blades; 1.4.0 adds control_surfaces[].deflection_limits_deg; 1.5.0 adds planform.placement, REQUIRED from 1.5.0 onward; 1.6.0 adds moment_reference_point, REQUIRED from 1.6.0 onward; 1.7.0 adds propulsion_bemt.airfoil_sections and propulsion_bemt.rotation_axis, both REQUIRED within propulsion_bemt from 1.7.0 onward if propulsion_bemt is present (see the version-conditional constraints below) -- each is optional only for documents predating its own introduction"
     },
     "design_id": {
       "type": "string",
@@ -183,6 +183,30 @@
               "twist":    { "type": "number" }
             }
           }
+        },
+        "airfoil_sections": {
+          "type": "array",
+          "description": "Blade 2D section shape per radial station (1.7.0), aligned 1:1 with blade_stations by r_over_R -- a real, well-documented low-Re propeller airfoil (Clark Y; see config/airfoils/clarky.dat), thickness-scaled root->tip, NOT a proprietary/parametric shape. Same CST representation as the top-level airfoil_sections (wing).",
+          "items": {
+            "type": "object",
+            "required": ["r_over_R", "parameterization", "coefficients_upper", "coefficients_lower"],
+            "properties": {
+              "r_over_R": { "type": "number", "minimum": 0, "maximum": 1 },
+              "parameterization": { "const": "CST" },
+              "coefficients_upper": {
+                "type": "array", "minItems": 4, "maxItems": 8,
+                "items": { "type": "number" }
+              },
+              "coefficients_lower": {
+                "type": "array", "minItems": 4, "maxItems": 8,
+                "items": { "type": "number" }
+              }
+            }
+          }
+        },
+        "rotation_axis": {
+          "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3,
+          "description": "Angular velocity vector direction (1.7.0), right-hand rule, unit vector in the declared reference_frame -- same idiom as control_surfaces[].hinge_axis. Numerically derived (not assumed) from the blade twist law: the sign given here is the ONLY one consistent with the twist producing forward thrust and a positive angle of attack at every radius; the opposite sign gives ~180 deg AoA everywhere. Do not default this to a guessed sign -- BEMT thrust/torque direction and swirl sense depend on it."
         }
       }
     },
@@ -230,6 +254,25 @@
       },
       "then": {
         "required": ["moment_reference_point"]
+      }
+    },
+    {
+      "description": "propulsion_bemt.airfoil_sections and .rotation_axis became mandatory (WITHIN propulsion_bemt, if present) at 1.7.0: every schema_version NOT in the pre-1.7.0 list below must supply them when propulsion_bemt is included. propulsion_bemt itself remains entirely optional at every version -- this only constrains its contents when a document chooses to include it.",
+      "if": {
+        "properties": {
+          "schema_version": {
+            "not": {
+              "enum": ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0"]
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "propulsion_bemt": {
+            "required": ["airfoil_sections", "rotation_axis"]
+          }
+        }
       }
     }
   ]
