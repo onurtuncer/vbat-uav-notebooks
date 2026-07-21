@@ -7,10 +7,12 @@ rotating-zone (MRF / sliding mesh) CFD of the propulsion unit:
     hub             short adapter collar (optionally with an
                     ellipsoidal spinner nose; the prop-in-duct runs
                     without one -- the fuselage tailcone is upstream)
-    blades          n_blades lofted NACA 4-digit sections, peaked
-                    chord planform with a rounded tip, thickness
-                    tapering root->tip, exact constant-geometric-pitch
-                    twist beta(r) = atan(pitch / (2*pi*r))
+    blades          n_blades lofted Clark Y sections (ADR-0017,
+                    thickness-scaled root->tip off the digitized
+                    reference in config/airfoils/clarky.dat), peaked
+                    chord planform with a rounded tip, exact
+                    constant-geometric-pitch twist
+                    beta(r) = atan(pitch / (2*pi*r))
 
 All geometric ratios come from config/prop_geometry.yaml -- no magic
 numbers in code. The rotor diameter is the COTS prop diameter from
@@ -28,11 +30,10 @@ import math
 
 import cadquery as cq
 
-from ..prop_geometry import PropGeometry
+from ..prop_geometry import ClarkYSection, PropGeometry, clark_y_points
 from .fuselage_body import MM
-from .wing_profile import naca4_points
 
-__all__ = ["PropGeometry", "build_prop_rotor", "export_prop_rotor"]
+__all__ = ["ClarkYSection", "PropGeometry", "build_prop_rotor", "export_prop_rotor"]
 
 # OCCT cannot loft to a zero-chord section: the tip-rounding planform
 # factor sqrt(1 - f^m) is 0 exactly at f = 1, so the last station is
@@ -40,16 +41,12 @@ __all__ = ["PropGeometry", "build_prop_rotor", "export_prop_rotor"]
 MIN_TIP_CHORD_MM = 2.0
 
 
-def _naca_designation(M: float, P: float, tc: float) -> str:
-    """NACA 4-digit designation string from camber/thickness fractions."""
-    return f"{round(M * 100)}{round(P * 10)}{round(tc * 100):02d}"
-
-
 def _blade_section_wire(
     r_mm:    float,   # radial station (z in the blade frame) [mm]
     chord_mm: float,
     beta_rad: float,  # local pitch (twist) angle from the disk plane
-    designation: str,
+    section: ClarkYSection,
+    tc_target: float,
     n_pts:   int = 60,
 ) -> cq.Wire:
     """
@@ -66,7 +63,7 @@ def _blade_section_wire(
     """
     sb, cb = math.sin(beta_rad), math.cos(beta_rad)
     pts = []
-    for xc, yc in naca4_points(designation, n=n_pts):
+    for xc, yc in clark_y_points(section, tc_target, n=n_pts):
         u = (xc - 0.25) * chord_mm
         v = yc * chord_mm
         pts.append((u * sb + v * cb, u * cb - v * sb))
@@ -77,7 +74,9 @@ def _blade_section_wire(
     return wire.wires().val()
 
 
-def build_prop_rotor(D_rotor_m: float, geom: PropGeometry) -> cq.Workplane:
+def build_prop_rotor(
+    D_rotor_m: float, geom: PropGeometry, section: ClarkYSection,
+) -> cq.Workplane:
     """
     Build the prop rotor solid (adapter-collar hub + n_blades blades).
 
@@ -85,6 +84,7 @@ def build_prop_rotor(D_rotor_m: float, geom: PropGeometry) -> cq.Workplane:
     ----------
     D_rotor_m : prop (blade tip) diameter from config/rotor.yaml [m]
     geom      : PropGeometry ratios from config/prop_geometry.yaml
+    section   : ClarkYSection, config/airfoils/clarky.dat (ADR-0017)
 
     Returns a single watertight cq.Workplane solid in mm, rotor axis +x,
     disk plane at x = 0.
@@ -94,17 +94,16 @@ def build_prop_rotor(D_rotor_m: float, geom: PropGeometry) -> cq.Workplane:
     L_hub = geom.hub_length_ratio * D_rotor_m * MM
     pitch = geom.pitch_ratio * D_rotor_m * MM
 
-    # -- one blade: loft NACA sections from inside the hub to the tip ----
+    # -- one blade: loft Clark Y sections from inside the hub to the tip -
     sections = []
     for i in range(geom.n_sections):
         f = i / (geom.n_sections - 1)
         # start slightly inside the hub so the union is watertight
         r = (0.85 * r_hub) + f * (R_tip - 0.85 * r_hub)
         chord = max(geom.chord_ratio(f) * R_tip, MIN_TIP_CHORD_MM)
-        tc = geom.tc_root + f * (geom.tc_tip - geom.tc_root)
+        tc = geom.tc_at(f)
         beta = math.atan2(pitch, 2.0 * math.pi * r)
-        desig = _naca_designation(geom.camber_M, geom.camber_P, tc)
-        sections.append(_blade_section_wire(r, chord, beta, desig))
+        sections.append(_blade_section_wire(r, chord, beta, section, tc))
 
     # newObject() fills the stack but not the pending-wire list that
     # loft() consumes -- toPending() bridges the two

@@ -9,6 +9,40 @@ is tagged.
 
 ## [Unreleased]
 
+### Added
+
+- **Aeolion handoff schema 1.7.0** (ADR-0017): `propulsion_bemt` gains
+  `airfoil_sections` (Clark Y, thickness-scaled per station, CST-fit —
+  the same representation as the wing's `airfoil_sections`) and
+  `rotation_axis` (a unit vector, right-hand rule, same idiom as
+  `hinge_axis`). Both are **required within `propulsion_bemt` from
+  1.7.0 onward if the block is present** — `propulsion_bemt` itself
+  stays entirely optional at every version; the constraint only bites
+  once a document chooses to include it. `rotation_axis` was
+  numerically derived, not assumed: for the existing blade twist law,
+  a rotation vector along body +x is the only sign giving every
+  station a physically sensible (not ~180°) angle of attack.
+
+### Changed
+
+- **Propeller blade section: Clark Y replaces the proprietary
+  parametric taper** (ADR-0017): the CAD rotor previously lofted an
+  ad-hoc NACA-4-digit-like taper with no published polar data behind
+  it. `config/airfoils/clarky.dat` (UIUC Airfoil Coordinates Database,
+  verbatim, provenance in the `.dat.source` sidecar) is now the single
+  reference section, decomposed into a camber line and a
+  half-thickness distribution and thickness-scaled per blade station
+  (`config/prop_geometry.yaml`'s `tc_root`/`tc_tip`, reinterpreted as
+  scaling targets; `camber_M`/`camber_P` removed). One section law,
+  two consumers: `cad/prop_rotor.py`'s loft and the Aeolion
+  `propulsion_bemt.airfoil_sections` CST fit. Clark Y was chosen over
+  Selig S1223 (single-design-point high-lift, poor fit for a rotor
+  that spans hover through cruise) and Eppler E387 (a general
+  wing-proven, not propeller-proven, section) for its track record in
+  classical propeller BEMT validation literature. `out/cad/` blade
+  cross-sections change shape; no design-point (MTOW/hover power/wing)
+  change.
+
 ### Fixed
 
 - **Aeolion handoff schema 1.6.0**: no moment reference point existed

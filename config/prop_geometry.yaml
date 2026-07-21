@@ -7,8 +7,23 @@
 # built to the full rotor radius. The blade twist is the exact
 # constant-geometric-pitch law beta(r) = atan(pitch / (2*pi*r)) with
 # pitch = pitch_ratio * D — for the 8x6 this is the true 6 in
-# (152.25 mm at 203 mm) geometric pitch. Sections are NACA 4-digit,
-# thickness tapering root -> tip.
+# (152.25 mm at 203 mm) geometric pitch.
+#
+# Section (ADR-0017, 2026-07-21): Clark Y, a well-documented low-Re
+# propeller section (chosen over a proprietary parametric taper so a
+# BEMT/VLM consumer has real 2D polar data to work with) — digitized
+# coordinates in config/airfoils/clarky.dat (UIUC Airfoil Coordinates
+# Database, see the .dat.source sidecar), thickness-scaled root->tip
+# by tc_root/tc_tip below (the camber line is fixed by the data; only
+# the half-thickness distribution is scaled, preserving the section's
+# identity — src/conceptual_design/prop_geometry.py
+# ClarkYSection/clark_y_surfaces/clark_y_points). Clark Y was picked
+# over Selig S1223 (extreme camber, optimized for one hover design
+# point) and Eppler E387 (a general low-Re WING section) because this
+# rotor spans hover through cruise as the SAME blade — a robust,
+# moderate section with the deepest track record in classical
+# propeller BEMT validation literature suits a multi-regime rotor
+# better than a single-point-optimized high-lift section.
 #
 # The hub is a short adapter collar, not an EDF cartridge: the prop
 # bolts to the motor through an adapter at the fuselage-tailcone /
@@ -44,10 +59,11 @@
 #                    sqrt(1 - f^m): ~1 inboard, shrinks the chord over
 #                    the outer ~15% span to a rounded tip. Higher m =
 #                    squarer tip; 10 matches the COTS 8x6 look.
-# camber_M         : NACA 4-digit max camber (e.g. 0.04 = 4%)
-# camber_P         : NACA 4-digit camber position (0.4 = 40% chord)
-# tc_root          : thickness/chord at blade root
-# tc_tip           : thickness/chord at blade tip
+# tc_root          : target thickness/chord at blade root, achieved by
+#                    scaling the Clark Y reference half-thickness
+#                    distribution (11.7% t/c as digitized) -- NOT a
+#                    NACA parameter anymore.
+# tc_tip           : target thickness/chord at blade tip, same scaling.
 # n_sections       : radial loft stations per blade (13 keeps the
 #                    peaked planform and tip rounding smooth)
 
@@ -61,8 +77,6 @@ c_peak_ratio: 0.175
 f_peak: 0.35
 c_tip_ratio: 0.10
 tip_round_expo: 10
-camber_M: 0.04
-camber_P: 0.4
 tc_root: 0.12
 tc_tip: 0.06
 n_sections: 13

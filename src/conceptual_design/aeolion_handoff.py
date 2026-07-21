@@ -20,9 +20,14 @@ executable geometry contract for the Aeolion VLM/BEMT adjoint loop:
   never asks for a deflection the physical actuator/plate cannot
   reach; vanes additionally carry deflection_soft_limit_deg (the
   flat-plate stall onset), informational, not a hard bound;
-- BEMT blade count and blade stations sampled from the SAME chord/twist
-  law that builds the CAD rotor (prop_geometry.PropGeometry) -- solidity
-  and thrust need the count, not just one blade's planform;
+- BEMT blade count, blade stations, and per-station 2D section (Clark Y,
+  ADR-0017, thickness-scaled root->tip -- a real, published low-Re
+  propeller airfoil, not a proprietary parametric shape) sampled from
+  the SAME laws that build the CAD rotor (prop_geometry.PropGeometry /
+  ClarkYSection) -- solidity and thrust need the blade count and the
+  section polars, not just chord/twist; plus rotation_axis, the
+  angular-velocity direction the twist law is derived for (numerically
+  checked, not assumed -- see prop_geometry.ROTATION_AXIS_BODY_FRD);
 - the fuselage as a body of revolution (schema 1.2.0): radius stations
   sampled from the SAME 3-segment meridian the CAD revolve uses
   (fuselage_design.fuselage_radius), cosine-spaced nose -> tail, body
@@ -68,9 +73,11 @@ import yaml
 
 from .airfoil_selection import naca4_coordinates, parse_naca4
 from .fuselage_design import fuselage_radius
-from .prop_geometry import PropGeometry
+from .prop_geometry import (
+    ROTATION_AXIS_BODY_FRD, ClarkYSection, PropGeometry, clark_y_surfaces,
+)
 
-SCHEMA_VERSION = "1.6.0"
+SCHEMA_VERSION = "1.7.0"
 REFERENCE_FRAME = "aetherion_body_frd"
 
 # Kulfan class-function exponents: round nose (N1 = 0.5), sharp
@@ -167,6 +174,19 @@ def cst_sections_from_naca4(designation: str, order: int) -> dict[str, list[floa
     }
 
 
+def cst_sections_from_clarky(
+    section: ClarkYSection, tc_target: float, order: int,
+) -> dict[str, list[float]]:
+    """CST coefficients for a Clark Y section thickness-scaled to
+    tc_target (ADR-0017) -- the propeller-blade counterpart of
+    cst_sections_from_naca4, same generic fit_cst underneath."""
+    xu, yu, xl, yl = clark_y_surfaces(section, tc_target)
+    return {
+        "coefficients_upper": fit_cst(xu, yu, order),
+        "coefficients_lower": fit_cst(xl, yl, order),
+    }
+
+
 def _vane_hinge_axes(n_vanes: int) -> list[list[float]]:
     """Radial unit vectors of the vane hinge lines (FRD body axes).
 
@@ -191,10 +211,11 @@ def build_aeolion_geometry(
     fus: Mapping[str, Any],
     rotor_D_m: float,
     prop: PropGeometry,
+    clarky: ClarkYSection,
     f_shaft_hz: float,
     mesh: AeolionMeshConfig,
 ) -> dict[str, Any]:
-    """Build the schema-1.0.0 Aeolion geometry document.
+    """Build the schema-1.7.0 Aeolion geometry document.
 
     span_m/chord_m come from the converged sizing result, `ail` from
     out/aileron.yaml, `vanes` from out/control_vanes.yaml, `fus` from
@@ -207,7 +228,9 @@ def build_aeolion_geometry(
     module docstring). The body block (schema 1.2.0) samples the same
     3-segment meridian the CAD revolve is built from
     (fuselage_design.fuselage_radius), cosine-spaced nose -> tail and
-    mapped to body x = -station.
+    mapped to body x = -station. `clarky` (config/airfoils/clarky.dat,
+    ADR-0017) is CST-fit at each blade station's thickness-scaled
+    target t/c, the same section the CAD rotor loft uses.
     """
     if span_m <= 0 or chord_m <= 0:
         raise ValueError("wing span and chord must be positive")
@@ -243,12 +266,19 @@ def build_aeolion_geometry(
     r0 = prop.hub_radius_ratio
     nb = mesh.bemt_stations
     blade_stations = []
+    prop_airfoil_sections = []
     for i in range(nb):
         r_over_R = r0 + (1.0 - r0) * i / (nb - 1)
+        f = prop.loft_fraction(r_over_R)
         blade_stations.append({
             "r_over_R": r_over_R,
-            "chord": prop.chord_ratio(prop.loft_fraction(r_over_R)) * R,
+            "chord": prop.chord_ratio(f) * R,
             "twist": prop.twist_deg(r_over_R),
+        })
+        prop_airfoil_sections.append({
+            "r_over_R": r_over_R,
+            "parameterization": "CST",
+            **cst_sections_from_clarky(clarky, prop.tc_at(f), mesh.cst_order),
         })
 
     # Body of revolution: sample the 3-segment meridian (the SAME law
@@ -351,6 +381,14 @@ def build_aeolion_geometry(
             "reference_rpm": float(f_shaft_hz) * 60.0,
             "n_blades": int(prop.n_blades),
             "blade_stations": blade_stations,
+            # Real, published low-Re propeller section (Clark Y, ADR-0017)
+            # thickness-scaled per station -- the SAME data the CAD rotor
+            # loft uses, replacing the earlier proprietary parametric taper.
+            "airfoil_sections": prop_airfoil_sections,
+            # Numerically derived (module docstring / ROTATION_AXIS_BODY_FRD):
+            # the only sign consistent with this twist law producing forward
+            # thrust at a physically sensible angle of attack.
+            "rotation_axis": list(ROTATION_AXIS_BODY_FRD),
         },
         "mesh_topology": {
             "chordwise_panels": mesh.chordwise_panels,
