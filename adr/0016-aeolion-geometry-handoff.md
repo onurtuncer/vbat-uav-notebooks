@@ -44,6 +44,33 @@ contract as a JSON Schema (2020-12, `additionalProperties: false`).
   plate rotating about its `hinge_xc` line. The vane CFD → DAVE-ML
   path still characterizes the jet-wash aerodynamics; carrying the
   geometry here lets Aeolion model the jet directly.
+- **Wing/body placement (schema 1.5.0, 2026-07-20, from an Aeolion
+  solver-side bug report)**: `planform` gained a `placement.
+  root_leading_edge` anchor {x, y, z} in the same body-frame
+  convention `body` already uses (x = -station, 0 at the nose tip).
+  Before this the planform and the body profile each implicitly
+  started at the reference-frame origin, so a consumer with no other
+  convention to fall back on placed the wing root at the fuselage
+  nose — 22 of 384 wing control points landed inside the body of
+  revolution in Aeolion's report, a boundary condition with no
+  physical meaning. The anchor is `[-x_wing_LE_m, 0, 0]`: the wing
+  chord datum sits on the fuselage centerline by construction (a
+  through-fuselage wing on the ADR-0008 carry-through spar), not an
+  incidental default. **Required from 1.5.0 onward** — unlike every
+  earlier addition, this field is NOT optional for its own version,
+  because the unsafe fallback (assume the origin) is exactly the bug
+  being fixed; the schema enforces this with a version-conditional
+  `if`/`then` (`schema_version` not in the pre-1.5.0 list ⇒
+  `planform.placement` required) rather than a prose promise, so
+  1.0.0–1.4.0 documents that never carried it remain structurally
+  valid while every 1.5.0+ document is held to the anchor. The
+  exporter also guards `0 < x_wing_LE_m < L_fus_m` so a future design
+  change can't silently regress the wing outside the fuselage again.
+  The natural follow-on — trimming the wing planform/lattice at the
+  fuselage surface so the root load transfers to the body — is left
+  to Aeolion's side now that placement exists; it needs the `body`
+  radius law (already in the contract since 1.2.0) evaluated at the
+  root LE station, not a new VBAT field.
 - **Deflection range (schema 1.4.0, 2026-07-20)**: every
   `control_surfaces` entry carries `deflection_limits_deg` — the
   symmetric mechanical range about `hinge_axis` (`±delta_max_deg` from

@@ -35,7 +35,7 @@ AIL = {"span_frac_wing": 0.12, "chord_frac": 0.25, "delta_max_deg": 20.0}
 VANES = {"n_vanes": 4, "R_hub_m": 0.0406, "R_tip_m": 0.1015,
          "delta_max_deg": 20.0, "delta_stall_deg": 15.0}
 FUS = {"D_fus_m": 0.0982, "L_fus_m": 0.49099, "f_nose": 0.22,
-       "f_tail": 0.3, "r_hub_m": 0.0406}
+       "f_tail": 0.3, "r_hub_m": 0.0406, "x_wing_LE_m": 0.20687}
 
 
 @pytest.fixture(scope="module")
@@ -188,6 +188,91 @@ class TestBody:
 
     def test_station_count_comes_from_config(self, geometry, mesh):
         assert len(geometry["body"]["stations"]) == mesh.n_body_stations
+
+
+class TestPlacement:
+    def test_root_leading_edge_matches_the_fuselage_station(self, geometry):
+        # SAME body-frame sign convention as `body`: x = -station, 0 at
+        # the nose tip. Root sits on the centerline (y = z = 0) --
+        # a through-fuselage wing on the carry-through spar, not an
+        # incidental default.
+        rle = geometry["planform"]["placement"]["root_leading_edge"]
+        assert rle["x"] == pytest.approx(-FUS["x_wing_LE_m"])
+        assert rle["y"] == 0.0
+        assert rle["z"] == 0.0
+
+    def test_root_leading_edge_sits_inside_the_body(self, geometry):
+        # the exact bug this field fixes: an anchor-less consumer that
+        # assumes the root sits at the reference-frame origin places
+        # the wing at the fuselage nose tip. Pin that x is strictly
+        # between the nose (0) and the tail base (-L), i.e. inside the
+        # body's station range, not coincident with either end.
+        rle_x = geometry["planform"]["placement"]["root_leading_edge"]["x"]
+        body = geometry["body"]
+        assert -body["length"] < rle_x < 0.0
+
+    def test_rejects_wing_le_outside_the_fuselage(self, mesh, prop):
+        bad_fus = {**FUS, "x_wing_LE_m": 0.0}
+        with pytest.raises(ValueError, match="nose tip and the tail base"):
+            build_aeolion_geometry(
+                span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL,
+                vanes=VANES, fus=bad_fus, rotor_D_m=0.203, prop=prop,
+                f_shaft_hz=203.5, mesh=mesh,
+            )
+        bad_fus = {**FUS, "x_wing_LE_m": FUS["L_fus_m"]}
+        with pytest.raises(ValueError, match="nose tip and the tail base"):
+            build_aeolion_geometry(
+                span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL,
+                vanes=VANES, fus=bad_fus, rotor_D_m=0.203, prop=prop,
+                f_shaft_hz=203.5, mesh=mesh,
+            )
+
+
+class TestVersionConditionalPlacement:
+    """The schema's own if/then: placement is required from 1.5.0
+    onward but must not retroactively invalidate 1.0.0-1.4.0
+    documents that never carried it."""
+
+    def _minimal_doc(self, schema_version: str, with_placement: bool) -> dict:
+        planform = {
+            "span": 1.0,
+            "stations": [
+                {"eta": 0.0, "chord": 0.2, "twist": 0.0,
+                 "sweep_qc": 0.0, "dihedral": 0.0},
+                {"eta": 1.0, "chord": 0.2, "twist": 0.0,
+                 "sweep_qc": 0.0, "dihedral": 0.0},
+            ],
+        }
+        if with_placement:
+            planform["placement"] = {
+                "root_leading_edge": {"x": -0.2, "y": 0.0, "z": 0.0}
+            }
+        return {
+            "schema_version": schema_version,
+            "design_id": "sha256:0" * 8,
+            "units": {"length": "m", "angle": "deg"},
+            "reference_frame": "aetherion_body_frd",
+            "planform": planform,
+            "airfoil_sections": [
+                {"eta": 0.0, "parameterization": "CST",
+                 "coefficients_upper": [0.1, 0.1, 0.1, 0.1],
+                 "coefficients_lower": [-0.1, -0.1, -0.1, -0.1]},
+                {"eta": 1.0, "parameterization": "CST",
+                 "coefficients_upper": [0.1, 0.1, 0.1, 0.1],
+                 "coefficients_lower": [-0.1, -0.1, -0.1, -0.1]},
+            ],
+            "mesh_topology": {"chordwise_panels": 4,
+                              "spanwise_panels_per_section": 1},
+        }
+
+    def test_pre_1_5_0_documents_stay_valid_without_placement(self):
+        for v in ("1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0"):
+            jsonschema.validate(self._minimal_doc(v, with_placement=False), SCHEMA)
+
+    def test_1_5_0_document_requires_placement(self):
+        jsonschema.validate(self._minimal_doc("1.5.0", with_placement=True), SCHEMA)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(self._minimal_doc("1.5.0", with_placement=False), SCHEMA)
 
 
 class TestDesignId:
