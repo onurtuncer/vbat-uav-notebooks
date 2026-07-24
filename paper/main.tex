@@ -1,0 +1,108 @@
+% =========================================================================
+% AI-Assisted Aircraft Conceptualization:
+% Preliminary Design of a Tail-Sitter UAV
+%
+% Build:  latexmk -pdf main.tex     (or: pdflatex + bibtex + pdflatex x2)
+% =========================================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[round,authoryear]{natbib}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+
+% --- editorial helpers (remove before submission) ------------------------
+\newcommand{\todopaper}[1]{\textcolor{red}{[TODO: #1]}}
+\newcommand{\citeneeded}{\textcolor{red}{[citation needed]}}
+
+% --- shorthand ------------------------------------------------------------
+\newcommand{\code}[1]{\texttt{#1}}
+\graphicspath{{figures/}}
+
+\title{\textbf{AI-Assisted Aircraft Conceptualization:\\
+Preliminary Design of a Tail-Sitter UAV}}
+
+\author{%
+  Onur Tuncer$^{1,}$\thanks{Corresponding author: \texttt{onur.tuncer@itu.edu.tr}}
+  \and Ahmet G\"une\c{s}$^{2}$
+  \and \c{C}a\u{g}lar U\c{c}ler$^{3}$\\[1ex]
+  \small $^{1}$Istanbul Technical University, Faculty of Aeronautics and Astronautics, Istanbul, T\"urkiye\\
+  \small $^{2}$\todopaper{affiliation of Ahmet G\"une\c{s}}\\
+  \small $^{3}$\todopaper{affiliation of \c{C}a\u{g}lar U\c{c}ler}%
+}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+The conceptual design phase fixes most of an aircraft program's key
+decisions while information is scarcest, and it remains dominated by
+slow, experience-driven, iterative workflows. Existing applications of
+artificial intelligence (AI) to aircraft design are fragmented ---
+surrogate aerodynamics, isolated optimizers, code assistance --- and no
+structured methodology yet integrates AI across the complete conceptual
+design process while preserving physics-based rigor. This paper
+proposes such a methodology, in which a large-language-model (LLM)
+agent acts as an engineering collaborator inside a version-controlled
+design repository: every physical model is deterministic, configured,
+and under regression test; the AI writes, refactors, and re-converges
+those models under natural-language direction from human engineers, and
+every design decision is captured as an architecture decision record
+with full git-level provenance of AI contribution. Guardrails --- a
+machine-readable project constitution, a one-way dataflow pipeline with
+typed hand-offs, pinned design-point regression tests, and continuous
+integration that re-executes the entire design on every change ---
+ensure that the AI accelerates iteration without ever becoming the
+source of an engineering number. The methodology is demonstrated on the
+conceptual design of a small electric tail-sitter VTOL UAV (single
+ducted fan, jet vanes): starting from mission requirements, the
+human--AI team produced a converged, COTS-frozen 2.52\,kg design point
+--- thirteen tagged design snapshots, eighteen recorded architecture
+decisions, and a sixteen-stage analysis pipeline spanning sizing,
+aerodynamics, control authority, vibration, thermal, CAD, and CFD
+hand-off --- in under three weeks of part-time work, while independent
+expert review remained an integral, documented part of the loop. The
+resulting workflow is aircraft-agnostic and directly transferable to
+other rapidly iterating aerospace development programs.
+\end{abstract}
+
+\noindent\textbf{Keywords:} artificial intelligence; aircraft
+conceptual design; tail-sitter UAV; large language models; agentic
+workflows; multidisciplinary design
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/method}
+\input{sections/results}
+\input{sections/conclusions}
+
+\section*{Acknowledgements}
+An LLM-based coding agent (Claude Code; Anthropic) was used throughout
+this work as the AI engineering collaborator whose use is the subject
+of this paper: it implemented and refactored the physics modules,
+executed the design pipeline, drafted architecture decision records,
+and assisted in drafting this manuscript under the direction and review
+of the authors. Literature retrieval was assisted by the Consensus
+academic search engine. All engineering results were produced by the
+deterministic, version-controlled analysis code described in
+Section~\ref{sec:method}, and all content was reviewed and verified by
+the human authors, who take full responsibility for it.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

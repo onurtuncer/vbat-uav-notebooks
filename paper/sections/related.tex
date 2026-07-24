@@ -1,0 +1,185 @@
+\section{AI and Conceptual Design}
+\label{sec:related}
+
+This review covers three linked needs: why AI-assisted conceptual
+design is needed in aircraft and especially UAV development, which AI
+tools and frameworks already exist, and why a tail-sitter VTOL UAV is a
+useful validation case relative to other eVTOL architectures.
+
+\subsection{Design need}
+
+Aircraft conceptual design is still constrained by long, costly,
+iterative workflows that must reconcile aerodynamics, structures,
+propulsion, stability, manufacturing, and mission requirements early,
+when most key decisions are fixed
+\citep{karali2024surrogate,corrado2022,lukyanov2024}. Conventional
+sequential methods depend heavily on designer experience and
+low-fidelity semi-empirical models, which are especially weak for UAVs
+because many UAV sizes, Reynolds-number regimes, and unconventional
+layouts fall outside the historical data behind those regressions
+\citep{karali2024surrogate,lukyanov2024}.
+
+UAV design sharpens this need because UAVs can adopt tailless,
+blended-wing, morphing, tandem, canard, and other nontraditional
+configurations that demand broader design-space exploration and tighter
+coupling between mission definition and vehicle architecture
+\citep{karali2024surrogate,ivanova2025,lukyanov2024}. High-fidelity CFD
+and finite-element analyses improve realism, but thousands of
+evaluations across optimization loops make direct early-stage use
+computationally prohibitive, motivating automation, surrogates, and
+concurrent multidisciplinary design optimization (MDO) workflows
+\citep{karali2024surrogate,wang2023,pliakos2025,leng2024}.
+
+\begin{itemize}[nosep]
+\item Early MDO detail is needed to reduce late development setbacks
+  and resolve the conceptual-stage ``design paradox'' while design
+  freedom remains high \citep{corrado2022}.
+\item UAV programs need faster iteration because competition, budget
+  limits, and expanding mission complexity make broad manual concept
+  trades increasingly impractical
+  \citep{karali2023,pliakos2025,shakeri2018}.
+\item AI is increasingly relevant because modern UAVs already rely on
+  autonomy, real-time decision-making, and mission adaptation under
+  battery and payload constraints
+  \citep{ivanova2025,sai2023,mcenroe2022}.
+\end{itemize}
+
+\subsection{AI tools and frameworks}
+
+The literature points to a clear pattern: AI in conceptual aircraft
+design is used less as a replacement for physics than as a
+computational amplifier around physics-based models, MDO loops, and
+design iteration. The dominant tools are surrogate models for
+aerodynamics, structural mass, and sometimes radar cross-section;
+evolutionary or multiobjective optimizers; automated geometry/CFD
+pipelines; and data-mining or multi-fidelity schemes that reduce
+coupling and computational burden
+\citep{karali2024surrogate,leng2024,pliakos2025}.
+
+Reported frameworks already support configuration selection, early
+sizing, and iterative refinement. AI-supported UAV conceptual design
+frameworks compare alternative configurations using learned
+disciplinary models, feed optimized results back into sizing, and can
+cut runtime dramatically; one deep-learning surrogate framework
+reported more than three orders of magnitude computational-time
+improvement over traditional methods \citep{karali2024surrogate}. The
+methodological frontier is widening toward uncertainty-aware MDO,
+digital twins, generative AI, and automated data-generation pipelines
+that make high-quality training data easier to produce
+\citep{karali2024surrogate,wang2023,du2026,pliakos2025}.
+
+Table~\ref{tab:methodclasses} summarizes representative AI-supported
+methodology classes reported for aircraft and UAV conceptual design.
+
+\begin{table}[htbp]
+\centering
+\caption{Representative AI-supported methodology classes reported for
+aircraft and UAV conceptual design.}
+\label{tab:methodclasses}
+\small
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
+\toprule
+\textbf{Method class} & \textbf{What it supports} &
+\textbf{Representative evidence} \\
+\midrule
+ANN / deep surrogates &
+Fast aerodynamics, mass, RCS prediction for concept comparison and
+sizing &
+AI-driven UAV frameworks use learned aerodynamics, structural mass,
+and RCS models in early design \citep{karali2024surrogate} \\
+\addlinespace
+Evolutionary / GA / DE / multiobjective optimization &
+Configuration search, wing optimization, takeoff-weight reduction,
+trade-space exploration &
+GA{+}ANN wing optimization and DE-based UAV optimization are
+established \citep{boutemedjet2019,komarov2024} \\
+\addlinespace
+Multi-fidelity / data mining &
+Variable screening, disciplinary decoupling, cheap-to-expensive
+optimization progression &
+Multi-fidelity data mining uses low-cost data first, then CFD
+fine-tuning \citep{leng2024} \\
+\addlinespace
+Automated CFD pipelines &
+Rapid geometry, meshing, solver setup, dataset generation &
+Python-based preprocessing reduces turnaround to minutes with
+sub-5\% deviation from expert setups \citep{pliakos2025} \\
+\addlinespace
+Generative / emerging AI &
+Parameterization, predictive modeling, training facilitation,
+constraint handling &
+GenAI applications now span VAE, GAN, diffusion, and transformer
+approaches \citep{du2026} \\
+\addlinespace
+LLM / agentic coding assistants &
+Building and maintaining the analysis toolchain itself;
+multidisciplinary change propagation; documentation &
+This work; general-purpose agentic tools \citep{anthropic2025claudecode} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{itemize}[nosep]
+\item Reinforcement learning is widely used in AI-integrated UAV
+  systems, while federated and distributed learning frameworks are
+  emerging quickly \citep{sai2023}.
+\item AI toolchains increasingly include libraries, frameworks, and
+  edge/embedded deployment pathways, not just offline design
+  optimizers \citep{sai2023,mcenroe2022}.
+\item Current gaps remain important: many studies still focus on
+  airfoils or wings rather than full-aircraft models, and robust
+  treatment of uncertainty, unconventional configurations, and broader
+  objective sets is still developing
+  \citep{karali2024surrogate,wang2023,lukyanov2024}.
+\end{itemize}
+
+Notably, none of the surveyed frameworks employs AI at the
+\emph{workflow} level --- as an agent that authors, verifies, and
+evolves the design toolchain and its documentation under human
+direction. That is the niche addressed by the present methodology.
+
+\subsection{Tail-sitters versus eVTOLs}
+
+Tail-sitter VTOL UAVs are a strong validation case because they force a
+conceptual design method to address the hardest coupling in VTOL
+design: hover, wing-borne cruise, and the transition between them.
+Recent VTOL design studies argue that transition and climb are often
+oversimplified in conceptual design even though they strongly drive
+motor and battery sizing \citep{kaneko2024}. For tail-sitters
+specifically, nonlinear dynamics during transition are a central
+limitation, with widely varying speed and attitude, unstable
+long-period behavior in some regimes, and controller sensitivity to
+uncertainty \citep{yang2024}.
+
+Against that difficulty, tail-sitters offer a simpler airframe than
+many other eVTOL classes. Compared with tilt-rotor or dual-system
+eVTOLs, tail-sitter eVTOLs remove tilting mechanisms and redundant
+propulsors, which can reduce structural and mechanical complexity
+\citep{yang2024}. But that simplicity trades for harder transition
+physics: the aircraft must sustain pitch authority through a full
+$90^{\circ}$ rotation, propulsors must provide both high vertical
+thrust and efficient forward-flight operation, and oblique inflow
+during transition can excite propeller vibration \citep{yang2024}.
+
+\begin{itemize}[nosep]
+\item Trajectory-coupled optimization materially matters for
+  tail-sitters: simultaneous design-and-trajectory optimization reduced
+  energy by 29\% versus uncoupled optimization in one tail-sitter
+  delivery case \citep{kaneko2024}.
+\item Optimized transition control improves operations, with reduced
+  transition time and altitude excursion relative to traditional
+  linear transition methods \citep{yang2024}.
+\item A tail-sitter validation example is methodologically valuable
+  because it stress-tests whether an AI-assisted conceptual design
+  framework can integrate physics, controls, propulsion, and sizing in
+  one loop rather than treating configuration choice and transition
+  performance separately \citep{kaneko2024}.
+\end{itemize}
+
+Taken together, the literature supports an AI-assisted conceptual
+design methodology that augments physics-based analysis rather than
+replacing it, is especially justified for UAVs with unconventional
+configurations, and is well validated by a tail-sitter VTOL case
+because tail-sitters expose exactly the multidisciplinary and
+transition-coupled trade-offs that simpler conceptual methods tend to
+miss.

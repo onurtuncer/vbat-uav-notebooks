@@ -53,6 +53,16 @@ jobs:
           cp out/cad/step/vbat_fused.step "vbat_fused-${version}.step"
           cp out/cad/stl/vbat_fused.stl  "vbat_fused-${version}.stl"
 
+      - name: Build manuscript PDF
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-latex-extra texlive-pictures texlive-fonts-recommended \
+            latexmk
+          (cd paper && latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex)
+          cp paper/main.pdf "vbat-paper-${GITHUB_REF_NAME}.pdf"
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -63,4 +73,5 @@ jobs:
             --generate-notes \
             "vbat-design-${GITHUB_REF_NAME}.zip" \
             "vbat_fused-${GITHUB_REF_NAME}.step" \
-            "vbat_fused-${GITHUB_REF_NAME}.stl"
+            "vbat_fused-${GITHUB_REF_NAME}.stl" \
+            "vbat-paper-${GITHUB_REF_NAME}.pdf"

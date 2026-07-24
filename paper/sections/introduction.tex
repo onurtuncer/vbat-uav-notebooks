@@ -1,0 +1,122 @@
+\section{Introduction}
+\label{sec:intro}
+
+\subsection{Research need and gap}
+
+The conceptual design phase establishes the foundation of every
+aircraft development program by defining the overall configuration,
+mission feasibility, propulsion architecture, structural layout,
+subsystem selection, and overall system performance. These early-stage
+decisions rely heavily on preliminary sizing calculations, engineering
+heuristics, multidisciplinary trade-off analyses, and numerous design
+iterations, despite limited available information
+\citep{corrado2022,karali2024surrogate}. In recent years, artificial
+intelligence (AI) has demonstrated considerable potential in supporting
+individual engineering tasks; however, existing applications remain
+fragmented and are typically limited to isolated activities such as
+surrogate modeling, geometry generation, programming assistance,
+optimization, or document preparation
+\citep{karali2024mdo,du2026,pliakos2025}. There is still no structured
+methodology that systematically integrates AI into the complete
+conceptual aircraft design process while preserving physics-based
+engineering calculations, multidisciplinary reasoning, and engineering
+verification. This need is particularly critical for UAV development,
+where rapidly evolving operational requirements, frequent design
+updates, and short development cycles demand conceptual design
+iterations significantly faster than those traditionally adopted in
+conventional aircraft programs \citep{karali2023,shakeri2018}.
+
+A qualitatively new opportunity has emerged with large language model
+(LLM) based \emph{agentic} coding tools, which can read, write,
+execute, and test an entire engineering codebase under natural-language
+direction. Unlike the surrogate-model and optimizer literature, which
+replaces expensive physics with learned approximations, an LLM agent
+can operate one level higher: it can \emph{build and maintain} the
+deterministic physics toolchain itself, propose and implement design
+changes across every affected discipline simultaneously, and document
+the reasoning --- while the engineering numbers continue to come
+exclusively from transparent, testable, physics-based code. How to
+harness this capability without sacrificing rigor, traceability, and
+verification is, to the authors' knowledge, unaddressed in the aircraft
+design literature.
+
+\subsection{Proposed methodology}
+
+This study presents an AI-assisted conceptual aircraft design
+methodology that supports the complete early-stage development process
+from mission definition to a validated conceptual configuration. The
+methodology integrates preliminary aircraft sizing, propulsion sizing,
+energy storage estimation, subsystem and equipment selection,
+configuration development, structural considerations, and
+multidisciplinary engineering evaluations within a unified iterative
+framework. Artificial intelligence functions as an engineering
+collaborator that accelerates engineering reasoning, alternative
+generation, knowledge synthesis, component evaluation, technical
+documentation, and design-space exploration, while analytical
+calculations remain the basis of all engineering decisions. Numerical
+analyses, computational simulations, and external expert findings are
+continuously incorporated into successive design iterations, enabling
+the conceptual design to evolve through evidence-based refinement
+rather than linear development.
+
+The methodology is realized concretely as a \emph{governed
+human--AI--repository loop}: the design lives entirely in a
+version-controlled repository whose architecture (configuration
+$\rightarrow$ physics library $\rightarrow$ notebook pipeline
+$\rightarrow$ typed hand-offs $\rightarrow$ CAD/CFD consumers) is
+itself part of the method; the AI agent works inside that repository
+under a machine-readable set of engineering rules; and every change is
+gated by human review, architecture decision records, pinned
+design-point regression tests, and continuous integration that
+re-executes the full design. To demonstrate applicability, a
+tail-sitter VTOL UAV is developed as an illustrative case study,
+covering the process from mission requirements to preliminary sizing,
+subsystem selection, configuration development, commercial
+component freeze, and hand-off to higher-fidelity validation.
+
+The work is guided by the following research question:
+
+\begin{quote}
+\textbf{RQ:} \emph{How can AI accelerate conceptual aircraft design
+while preserving physics-based engineering rigor?}
+\end{quote}
+
+\subsection{Main contributions}
+
+The primary contribution of this work is the introduction of a
+structured AI-assisted methodology for conceptual aircraft design that
+integrates preliminary engineering calculations, multidisciplinary
+subsystem selection, engineering knowledge management, numerical
+analyses, and iterative design refinement into a single coherent
+workflow. Unlike existing AI applications that support isolated
+engineering tasks, the proposed methodology formalizes the interaction
+between human engineering expertise, an LLM-based AI agent, analytical
+models, and validation activities throughout the conceptual design
+process --- including the guardrails (design-point regression pins,
+one-way dataflow, decision records, standing-finding discipline) that
+make AI acceleration compatible with engineering accountability. The
+framework is aircraft-independent and can be adapted to a wide range of
+aerospace platforms that require rapid, multidisciplinary conceptual
+development.
+
+As a second contribution, the paper demonstrates the practical
+implementation of the methodology through the conceptual design of a
+tail-sitter VTOL UAV, resulting in a complete preliminary sizing
+procedure, propulsion system selection, onboard equipment architecture,
+and configuration development, together with quantitative process
+evidence extracted from the project's own git history: the share of
+AI-co-authored engineering commits, the cadence of design-point
+snapshots, and the mechanisms by which errors were caught. Furthermore,
+the tail-sitter case study provides application-specific engineering
+insights into the conceptual development of this unconventional
+aircraft configuration, illustrating how AI-assisted multidisciplinary
+workflows can reduce development effort while maintaining engineering
+rigor, traceability, and design quality.
+
+The remainder of the paper is organized as follows.
+Section~\ref{sec:related} reviews AI applications in conceptual
+aircraft and UAV design and motivates the tail-sitter as a validation
+case. Section~\ref{sec:method} presents the methodology.
+Section~\ref{sec:results} reports the case study results and process
+metrics and discusses them against the research question.
+Section~\ref{sec:conclusions} concludes.
