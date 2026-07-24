@@ -2,7 +2,7 @@
 
 LaTeX sources for the manuscript *"AI-Assisted Aircraft
 Conceptualization: Preliminary Design of a Tail-Sitter UAV"*
-(Tuncer, Güneş, Uçler).
+(Tuncer, Güneş, Üçler).
 
 ## Build
 
@@ -32,12 +32,10 @@ build locally and fix any residual typos it flags.
 
 ## Editorial state
 
-Open items are marked in red in the PDF via `\todopaper{...}`:
-
-- affiliations for Ahmet Güneş and Çağlar Uçler
-- final check of process metrics if more commits land before submission
-  (commit counts, AI co-authorship share, dates were extracted from the
-  git history on 2026-07-24)
+Open items are marked in red in the PDF via `\todopaper{...}` (none
+currently). Before submission: re-check the process metrics if more
+commits land (commit counts, AI co-authorship share, dates were
+extracted from the git history on 2026-07-24).
 
 Numbers in the case-study tables come from the v0.5.2 design snapshot
 (`CHANGELOG.md`, `out/` handoffs) and the git history; update them if
