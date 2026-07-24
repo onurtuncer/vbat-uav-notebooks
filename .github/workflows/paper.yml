@@ -1,0 +1,49 @@
+name: Paper
+
+# Builds the LaTeX manuscript (paper/) whenever it changes and uploads
+# the compiled PDF as a workflow artifact. Tagged releases additionally
+# attach the PDF to the GitHub Release (see release.yml) — that is the
+# durable, user-facing home of the built paper; the artifact here is
+# the per-change preview for review.
+
+on:
+  push:
+    branches: [main]
+    paths: ["paper/**", ".github/workflows/paper.yml"]
+  pull_request:
+    paths: ["paper/**", ".github/workflows/paper.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build manuscript PDF
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install TeX Live
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-latex-extra texlive-pictures texlive-fonts-recommended \
+            lmodern latexmk
+
+      - name: Build PDF
+        working-directory: paper
+        run: latexmk -pdf -interaction=nonstopmode -halt-on-error -file-line-error main.tex
+
+      - name: Fail on unresolved citations or references
+        working-directory: paper
+        run: |
+          if grep -Ei "(citation|reference).*undefined" main.log; then
+            echo "::error::Unresolved citations/references in the manuscript"
+            exit 1
+          fi
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: paper-pdf
+          path: paper/main.pdf
+          if-no-files-found: error

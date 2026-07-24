@@ -207,3 +207,16 @@ cfd/vanes/sweep/
 
 # setuptools-scm generated version file
 src/conceptual_design/_version.py
+
+# LaTeX build artifacts (paper/) -- the PDF is built by CI (paper.yml)
+# and attached to releases (release.yml); don't commit local builds
+paper/**/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.toc
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.synctex.gz
+paper/*.pdf

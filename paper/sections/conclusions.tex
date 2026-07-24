@@ -1,0 +1,50 @@
+\section{Conclusions}
+\label{sec:conclusions}
+
+This paper introduced a structured methodology for AI-assisted
+conceptual aircraft design in which a large-language-model agent works
+as an engineering collaborator inside a governed, version-controlled
+design repository. The methodology rests on a strict separation of
+roles --- deterministic, configured, regression-tested physics code as
+the sole source of engineering numbers; the AI as the implementer and
+propagator of design changes; humans as the source of requirements,
+directives, review, and acceptance --- enforced by four transferable
+mechanisms: a machine-readable project constitution, a one-way
+analysis pipeline with typed hand-offs, pinned design-point regression
+tests with full-pipeline continuous integration, and architecture
+decision records with git-level provenance of AI contribution.
+
+Applied to the conceptual design of a small electric tail-sitter VTOL
+UAV, the methodology carried the program from mission requirements to
+a converged, commercially frozen 2.52\,kg design point --- sixteen
+analysis stages spanning sizing, aerodynamics, control authority,
+vibration, thermal, CAD, component selection, and higher-fidelity
+hand-off --- in three calendar weeks of part-time work, with thirteen
+fully consistent tagged design snapshots and eighteen recorded
+architecture decisions. Process evidence extracted from the git
+history shows 64\% of design-phase commits co-authored by the AI, all
+merged through human review, and documents which safety layer caught
+each class of fault: automated pins caught silent drift, versioned
+hand-off schemas caught cross-tool integration errors, and independent
+expert review caught the conceptual errors no automated check could
+see.
+
+The answer to the research question is therefore affirmative but
+conditional: AI can accelerate conceptual aircraft design by roughly
+an order of magnitude in delivered scope per unit time \emph{when} it
+is deployed at the workflow level under structural guardrails, rather
+than as a source of engineering answers. The acceleration was used not
+to cut corners but to make honesty cheap --- model refinements that
+grew the design mass were adopted within days, and unfavorable margins
+are carried openly as standing findings with named retirement paths.
+
+Future work proceeds along the hand-offs the methodology already
+exposes: closing the external vortex-lattice/blade-element and CFD
+loops on the frozen geometry, PX4-based flight validation of the
+hover/transition control architecture, folding measured component
+properties (notably pack internal resistance) back into the closure
+after procurement, and applying the framework to a second, dissimilar
+airframe to test aircraft-independence. On the methodological side,
+controlled multi-team studies are needed to separate the contributions
+of the AI agent, the governance structure, and team expertise to the
+observed acceleration.
