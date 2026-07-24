@@ -38,7 +38,12 @@ VANES = {"n_vanes": 4, "R_hub_m": 0.0406, "R_tip_m": 0.1015,
          "delta_max_deg": 20.0, "delta_stall_deg": 15.0}
 FUS = {"D_fus_m": 0.0982, "L_fus_m": 0.49099, "f_nose": 0.22,
        "f_tail": 0.3, "r_hub_m": 0.0406, "x_wing_LE_m": 0.20687,
-       "x_CG_m": 0.24229}
+       "x_CG_m": 0.24229,
+       # duct annulus (1.8.0): dims + the layout centre station, the
+       # same keys the CAD duct solid consumes from out/fuselage.yaml
+       "D_duct_inner_m": 0.209, "D_duct_outer_m": 0.225,
+       "duct_chord_m": 0.09135,
+       "layout": [{"name": "duct", "x_cg_m": 0.46787}]}
 
 
 @pytest.fixture(scope="module")
@@ -280,6 +285,55 @@ class TestPlacement:
             )
 
 
+class TestDuct:
+    def test_matches_the_cad_duct_annulus(self, geometry):
+        # same keys the CAD duct solid consumes (out/fuselage.yaml):
+        # bore, outer diameter, axial chord
+        duct = geometry["duct"]
+        assert duct["inner_diameter"] == pytest.approx(FUS["D_duct_inner_m"])
+        assert duct["outer_diameter"] == pytest.approx(FUS["D_duct_outer_m"])
+        assert duct["chord"] == pytest.approx(FUS["duct_chord_m"])
+
+    def test_placement_is_the_layout_centre_station(self, geometry):
+        # mid-chord point on the duct centreline, same x = -station
+        # convention as `body` -- the CAD's axial centring station
+        centre = geometry["duct"]["placement"]["center"]
+        assert centre["x"] == pytest.approx(-0.46787)
+        assert centre["y"] == 0.0
+        assert centre["z"] == 0.0
+
+    def test_bore_clears_the_rotor(self, geometry):
+        # the tip clearance lives in the bore: the disk must fit inside
+        assert (geometry["duct"]["inner_diameter"] / 2.0
+                > geometry["propulsion_bemt"]["disk_radius"])
+
+    def test_exit_face_overhangs_the_tail_base(self, geometry):
+        # at this design point the duct straddles the tail base: the
+        # exit face (center.x - chord/2) sits aft of the body's aft-most
+        # station -- a consumer must not clamp the duct to the body
+        duct = geometry["duct"]
+        x_exit = duct["placement"]["center"]["x"] - duct["chord"] / 2.0
+        assert x_exit < -geometry["body"]["length"]
+
+    def test_rejects_bore_smaller_than_the_rotor(self, mesh, prop, clarky):
+        bad_fus = {**FUS, "D_duct_inner_m": 0.203}
+        with pytest.raises(ValueError, match="tip clearance"):
+            build_aeolion_geometry(
+                span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL,
+                vanes=VANES, fus=bad_fus, rotor_D_m=0.203, prop=prop, clarky=clarky,
+                f_shaft_hz=203.5, mesh=mesh,
+            )
+
+    def test_rejects_a_layout_without_the_duct(self, mesh, prop, clarky):
+        bad_fus = {**FUS, "layout": []}
+        with pytest.raises(ValueError, match="exactly one 'duct' item"):
+            build_aeolion_geometry(
+                span_m=1.016, chord_m=0.1695, airfoil="NACA 4412", ail=AIL,
+                vanes=VANES, fus=bad_fus, rotor_D_m=0.203, prop=prop, clarky=clarky,
+                f_shaft_hz=203.5, mesh=mesh,
+            )
+
+
 class TestMomentReferencePoint:
     def test_matches_the_fuselage_cg_station(self, geometry):
         # SAME body-frame sign convention as `body`/`placement`, and
@@ -313,7 +367,8 @@ class TestMomentReferencePoint:
 
 
 def _minimal_doc(schema_version: str, *, with_placement: bool,
-                 with_mrp: bool, propulsion_bemt: str | None = None) -> dict:
+                 with_mrp: bool, propulsion_bemt: str | None = None,
+                 with_duct: bool = False) -> dict:
     planform = {
         "span": 1.0,
         "stations": [
@@ -346,6 +401,13 @@ def _minimal_doc(schema_version: str, *, with_placement: bool,
     }
     if with_mrp:
         doc["moment_reference_point"] = {"x": -0.24, "y": 0.0, "z": 0.0}
+    if with_duct:
+        doc["duct"] = {
+            "inner_diameter": 0.209,
+            "outer_diameter": 0.225,
+            "chord": 0.09,
+            "placement": {"center": {"x": -0.47, "y": 0.0, "z": 0.0}},
+        }
     if propulsion_bemt in ("incomplete", "complete"):
         bemt = {
             "disk_radius": 0.1,
@@ -439,6 +501,28 @@ class TestVersionConditionalPropulsionBemt:
                 _minimal_doc(**self._kw("1.7.0"), propulsion_bemt="incomplete"),
                 SCHEMA,
             )
+
+
+class TestVersionConditionalDuct:
+    """Same pattern, one version later again: the duct block is
+    required from 1.8.0 onward but must not retroactively invalidate
+    1.0.0-1.7.0 documents that never carried it."""
+
+    def test_pre_1_8_0_documents_stay_valid_without_duct(self):
+        pre_placement = ("1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0")
+        for v in pre_placement + ("1.5.0", "1.6.0", "1.7.0"):
+            jsonschema.validate(
+                _minimal_doc(v, with_placement=v not in pre_placement,
+                             with_mrp=v in ("1.6.0", "1.7.0")),
+                SCHEMA,
+            )
+
+    def test_1_8_0_document_requires_duct(self):
+        kw = dict(with_placement=True, with_mrp=True)
+        jsonschema.validate(
+            _minimal_doc("1.8.0", **kw, with_duct=True), SCHEMA)
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(_minimal_doc("1.8.0", **kw), SCHEMA)
 
 
 class TestDesignId:

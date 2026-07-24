@@ -44,6 +44,26 @@ contract as a JSON Schema (2020-12, `additionalProperties: false`).
   plate rotating about its `hinge_xc` line. The vane CFD → DAVE-ML
   path still characterizes the jet-wash aerodynamics; carrying the
   geometry here lets Aeolion model the jet directly.
+- **Duct block (schema 1.8.0, 2026-07-24)**: the EDF shroud rides in
+  the contract explicitly — a new top-level `duct` block with
+  `inner_diameter` / `outer_diameter` / `chord` and
+  `placement.center`, the SAME parameterisation the CAD duct solid is
+  built from (`out/fuselage.yaml` `D_duct_inner_m` / `D_duct_outer_m`
+  / `duct_chord_m` and the layout duct station): an annulus of
+  revolution about the body x-axis, mid-chord centre at x = −station
+  (same convention as `body`), inlet face forward at
+  `center.x + chord/2`. Before this the duct existed in the contract
+  only by implication — the vane entries' eta is measured on the
+  duct-EXIT radius and BEMT models a prop-in-duct, yet no duct
+  geometry or position was stated anywhere, so a duct-aware consumer
+  had nothing to place against `body` (and the duct legitimately
+  overhangs the tail base, so guessing from the body extent gets it
+  wrong). The bore carries the rotor tip clearance — new exporter
+  guard `rotor_D < D_duct_inner < D_duct_outer`, plus exactly one
+  `duct` item required in the fuselage layout. **Required from 1.8.0
+  onward**, same version-conditional `if`/`then` discipline as
+  `planform.placement` and `moment_reference_point`; 1.0.0–1.7.0
+  documents remain structurally valid without it.
 - **Moment reference point (schema 1.6.0, 2026-07-21, from an Aeolion
   solver report)**: a new top-level `moment_reference_point` {x, y,
   z} carries the vehicle CG, in the SAME body-frame convention and
