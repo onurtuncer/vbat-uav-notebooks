@@ -18,6 +18,7 @@ from .conceptual import (
 from .cots import plot_budget_margins
 from .fuselage import plot_fineness_trade, plot_fuselage_layout
 from .mass_properties import plot_mass_overview
+from .mission import plot_mission_profile
 from .thermal import plot_thermal_paths
 from .vanes import plot_vane_authority, plot_vane_geometry
 from .vibration import plot_transmissibility
@@ -40,6 +41,7 @@ __all__ = [
     "plot_mass_budget",
     "plot_mass_closure_convergence",
     "plot_mass_overview",
+    "plot_mission_profile",
     "plot_sensitivity_grid",
     "plot_size_matching_diagram",
     "plot_thermal_paths",

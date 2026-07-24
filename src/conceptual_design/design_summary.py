@@ -103,6 +103,23 @@ def collect_findings(comp, thermal, fus, fus_cots) -> list[str]:
     return findings
 
 
+def mission_profile_table(profile) -> pd.DataFrame:
+    """Per-leg timeline: duration, power, altitude, range, energy, pack SoC (NB16)."""
+    rows = []
+    for leg in profile.legs:
+        rows.append({
+            "leg": leg.name,
+            "phase": leg.phase,
+            "dt_s": round(leg.duration_s, 0),
+            "power_W": round(leg.power_W, 0),
+            "alt_m": f"{leg.alt_start_m:.0f}->{leg.alt_end_m:.0f}",
+            "range_km": round(leg.range_end_m / 1000.0, 2),
+            "E_Wh": round(leg.E_leg_Wh, 1),
+            "SoC_%": f"{leg.soc_start*100:.0f}->{leg.soc_end*100:.0f}",
+        })
+    return pd.DataFrame(rows).set_index("leg")
+
+
 def selected_hardware_table(comp) -> pd.DataFrame:
     """Frozen-hardware overview table from out/components.yaml (NB15)."""
     rows = []
@@ -152,6 +169,21 @@ def print_glance(result, mission, rotor, wf, af, elec, fus, fus_cots,
           f"Izz {massprop['inertia_about_CG_body_FRD']['Izz_kgm2']:.4f} kg m^2")
     print(f"{'Construction':<34}: {wf.construction_method} (ADR-0008/0010), "
           f"structure {fus['m_shell_kg']*1e3:.0f} g (as-sel. hull {fus_cots['m_shell_kg']*1e3:.0f} g)")
+
+
+def print_mission_profile(profile) -> None:
+    """Mission-level rollup: range, endurance, climb, and pack usage (NB16)."""
+    print("MISSION PROFILE")
+    print("-" * 62)
+    print(f"{'Endurance (hover+transition+cruise)':<38}: {profile.endurance_min:.1f} min")
+    print(f"{'Cruise range (ground track)':<38}: {profile.range_km:.1f} km")
+    print(f"{'Cruise altitude AGL':<38}: {profile.h_cruise_m:.0f} m")
+    print(f"{'Vertical climb':<38}: {profile.h_cruise_m:.0f} m at "
+          f"{profile.v_climb_mps:.1f} m/s ({profile.t_vclimb_s:.0f} s)")
+    print(f"{'Pack energy (sized, incl. reserve)':<38}: {profile.E_pack_Wh:.1f} Wh")
+    print(f"{'Mission energy (nominal, no reserve)':<38}: {profile.E_mission_Wh:.1f} Wh")
+    print(f"{'Pack SoC at landing':<38}: {profile.soc_end*100:.0f}% "
+          f"({profile.reserve_frac*100:.0f}% reserve held)")
 
 
 def print_budget_lines(budgets, fus_cots) -> None:

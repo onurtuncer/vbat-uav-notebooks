@@ -25,3 +25,24 @@ V_cruise: 20.0
 rate_of_climb: 2.5
 reserve_factor: 1.20
 payload_kg: 0.5
+
+# ── Mission-profile decomposition (NB16 timeline + battery track) ──────────────
+# The hover budget above is split into the two vertical legs the vehicle
+# actually flies, so the design-summary notebook can draw the altitude/time
+# profile and track pack state-of-charge leg-by-leg.  These are a presentation
+# decomposition ONLY: they do not enter the mass closure (which bills the whole
+# t_hover + t_transition at hover power regardless of the split), and
+# mission_profile.py asserts t_hover_takeoff + t_hover_landing == t_hover.
+#
+# h_cruise        : nominal cruise / patrol altitude AGL [m]
+#                   The vertical takeoff leg climbs to this altitude at
+#                   rate_of_climb (climb time = h_cruise / rate_of_climb),
+#                   then station-keeps for the remainder of the takeoff budget;
+#                   the landing leg descends it back to the ground.  120 m keeps
+#                   the climb (~48 s at 2.5 m/s) inside the 60 s takeoff budget
+#                   and sits well under the 3000 m service ceiling.
+# t_hover_takeoff : vertical takeoff climb + stabilisation hover [s]
+# t_hover_landing : vertical descent + landing hover [s]
+h_cruise: 120.0
+t_hover_takeoff: 60.0
+t_hover_landing: 60.0

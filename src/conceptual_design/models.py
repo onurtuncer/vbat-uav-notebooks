@@ -41,6 +41,22 @@ class Mission:
     payload_kg:    float = 0.0   # mission payload requirement [kg]
     t_transition:  float = 0.0   # total transition time budget (both ways) [s]
 
+    # -- Mission-profile decomposition (presentation only; see mission.yaml) --
+    # Split of t_hover into the two vertical legs, plus the cruise altitude the
+    # takeoff leg climbs to.  These do NOT enter the mass closure -- they let
+    # NB16 draw the altitude/time profile and track battery state per leg.
+    # Left at 0.0/None they fall back to an even hover split and a default
+    # altitude, so directly-constructed Missions (tests, __main__) still work.
+    h_cruise_m:      float = 120.0   # nominal cruise altitude AGL [m]
+    t_hover_takeoff: float = 0.0     # takeoff climb + hover leg [s] (0 -> t_hover/2)
+    t_hover_landing: float = 0.0     # descent + landing hover leg [s] (0 -> t_hover/2)
+
+    def __post_init__(self):
+        # Fall back to an even split when the legs are not specified.
+        if self.t_hover_takeoff <= 0.0 and self.t_hover_landing <= 0.0:
+            self.t_hover_takeoff = self.t_hover / 2.0
+            self.t_hover_landing = self.t_hover / 2.0
+
     @classmethod
     def from_yaml(cls, path: str) -> "Mission":
         with open(path, "r", encoding="utf-8") as f:
@@ -53,6 +69,9 @@ class Mission:
             reserve_factor = float(data["reserve_factor"]),
             payload_kg     = float(data["payload_kg"]),
             t_transition   = float(data.get("t_transition", 0.0)),
+            h_cruise_m      = float(data.get("h_cruise", 120.0)),
+            t_hover_takeoff = float(data.get("t_hover_takeoff", 0.0)),
+            t_hover_landing = float(data.get("t_hover_landing", 0.0)),
         )
 
 
