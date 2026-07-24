@@ -24,6 +24,17 @@ is tagged.
 
 ### Added
 
+- **Aeolion handoff schema 1.8.0** (ADR-0016): new top-level `duct`
+  block — the EDF shroud as an annulus of revolution about the body
+  x-axis (`inner_diameter`, `outer_diameter`, `chord`) with explicit
+  placement (`placement.center`, the mid-chord point on the
+  centreline, x = −station like `body`), sourced from the same
+  `out/fuselage.yaml` keys the CAD duct solid consumes. Required from
+  1.8.0 onward via the established version-conditional pattern; new
+  exporter guards (bore must clear the rotor tip, exactly one duct
+  layout item). Closes the gap where the vanes' duct-exit eta and the
+  prop-in-duct BEMT referenced a duct the contract never described or
+  placed.
 - **Aeolion handoff schema 1.7.0** (ADR-0017): `propulsion_bemt` gains
   `airfoil_sections` (Clark Y, thickness-scaled per station, CST-fit —
   the same representation as the wing's `airfoil_sections`) and

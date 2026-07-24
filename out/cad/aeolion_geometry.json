@@ -292,7 +292,19 @@
       "surface": "duct_jet"
     }
   ],
-  "design_id": "sha256:150aa29c8e60b5f5ff8aacdeb1e6c73a6ab19cb225677eaacb79eff4797db702",
+  "design_id": "sha256:d6d355b0fe61ad04442635f5f1a71e259be05cf70e3666b75b9fb73f1f150fbc",
+  "duct": {
+    "chord": 0.09135,
+    "inner_diameter": 0.209,
+    "outer_diameter": 0.225,
+    "placement": {
+      "center": {
+        "x": -0.46787,
+        "y": 0.0,
+        "z": 0.0
+      }
+    }
+  },
   "mesh_topology": {
     "chordwise_panels": 8,
     "spanwise_panels_per_section": 6,
@@ -690,7 +702,7 @@
     ]
   },
   "reference_frame": "aetherion_body_frd",
-  "schema_version": "1.7.0",
+  "schema_version": "1.8.0",
   "units": {
     "angle": "deg",
     "length": "m"

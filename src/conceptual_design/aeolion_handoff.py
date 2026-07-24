@@ -1,7 +1,7 @@
 """VBAT -> Aeolion parametric geometry handoff (ADR-0016).
 
 Emits `out/cad/aeolion_geometry.json` conforming to
-schemas/vbat-aeolion-geometry-handoff.schema.json (schema 1.0.0), the
+schemas/vbat-aeolion-geometry-handoff.schema.json (schema 1.8.0), the
 executable geometry contract for the Aeolion VLM/BEMT adjoint loop:
 
 - planform stations + CST airfoil sections, aligned 1:1 by eta, with a
@@ -43,6 +43,13 @@ executable geometry contract for the Aeolion VLM/BEMT adjoint loop:
   and convention as cfd/vehicle/Allrun.case's CofR, so a consumer has
   a physically meaningful centre for Cm/Cl/Cn instead of defaulting
   to the coordinate-system origin;
+- the duct (schema 1.8.0): the EDF shroud as an annulus of revolution
+  about the body x-axis, SAME parameterisation the CAD duct solid is
+  built from (out/fuselage.yaml D_duct_inner_m / D_duct_outer_m /
+  duct_chord_m and the layout duct station), explicitly placed via
+  placement.center (mid-chord point on the centreline, x = -station).
+  The bore carries the rotor tip clearance and the exit face
+  legitimately overhangs the tail base -- the vanes work in its jet;
 - static mesh-topology directives (config/aeolion.yaml, not design
   variables).
 
@@ -77,7 +84,7 @@ from .prop_geometry import (
     ROTATION_AXIS_BODY_FRD, ClarkYSection, PropGeometry, clark_y_surfaces,
 )
 
-SCHEMA_VERSION = "1.7.0"
+SCHEMA_VERSION = "1.8.0"
 REFERENCE_FRAME = "aetherion_body_frd"
 
 # Kulfan class-function exponents: round nose (N1 = 0.5), sharp
@@ -215,7 +222,7 @@ def build_aeolion_geometry(
     f_shaft_hz: float,
     mesh: AeolionMeshConfig,
 ) -> dict[str, Any]:
-    """Build the schema-1.7.0 Aeolion geometry document.
+    """Build the schema-1.8.0 Aeolion geometry document.
 
     span_m/chord_m come from the converged sizing result, `ail` from
     out/aileron.yaml, `vanes` from out/control_vanes.yaml, `fus` from
@@ -254,6 +261,23 @@ def build_aeolion_geometry(
             "CG station must sit strictly between the nose tip and the "
             "tail base (0 < x_CG_m < L_fus_m)"
         )
+    duct_items = [it for it in fus.get("layout", []) if it.get("name") == "duct"]
+    if len(duct_items) != 1:
+        raise ValueError(
+            "fus['layout'] must carry exactly one 'duct' item -- its "
+            "x_cg_m is the duct's axial centre station"
+        )
+    x_duct_c = float(duct_items[0]["x_cg_m"])
+    D_duct_i = float(fus["D_duct_inner_m"])
+    D_duct_o = float(fus["D_duct_outer_m"])
+    duct_chord = float(fus["duct_chord_m"])
+    if not rotor_D_m < D_duct_i < D_duct_o:
+        raise ValueError(
+            "duct diameters must satisfy rotor D < D_duct_inner < "
+            "D_duct_outer (the bore carries the rotor tip clearance)"
+        )
+    if duct_chord <= 0 or x_duct_c <= 0:
+        raise ValueError("duct chord and centre station must be positive")
     mesh.validate()
 
     n = mesh.n_planform_stations
@@ -375,6 +399,21 @@ def build_aeolion_geometry(
         "body": {
             "length": L_fus,
             "stations": body_stations,
+        },
+        # EDF shroud (1.8.0): the SAME annulus the CAD duct solid builds
+        # (out/fuselage.yaml duct dims + the layout duct station),
+        # explicitly placed -- an annulus of revolution about the body
+        # x-axis, mid-chord centre at x = -station, inlet face forward
+        # at center.x + chord/2. The bore carries the rotor tip
+        # clearance (guarded above); the exit face legitimately
+        # overhangs the tail base, with the jet vanes in its exit flow.
+        "duct": {
+            "inner_diameter": D_duct_i,
+            "outer_diameter": D_duct_o,
+            "chord": duct_chord,
+            "placement": {
+                "center": {"x": round(-x_duct_c, 12) + 0.0, "y": 0.0, "z": 0.0},
+            },
         },
         "propulsion_bemt": {
             "disk_radius": R,

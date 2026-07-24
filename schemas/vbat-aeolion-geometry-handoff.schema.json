@@ -8,8 +8,8 @@
 
     "schema_version": {
       "type": "string",
-      "enum": ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0"],
-      "description": "1.1.0 adds the optional control_surfaces[].surface binding field (1.0.0 documents bind by name); 1.2.0 adds the optional body block; 1.3.0 adds propulsion_bemt.n_blades; 1.4.0 adds control_surfaces[].deflection_limits_deg; 1.5.0 adds planform.placement, REQUIRED from 1.5.0 onward; 1.6.0 adds moment_reference_point, REQUIRED from 1.6.0 onward; 1.7.0 adds propulsion_bemt.airfoil_sections and propulsion_bemt.rotation_axis, both REQUIRED within propulsion_bemt from 1.7.0 onward if propulsion_bemt is present (see the version-conditional constraints below) -- each is optional only for documents predating its own introduction"
+      "enum": ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0", "1.8.0"],
+      "description": "1.1.0 adds the optional control_surfaces[].surface binding field (1.0.0 documents bind by name); 1.2.0 adds the optional body block; 1.3.0 adds propulsion_bemt.n_blades; 1.4.0 adds control_surfaces[].deflection_limits_deg; 1.5.0 adds planform.placement, REQUIRED from 1.5.0 onward; 1.6.0 adds moment_reference_point, REQUIRED from 1.6.0 onward; 1.7.0 adds propulsion_bemt.airfoil_sections and propulsion_bemt.rotation_axis, both REQUIRED within propulsion_bemt from 1.7.0 onward if propulsion_bemt is present (see the version-conditional constraints below); 1.8.0 adds the duct block (EDF shroud geometry + explicit placement), REQUIRED from 1.8.0 onward -- each is optional only for documents predating its own introduction"
     },
     "design_id": {
       "type": "string",
@@ -162,6 +162,32 @@
       }
     },
 
+    "duct": {
+      "type": "object",
+      "description": "The EDF shroud (1.8.0): an annulus of revolution about the body x-axis through placement.center, the SAME parameterisation the CAD duct solid is built from (out/fuselage.yaml D_duct_inner_m / D_duct_outer_m / duct_chord_m and the layout duct station). inner_diameter is the bore and carries the rotor tip clearance (inner_diameter/2 > propulsion_bemt.disk_radius, exporter-guarded); chord is the axial length. placement.center is the mid-chord point on the duct centreline in the declared reference_frame, same x = -station convention as `body`: the inlet (forward) face sits at x = center.x + chord/2, the exit face at x = center.x - chord/2. The duct legitimately overhangs the body's tail base (the jet vanes work in its exit flow) -- do not clamp it to the body extent. Required from schema_version 1.8.0 onward (see the top-level version-conditional constraint): without it a duct-aware consumer (BEMT shroud/tip-loss modelling, the duct_jet control surfaces whose eta is measured on the duct-EXIT radius) has no stated duct geometry at all and no way to place the prop-in-duct against `body`.",
+      "required": ["inner_diameter", "outer_diameter", "chord", "placement"],
+      "properties": {
+        "inner_diameter": { "type": "number", "exclusiveMinimum": 0 },
+        "outer_diameter": { "type": "number", "exclusiveMinimum": 0 },
+        "chord":          { "type": "number", "exclusiveMinimum": 0 },
+        "placement": {
+          "type": "object",
+          "required": ["center"],
+          "properties": {
+            "center": {
+              "type": "object",
+              "required": ["x", "y", "z"],
+              "properties": {
+                "x": { "type": "number" },
+                "y": { "type": "number" },
+                "z": { "type": "number" }
+              }
+            }
+          }
+        }
+      }
+    },
+
     "propulsion_bemt": {
       "type": "object",
       "properties": {
@@ -273,6 +299,21 @@
             "required": ["airfoil_sections", "rotation_axis"]
           }
         }
+      }
+    },
+    {
+      "description": "duct became mandatory at 1.8.0: every schema_version NOT in the pre-1.8.0 list below must supply the shroud geometry and its placement.",
+      "if": {
+        "properties": {
+          "schema_version": {
+            "not": {
+              "enum": ["1.0.0", "1.1.0", "1.2.0", "1.3.0", "1.4.0", "1.5.0", "1.6.0", "1.7.0"]
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["duct"]
       }
     }
   ]
